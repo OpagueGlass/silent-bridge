@@ -1,16 +1,51 @@
 "use client"
 
-import { useState } from "react"
-import { Image, ScrollView, StyleSheet, View } from "react-native"
-import { Button, Card, Chip, Menu, Text, TextInput } from "react-native-paper"
+import { useState, useRef } from "react"
+import { TouchableOpacity, Image, ScrollView, StyleSheet, View } from "react-native"
+import { RadioButton, Button, Card, Chip, Menu, Text, TextInput } from "react-native-paper"
+import { Slider } from "@miblanchard/react-native-slider";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from "../../contexts/AuthContext"
 import { useAppTheme } from "../../hooks/useAppTheme"
 
 export default function SearchScreen() {
   const { userProfile } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
+
   const [selectedGender, setSelectedGender] = useState("")
-  const [genderMenuVisible, setGenderMenuVisible] = useState(false)
+  // --- Slider ---
+  const [priceRange, setPriceRange] = useState([0, 200]);
+  const [ageRange, setAgeRange] = useState([25, 45]);
+  const [minRating, setMinRating] = useState(5);
+  // --- Slider State ---
+  // -1 non activate, 0 left, 1 right
+  const [activePriceThumb, setActivePriceThumb] = useState(-1);
+  const [activeAgeThumb, setActiveAgeThumb] = useState(-1);
+  const priceRangeRef = useRef(priceRange);
+  const ageRangeRef = useRef(ageRange);
+
+  const [displayedInterpreters, setDisplayedInterpreters] = useState<typeof interpreters>([]);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const handleSearch = () => {
+    const results = interpreters.filter((interpreter) => {
+      const genderMatch = selectedGender === "" || interpreter.gender === selectedGender;
+
+      const price = Number(interpreter.pricePerHour.replace(/[^\d.]/g, ''));
+      const priceMatch = price >= priceRange[0] && price <= priceRange[1];
+
+      const [minAge, maxAge] = interpreter.age.split('-').map(Number);
+      const ageMatch = maxAge >= ageRange[0] && minAge <= ageRange[1];
+
+      const ratingMatch = interpreter.rating >= minRating;
+
+      return genderMatch && priceMatch && ageMatch && ratingMatch;
+    });
+
+    setDisplayedInterpreters(results);
+    setHasSearched(true);
+  };
+
   const theme = useAppTheme()
 
   const isInterpreter = userProfile?.userType === "interpreter"
@@ -122,48 +157,114 @@ export default function SearchScreen() {
         />
       </View>
 
-      <View style={styles.filtersSection}>
-        <Text style={styles.filtersTitle}>Select your Preferences</Text>
-
-        <Menu
-          visible={genderMenuVisible}
-          onDismiss={() => setGenderMenuVisible(false)}
-          anchor={
-            <TextInput
-              label="Gender"
-              value={selectedGender}
-              mode="outlined"
-              style={styles.filterInput}
-              right={<TextInput.Icon icon="chevron-down" onPress={() => setGenderMenuVisible(true)} />}
-              onFocus={() => setGenderMenuVisible(true)}
-              showSoftInputOnFocus={false}
-            />
-          }
+      {/* TEMPORARY VIEW AND TEXT STYLE */}
+      {/* --- GENDER --- */}
+      <View style={styles.section}>
+        <Text style={styles.filterLabel}>Gender</Text>
+        <RadioButton.Group
+          value={selectedGender}
+          onValueChange={newValue => setSelectedGender(newValue)}
         >
-          <Menu.Item
-            onPress={() => {
-              setSelectedGender("Male")
-              setGenderMenuVisible(false)
-            }}
-            title="Male"
-          />
-          <Menu.Item
-            onPress={() => {
-              setSelectedGender("Female")
-              setGenderMenuVisible(false)
-            }}
-            title="Female"
-          />
-          <Menu.Item
-            onPress={() => {
-              setSelectedGender("Everyone")
-              setGenderMenuVisible(false)
-            }}
-            title="Everyone"
-          />
-        </Menu>
-      </View>
+          <View style={styles.radioButtonContainer}>
+            <RadioButton.Item label="Male" value="Male" />
+            <RadioButton.Item label="Female" value="Female" />
+          </View>
+        </RadioButton.Group>
 
+        {/* --- PRICE --- */}
+        <View style={styles.sliderContainer}>
+          <Text style={styles.filterLabel}>Price per hour</Text>
+          <Text style={styles.filterValue}>RM{priceRange[0]} - RM{priceRange[1]}</Text>
+        </View>
+        <Slider
+          value={priceRange}
+          onValueChange={newRange => {
+            if (newRange[0] !== priceRangeRef.current[0]) {
+              setActivePriceThumb(0); 
+            } else if (newRange[1] !== priceRangeRef.current[1]) {
+              setActivePriceThumb(1); 
+            }
+            priceRangeRef.current = newRange;
+            // Achieve real-time change on the value displayed
+            setPriceRange(newRange); 
+          }}   
+          renderThumbComponent={thumbIndex => {
+            const isActive = activePriceThumb === thumbIndex; 
+            return (
+              <View style={styles.thumbContainer}>
+                {isActive && <View style={styles.thumbHalo} />}
+                <View style={styles.thumbCore} />
+              </View>
+            );
+          }}
+          onSlidingComplete={() => setActivePriceThumb(-1)}     
+          minimumValue={0}   
+          maximumValue={200} 
+          step={5}    
+        />
+
+        {/* --- AGE --- */}
+        <View style={styles.sliderContainer}>
+          <Text style={styles.filterLabel}>Age</Text>
+          <Text style={styles.filterValue}>{ageRange[0]} - {ageRange[1]}</Text>
+        </View>
+        <Slider
+          value={ageRange}
+          onValueChange={newRange => {
+            if (newRange[0] !== ageRangeRef.current[0]) {
+              setActiveAgeThumb(0);
+            } else if (newRange[1] !== ageRangeRef.current[1]) {
+              setActiveAgeThumb(1);
+            }
+            ageRangeRef.current = newRange;
+            setAgeRange(newRange);
+          }}
+          renderThumbComponent={thumbIndex => {
+            const isActive = activeAgeThumb === thumbIndex; 
+            return (
+              <View style={styles.thumbContainer}>
+                {isActive && <View style={styles.thumbHalo} />}
+                <View style={styles.thumbCore} />
+              </View>
+            );
+          }}
+          onSlidingComplete={() => setActiveAgeThumb(-1)}
+          minimumValue={18}
+          maximumValue={60}
+          step={1}
+        />
+
+        {/* --- Rating --- */}
+        <View style={styles.sliderContainer}>
+          <Text style={styles.filterLabel}>Ratings</Text>
+          <View style={styles.starContainer}>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <TouchableOpacity
+                key={i} 
+                onPress={() => setMinRating(i)} 
+              >
+                <MaterialCommunityIcons
+                  name={i <= minRating ? 'star' : 'star-outline'}
+                  size={32}
+                  color={i <= minRating ? '#f8d706db' : '#64748B'}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <Button
+          mode="contained" 
+          onPress={() => console.log("Search button pressed!")} 
+          style={styles.searchButton} 
+          buttonColor="#E0E0E0"
+          textColor="#000000" 
+        >
+          Search
+        </Button>
+
+      </View>
+      
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Top 5 Matches</Text>
 
@@ -349,5 +450,57 @@ const styles = StyleSheet.create({
   },
   rejectButton: {
     borderColor: "#F44336",
+  },
+
+  radioButtonContainer: {
+    // Achieve horizontal arrangement
+    flexDirection: 'row', 
+    // Evenly distribute items with space around
+    justifyContent: 'space-around',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+
+  sliderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+
+  starContainer: {
+    flexDirection: 'row', 
+  },
+
+  filterLabel: {
+    fontSize: 16,
+    fontWeight: 'bold'
+  },
+  filterValue: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  star: {
+    fontSize: 18,
+    color: '#F59E0B', 
+  },
+  thumbContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  thumbHalo: { 
+    height: 40, 
+    width: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    position: 'absolute', 
+  },
+  thumbCore: { 
+    height: 20,
+    width: 20,
+    borderRadius: 10,
+    backgroundColor: '#000000ff',
+  },
+  searchButton: {
+    marginTop: 32, 
+    paddingVertical: 6, 
   },
 })
