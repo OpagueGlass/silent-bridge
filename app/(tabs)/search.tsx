@@ -9,7 +9,7 @@ import { useAuth } from "../../contexts/AuthContext"
 import { useAppTheme } from "../../hooks/useAppTheme"
 
 export default function SearchScreen() {
-  const { userProfile } = useAuth()
+  const { userProfile, isInterpreter } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
 
   const [selectedGender, setSelectedGender] = useState("")
@@ -47,8 +47,6 @@ export default function SearchScreen() {
   };
 
   const theme = useAppTheme()
-
-  const isInterpreter = userProfile?.userType === "interpreter"
 
   // Mock interpreter data
   const interpreters = [
