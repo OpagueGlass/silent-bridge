@@ -28,7 +28,6 @@ export default function HomeScreen() {
   const [contacts, setContacts] = useState<Contact[]>([])
   const theme = useAppTheme()
   
-
   // Mock data for demonstration
   useEffect(() => {
     setAppointments([

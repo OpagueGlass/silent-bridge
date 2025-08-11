@@ -182,8 +182,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const deafUserRef = doc(db, 'deaf_users', uid);
       const deafUserSnap = await getDoc(deafUserRef);
       if (deafUserSnap.exists()) {
-        const userData = deafUserSnap.data();
-        const ageRange = getAgeRangeFromDOB(userData.dateOfBirth);
+        const {uid:_, dateOfBirth, ...userData} = deafUserSnap.data();
+        const ageRange = getAgeRangeFromDOB(dateOfBirth);
         const userProfile = { ...userData, age: ageRange } as UserProfile;
         setUserProfile(userProfile);
         setIsInterpreter(false);
@@ -194,8 +194,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const interpreterRef = doc(db, 'interpreters', uid);
       const interpreterSnap = await getDoc(interpreterRef);
       if (interpreterSnap.exists()) {
-        const userData = interpreterSnap.data();
-        const ageRange = getAgeRangeFromDOB(userData.dateOfBirth);
+        const {uid:_, dateOfBirth, ...userData} = interpreterSnap.data();
+        const ageRange = getAgeRangeFromDOB(dateOfBirth);
         const userProfile = { ...userData, age: ageRange } as InterpreterProfile;
         setUserProfile(userProfile);
         setIsInterpreter(true);
@@ -310,10 +310,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: user.email || '',
         photo: user.photoURL || '',
       });
-
-      await AsyncStorage.removeItem('pendingUserProfile');
       updateAuthState({ isSigningIn: false });
-      // onAuthStateChanged will handle the rest
+      setUser(user);
+      updateAuthState({ isAuthenticated: true, isLoading: true });
+      await loadUserProfile(user.uid);
     } catch (error) {
       raiseSignInError(error);
       throw error;
