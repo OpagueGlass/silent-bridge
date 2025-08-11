@@ -7,39 +7,99 @@ import { Slider } from "@miblanchard/react-native-slider";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from "../../contexts/AuthContext"
 import { useAppTheme } from "../../hooks/useAppTheme"
+import DatePickerInput from '../../components/DatePickerInput';
+import TimePickerInput from '../../components/TimePickerInput';
+
+// Mock interpreter data
+const interpreters = [
+  {
+    id: 1,
+    name: "John Smith",
+    specialisation: "Medical Interpretation",
+    rating: 4.8,
+    pricePerHour: "RM 50",
+    gender: "Male",
+    age: 30,
+    avatar: "/placeholder.svg?height=80&width=80",
+    availability: [
+      { date: '17/08/2025', slots: ['09:00', '10:00', '14:30'] },
+      { date: '18/08/2025', slots: ['11:00', '15:00'] }
+    ]
+  },
+  {
+    id: 2,
+    name: "Sarah Johnson",
+    specialisation: "Legal Interpretation",
+    rating: 4.9,
+    pricePerHour: "RM 60",
+    gender: "Female",
+    age: 25,
+    avatar: "/placeholder.svg?height=80&width=80",
+    availability: [
+      { date: '17/08/2025', slots: ['09:00', '10:00', '14:30'] },
+      { date: '18/08/2025', slots: ['11:00', '15:00'] }
+    ]
+  },
+  {
+    id: 3,
+    name: "Mike Chen",
+    specialisation: "Educational Interpretation",
+    rating: 4.7,
+    pricePerHour: "RM 45",
+    gender: "Male",
+    age: 35,
+    avatar: "/placeholder.svg?height=80&width=80",
+    availability: [
+      { date: '17/08/2025', slots: ['09:00', '10:00', '14:30'] },
+      { date: '18/08/2025', slots: ['11:00', '15:00'] }
+    ]
+  },
+]
 
 export default function SearchScreen() {
   const { userProfile } = useAuth()
+
   const [searchQuery, setSearchQuery] = useState("")
-
-  const [selectedGender, setSelectedGender] = useState("")
-  // --- Slider ---
-  const [priceRange, setPriceRange] = useState([0, 200]);
+  const [appointmentDate, setAppointmentDate] = useState("");
+  const [selectedGender, setSelectedGender] = useState("");
+  const [appointmentTime, setAppointmentTime] = useState("");
   const [ageRange, setAgeRange] = useState([25, 45]);
-  const [minRating, setMinRating] = useState(5);
-  // --- Slider State ---
-  // -1 non activate, 0 left, 1 right
-  const [activePriceThumb, setActivePriceThumb] = useState(-1);
   const [activeAgeThumb, setActiveAgeThumb] = useState(-1);
-  const priceRangeRef = useRef(priceRange);
   const ageRangeRef = useRef(ageRange);
+  const [minRating, setMinRating] = useState(5);
 
-  const [displayedInterpreters, setDisplayedInterpreters] = useState<typeof interpreters>([]);
   const [hasSearched, setHasSearched] = useState(false);
-
+  const [displayedInterpreters, setDisplayedInterpreters] = useState<typeof interpreters>([]);
   const handleSearch = () => {
-    const results = interpreters.filter((interpreter) => {
+      const results = interpreters.filter((interpreter) => {
+      const cleanedQuery = searchQuery.trim().toLowerCase();
+      const nameWords = interpreter.name.toLowerCase().split(' ');
+      const queryWords = cleanedQuery.split(' ');
+      const nameMatch = cleanedQuery === "" || queryWords.every(queryWord => nameWords.includes(queryWord));
+
+      const dateAndTimeMatch = () => {
+        if (!appointmentDate || !appointmentTime) {
+          return true;
+        }
+
+        const dayAvailability = interpreter.availability?.find(
+          (day) => day.date === appointmentDate
+        );
+
+        if (dayAvailability) {
+          return dayAvailability.slots.includes(appointmentTime);
+        }
+
+        return false;
+      };
+
       const genderMatch = selectedGender === "" || interpreter.gender === selectedGender;
 
-      const price = Number(interpreter.pricePerHour.replace(/[^\d.]/g, ''));
-      const priceMatch = price >= priceRange[0] && price <= priceRange[1];
-
-      const [minAge, maxAge] = interpreter.age.split('-').map(Number);
-      const ageMatch = maxAge >= ageRange[0] && minAge <= ageRange[1];
+      const ageMatch = interpreter.age >= ageRange[0] && interpreter.age <= ageRange[1];
 
       const ratingMatch = interpreter.rating >= minRating;
 
-      return genderMatch && priceMatch && ageMatch && ratingMatch;
+      return nameMatch && dateAndTimeMatch() && genderMatch && ageMatch && ratingMatch;
     });
 
     setDisplayedInterpreters(results);
@@ -49,40 +109,6 @@ export default function SearchScreen() {
   const theme = useAppTheme()
 
   const isInterpreter = userProfile?.userType === "interpreter"
-
-  // Mock interpreter data
-  const interpreters = [
-    {
-      id: 1,
-      name: "John Smith",
-      specialisation: "Medical Interpretation",
-      rating: 4.8,
-      pricePerHour: "RM 50",
-      gender: "Male",
-      age: "30-35",
-      avatar: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: 2,
-      name: "Sarah Johnson",
-      specialisation: "Legal Interpretation",
-      rating: 4.9,
-      pricePerHour: "RM 60",
-      gender: "Female",
-      age: "25-30",
-      avatar: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: 3,
-      name: "Mike Chen",
-      specialisation: "Educational Interpretation",
-      rating: 4.7,
-      pricePerHour: "RM 45",
-      gender: "Male",
-      age: "35-40",
-      avatar: "/placeholder.svg?height=80&width=80",
-    },
-  ]
 
   // Mock requests for interpreters
   const requests = [
@@ -144,9 +170,12 @@ export default function SearchScreen() {
 
   return (
     <ScrollView style={styles.container}>
+      
+      {/* TEMPORARY VIEW AND STYLE */}
       <View style={styles.header}>
         <Text style={styles.title}>Interpreter Discovery</Text>
 
+        {/* --- SEARCH BY NAME --- */}
         <TextInput
           label="Search interpreters..."
           value={searchQuery}
@@ -155,11 +184,24 @@ export default function SearchScreen() {
           style={styles.searchInput}
           left={<TextInput.Icon icon="magnify" />}
         />
-      </View>
 
-      {/* TEMPORARY VIEW AND TEXT STYLE */}
-      {/* --- GENDER --- */}
-      <View style={styles.section}>
+        {/* --- SEARCH BY DATE --- */}
+        <Text style={styles.filterLabel}>Appointment Date</Text>
+        <DatePickerInput
+          label="Select a date"
+          value={appointmentDate}
+          onChange={setAppointmentDate}
+        />
+
+        {/* --- SEARCH BY TIME --- */}
+        <Text style={styles.filterLabel}>Appointment Time</Text>
+        <TimePickerInput
+          label="Select a time"
+          value={appointmentTime}
+          onChange={setAppointmentTime}
+        />
+
+        {/* --- GENDER --- */}
         <Text style={styles.filterLabel}>Gender</Text>
         <RadioButton.Group
           value={selectedGender}
@@ -170,38 +212,6 @@ export default function SearchScreen() {
             <RadioButton.Item label="Female" value="Female" />
           </View>
         </RadioButton.Group>
-
-        {/* --- PRICE --- */}
-        <View style={styles.sliderContainer}>
-          <Text style={styles.filterLabel}>Price per hour</Text>
-          <Text style={styles.filterValue}>RM{priceRange[0]} - RM{priceRange[1]}</Text>
-        </View>
-        <Slider
-          value={priceRange}
-          onValueChange={newRange => {
-            if (newRange[0] !== priceRangeRef.current[0]) {
-              setActivePriceThumb(0); 
-            } else if (newRange[1] !== priceRangeRef.current[1]) {
-              setActivePriceThumb(1); 
-            }
-            priceRangeRef.current = newRange;
-            // Achieve real-time change on the value displayed
-            setPriceRange(newRange); 
-          }}   
-          renderThumbComponent={thumbIndex => {
-            const isActive = activePriceThumb === thumbIndex; 
-            return (
-              <View style={styles.thumbContainer}>
-                {isActive && <View style={styles.thumbHalo} />}
-                <View style={styles.thumbCore} />
-              </View>
-            );
-          }}
-          onSlidingComplete={() => setActivePriceThumb(-1)}     
-          minimumValue={0}   
-          maximumValue={200} 
-          step={5}    
-        />
 
         {/* --- AGE --- */}
         <View style={styles.sliderContainer}>
@@ -255,7 +265,7 @@ export default function SearchScreen() {
 
         <Button
           mode="contained" 
-          onPress={() => console.log("Search button pressed!")} 
+          onPress={handleSearch} 
           style={styles.searchButton} 
           buttonColor="#E0E0E0"
           textColor="#000000" 
@@ -265,44 +275,56 @@ export default function SearchScreen() {
 
       </View>
       
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Top 5 Matches</Text>
+      {/* --- SEARCH --- */}
+      {hasSearched && (
+        <View style={styles.section}>
 
-        {interpreters.map((interpreter) => (
-          <Card key={interpreter.id} style={styles.interpreterCard}>
-            <Card.Content>
-              <View style={styles.interpreterHeader}>
-                <Image source={{ uri: interpreter.avatar }} style={styles.interpreterAvatar} />
-                <View style={styles.interpreterInfo}>
-                  <Text style={styles.interpreterName}>{interpreter.name}</Text>
-                  <Text style={styles.interpreterSpecialisation}>{interpreter.specialisation}</Text>
-                  <View style={styles.interpreterMeta}>
-                    <Text style={styles.interpreterRating}>⭐ {interpreter.rating}</Text>
-                    <Text style={styles.interpreterPrice}>{interpreter.pricePerHour}/hour</Text>
-                  </View>
-                  <View style={styles.interpreterTags}>
-                    <Chip style={styles.tag} textStyle={styles.tagText}>
-                      {interpreter.gender}
-                    </Chip>
-                    <Chip style={styles.tag} textStyle={styles.tagText}>
-                      {interpreter.age}
-                    </Chip>
-                  </View>
-                </View>
-              </View>
+          {displayedInterpreters.length > 0 ? (
+            <>
+              <Text style={styles.sectionTitle}>Top Matches</Text>
+              
+              {displayedInterpreters.slice(0, 5).map((interpreter) => (
+                <Card key={interpreter.id} style={styles.interpreterCard}>
+                  <Card.Content>
+                    <View style={styles.interpreterHeader}>
+                      <Image source={{ uri: interpreter.avatar }} style={styles.interpreterAvatar} />
+                      <View style={styles.interpreterInfo}>
+                        <Text style={styles.interpreterName}>{interpreter.name}</Text>
+                        <Text style={styles.interpreterSpecialisation}>{interpreter.specialisation}</Text>
+                        <View style={styles.interpreterMeta}>
+                          <Text style={styles.interpreterRating}>⭐ {interpreter.rating}</Text>
+                        </View>
+                        <View style={styles.interpreterTags}>
+                          <Chip style={styles.tag} textStyle={styles.tagText}>
+                            {interpreter.gender}
+                          </Chip>
+                          <Chip style={styles.tag} textStyle={styles.tagText}>
+                            {interpreter.age}
+                          </Chip>
+                        </View>
+                      </View>
+                    </View>
 
-              <View style={styles.interpreterActions}>
-                <Button mode="outlined" style={styles.profileButton}>
-                  Profile
-                </Button>
-                <Button mode="contained" style={styles.bookButton}>
-                  Book Now
-                </Button>
-              </View>
-            </Card.Content>
-          </Card>
-        ))}
-      </View>
+                    <View style={styles.interpreterActions}>
+                      <Button mode="outlined" style={styles.profileButton}>
+                        Profile
+                      </Button>
+                      <Button mode="contained" style={styles.bookButton}>
+                        Book Now
+                      </Button>
+                    </View>
+                  </Card.Content>
+                </Card>
+              ))}
+            </>
+          ) : (
+            <Text style={{ textAlign: 'center', color: '#666', marginTop: 20 }}>
+              No interpreters found matching your criteria. 
+            </Text>
+          )}
+        </View>
+      )}
+
     </ScrollView>
   )
 }
@@ -383,11 +405,6 @@ const styles = StyleSheet.create({
   interpreterRating: {
     fontSize: 14,
     color: "#333",
-  },
-  interpreterPrice: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#2196F3",
   },
   interpreterTags: {
     flexDirection: "row",
