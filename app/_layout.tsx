@@ -1,13 +1,32 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { PaperProvider } from 'react-native-paper';
 import 'react-native-reanimated';
 
-import { AuthProvider } from '@/contexts/AuthContext';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { theme } from '@/theme/theme';
+
+function NavigationHandler() {
+  const { authState, userProfile } = useAuth();
+
+  useEffect(() => {
+    // Add delay to ensure root layout is mounted
+    const handleNavigation = () => {
+      if (!authState.isLoading && !authState.isAuthenticated) {
+        router.replace("/auth");
+      }
+    };
+
+    const timeoutId = setTimeout(handleNavigation, 1);
+    return () => clearTimeout(timeoutId);
+  }, [authState.isAuthenticated, authState.isLoading]);
+
+  return null;
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -23,6 +42,7 @@ export default function RootLayout() {
   return (
     <PaperProvider theme={theme}>
       <AuthProvider>
+        <NavigationHandler />
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

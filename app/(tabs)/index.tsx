@@ -23,13 +23,11 @@ interface Contact {
 }
 
 export default function HomeScreen() {
-  const { userProfile } = useAuth()
+  const { userProfile, isInterpreter } = useAuth()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
   const theme = useAppTheme()
-
-  const isInterpreter = userProfile?.userType === "interpreter"
-
+  
   // Mock data for demonstration
   useEffect(() => {
     setAppointments([
@@ -70,9 +68,9 @@ export default function HomeScreen() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Approved":
-        return theme.colors.secondary // Using our custom secondary green
+        return theme.colors.secondary
       case "Pending":
-        return theme.colors.tertiary // Using our custom tertiary amber
+        return theme.colors.tertiary
       case "Rejected":
         return theme.colors.error
       case "Completed":

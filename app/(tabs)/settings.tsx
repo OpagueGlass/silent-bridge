@@ -2,34 +2,26 @@
 
 import { useRouter } from "expo-router"
 import React from "react"
-import { Alert, Platform, ScrollView, StyleSheet, Text, View } from "react-native"
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native"
 import { Button, Card, List, Switch } from "react-native-paper"
 import { useAuth } from "../../contexts/AuthContext"
+import { showConfirmAlert } from "../../utils/alert"
 
 export default function SettingsScreen() {
-  const { userProfile, signOut } = useAuth()
+  const { userProfile, handleSignOut, isInterpreter } = useAuth()
   const router = useRouter()
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true)
   const [emailNotifications, setEmailNotifications] = React.useState(true)
 
-  const handleSignOut = async () => {
-    if (Platform.OS === 'web') {
-      if (window.confirm("Are you sure you want to sign out?")) {
-        await signOut()
-        router.replace("/auth")
-      }
-    } else {
-      Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Sign Out",
-          style: "destructive",
-          onPress: async () => {
-            await signOut()
-            router.replace("/auth")
-          },
-        },
-      ])
+  const signOut = async () => {
+    const confirmed = await showConfirmAlert(
+      "Sign Out",
+      "Are you sure you want to sign out?"
+    )
+    
+    if (confirmed) {
+      await handleSignOut()
+      router.replace("/auth")
     }
   }
 
@@ -45,7 +37,7 @@ export default function SettingsScreen() {
             <Text style={styles.profileName}>{userProfile?.name}</Text>
             <Text style={styles.profileEmail}>{userProfile?.email}</Text>
             <Text style={styles.profileType}>
-              {userProfile?.userType === "interpreter" ? "Interpreter" : "Deaf User"}
+              {isInterpreter ? "Interpreter" : "Deaf User"}
             </Text>
             <Button
               mode="outlined"
@@ -106,7 +98,7 @@ export default function SettingsScreen() {
         </Card>
       </View>
 
-      {userProfile?.userType === "interpreter" && (
+      {isInterpreter && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Interpreter Settings</Text>
           <Card style={styles.settingsCard}>
@@ -139,7 +131,7 @@ export default function SettingsScreen() {
       )}
 
       <View style={styles.section}>
-        <Button mode="contained" onPress={handleSignOut} style={styles.signOutButton} buttonColor="#F44336">
+        <Button mode="contained" onPress={signOut} style={styles.signOutButton} buttonColor="#F44336">
           Sign Out
         </Button>
       </View>

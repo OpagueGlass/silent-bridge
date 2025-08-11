@@ -1,52 +1,78 @@
 "use client"
 
 import { useRouter } from "expo-router"
-import { useState } from "react"
-import { Alert, Image, StyleSheet, View } from "react-native"
-import { Button, Text, TextInput } from "react-native-paper"
+import { StyleSheet, View } from "react-native"
+import { Button, Text } from "react-native-paper"
 import { useAuth } from "../../contexts/AuthContext"
 import { useAppTheme } from "../../hooks/useAppTheme"
+import { showError } from "../../utils/alert"
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState("")
   const router = useRouter()
-  const { signInWithGoogle } = useAuth()
+  const { handleSignIn, authState } = useAuth()
   const theme = useAppTheme()
 
   const handleGoogleSignIn = async () => {
     try {
-      await signInWithGoogle()
-      router.replace("/(tabs)")
+      await handleSignIn()
+      if (authState.error) {
+        showError(authState.error)
+      }
     } catch (error) {
-      Alert.alert("Error", "Failed to sign in with Google")
+      showError("Failed to sign in with Google")
     }
   }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Image source={{ uri: "/placeholder.svg?height=100&width=100" }} style={styles.icon} />
+      <View style={styles.content}>
+        {/* App Icon/Logo Area */}
+        <View style={[styles.logoContainer, { backgroundColor: theme.colors.primaryContainer }]}>
+          <Text variant="headlineLarge" style={[styles.logoText, { color: theme.colors.onPrimaryContainer }]}>
+            🤝
+          </Text>
+        </View>
 
-      <Text variant="displayMedium" style={[styles.title, { color: theme.colors.primary }]}>
-        Welcome Back
-      </Text>
+        {/* Welcome Section */}
+        <Text variant="displaySmall" style={[styles.title, { color: theme.colors.primary }]}>
+          Silent Bridge
+        </Text>
+        
+        <Text variant="titleMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+          Connecting deaf users with interpreters
+        </Text>
 
-      <TextInput
-        label="Email"
-        value={email}
-        onChangeText={setEmail}
-        mode="outlined"
-        style={styles.input}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
+        <Text variant="bodyLarge" style={[styles.description, { color: theme.colors.onSurfaceVariant }]}>
+          Join our community to find professional interpreters or offer your interpretation services.
+        </Text>
 
-      <Button mode="contained" onPress={handleGoogleSignIn} style={styles.googleButton} icon="google">
-        Sign in with Google
-      </Button>
+        <Button 
+          mode="contained" 
+          onPress={handleGoogleSignIn} 
+          style={[styles.googleButton, { backgroundColor: theme.colors.primary }]}
+          contentStyle={styles.googleButtonContent}
+          icon="google"
+          loading={authState.isSigningIn}
+          disabled={authState.isSigningIn}
+        >
+          {authState.isSigningIn ? "Signing in..." : "Continue with Google"}
+        </Button>
 
-      <Button mode="text" onPress={() => router.push("/auth/account-type")} style={styles.registerButton}>
-        Don't have an account? Register
-      </Button>
+        {/* Register Section */}
+        <View style={styles.registerSection}>
+          <Text variant="bodyMedium" style={[styles.registerText, { color: theme.colors.onSurfaceVariant }]}>
+            New to Silent Bridge?
+          </Text>
+          <Button 
+            mode="text" 
+            onPress={() => router.push("/auth/account-type")} 
+            style={styles.registerButton}
+            textColor={theme.colors.primary}
+          >
+            Create Account
+          </Button>
+        </View>
+      </View>
     </View>
   )
 }
@@ -54,27 +80,69 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24, // spacing.lg
-    justifyContent: "center",
+    padding: 24,
+    justifyContent: 'space-between',
   },
-  icon: {
-    width: 100,
-    height: 100,
-    alignSelf: "center",
-    marginBottom: 32, // spacing.xl
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 32,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  logoText: {
+    fontSize: 48,
+    textAlign: 'center',
   },
   title: {
-    textAlign: "center",
-    marginBottom: 32, // spacing.xl
+    textAlign: 'center',
+    fontWeight: 'bold',
+    marginBottom: 16,
   },
-  input: {
-    marginBottom: 24, // spacing.lg
+  subtitle: {
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  description: {
+    textAlign: 'center',
+    marginBottom: 48,
+    marginHorizontal: 24,
+    lineHeight: 24,
   },
   googleButton: {
-    marginBottom: 16, // spacing.md
-    paddingVertical: 8, // spacing.sm
+    marginBottom: 24,
+    borderRadius: 8,
+  },
+  googleButtonContent: {
+    paddingVertical: 8,
+  },
+  registerSection: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  registerText: {
+    marginBottom: 8,
   },
   registerButton: {
-    marginTop: 16, // spacing.md
+    marginTop: 8,
+  },
+  footer: {
+    marginTop: 32,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  footerText: {
+    textAlign: 'center',
+    fontSize: 12,
   },
 })
