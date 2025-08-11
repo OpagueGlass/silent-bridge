@@ -257,8 +257,8 @@ export default function TimePickerInput({
                   timeIntervals={15}
                   timeCaption="Time"
                   dateFormat="HH:mm" 
-                  // inline
-                  // calendarClassName="custom-datepicker"
+                  inline
+                  calendarClassName="custom-datepicker"
                 />
               </div>
             </> 
