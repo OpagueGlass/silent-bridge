@@ -7,54 +7,57 @@ import { Slider } from "@miblanchard/react-native-slider";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from "../../contexts/AuthContext"
 import { useAppTheme } from "../../hooks/useAppTheme"
+
+import { interpreters } from '../data/mockData';
+import { Link } from 'expo-router';
 import DatePickerInput from '../../components/DatePickerInput';
 import TimePickerInput from '../../components/TimePickerInput';
 
-// Mock interpreter data
-const interpreters = [
-  {
-    id: 1,
-    name: "John Smith",
-    specialisation: "Medical Interpretation",
-    rating: 4.8,
-    pricePerHour: "RM 50",
-    gender: "Male",
-    age: 30,
-    avatar: "/placeholder.svg?height=80&width=80",
-    availability: [
-      { date: '17/08/2025', slots: ['09:00', '10:00', '14:30'] },
-      { date: '18/08/2025', slots: ['11:00', '15:00'] }
-    ]
-  },
-  {
-    id: 2,
-    name: "Sarah Johnson",
-    specialisation: "Legal Interpretation",
-    rating: 4.9,
-    pricePerHour: "RM 60",
-    gender: "Female",
-    age: 25,
-    avatar: "/placeholder.svg?height=80&width=80",
-    availability: [
-      { date: '17/08/2025', slots: ['09:00', '10:00', '14:30'] },
-      { date: '18/08/2025', slots: ['11:00', '15:00'] }
-    ]
-  },
-  {
-    id: 3,
-    name: "Mike Chen",
-    specialisation: "Educational Interpretation",
-    rating: 4.7,
-    pricePerHour: "RM 45",
-    gender: "Male",
-    age: 35,
-    avatar: "/placeholder.svg?height=80&width=80",
-    availability: [
-      { date: '17/08/2025', slots: ['09:00', '10:00', '14:30'] },
-      { date: '18/08/2025', slots: ['11:00', '15:00'] }
-    ]
-  },
-]
+// // Mock interpreter data
+// const interpreters = [
+//   {
+//     id: 1,
+//     name: "John Smith",
+//     specialisation: "Medical Interpretation",
+//     rating: 4.8,
+//     pricePerHour: "RM 50",
+//     gender: "Male",
+//     age: 30,
+//     avatar: "/placeholder.svg?height=80&width=80",
+//     availability: [
+//       { date: '17/08/2025', slots: ['09:00', '10:00', '14:30'] },
+//       { date: '18/08/2025', slots: ['11:00', '15:00'] }
+//     ]
+//   },
+//   {
+//     id: 2,
+//     name: "Sarah Johnson",
+//     specialisation: "Legal Interpretation",
+//     rating: 4.9,
+//     pricePerHour: "RM 60",
+//     gender: "Female",
+//     age: 25,
+//     avatar: "/placeholder.svg?height=80&width=80",
+//     availability: [
+//       { date: '17/08/2025', slots: ['09:00', '10:00', '14:30'] },
+//       { date: '18/08/2025', slots: ['11:00', '15:00'] }
+//     ]
+//   },
+//   {
+//     id: 3,
+//     name: "Mike Chen",
+//     specialisation: "Educational Interpretation",
+//     rating: 4.7,
+//     pricePerHour: "RM 45",
+//     gender: "Male",
+//     age: 35,
+//     avatar: "/placeholder.svg?height=80&width=80",
+//     availability: [
+//       { date: '17/08/2025', slots: ['09:00', '10:00', '14:30'] },
+//       { date: '18/08/2025', slots: ['11:00', '15:00'] }
+//     ]
+//   },
+// ]
 
 export default function SearchScreen() {
   const { userProfile } = useAuth()
@@ -306,9 +309,22 @@ export default function SearchScreen() {
                     </View>
 
                     <View style={styles.interpreterActions}>
-                      <Button mode="outlined" style={styles.profileButton}>
+                      {/* <Button mode="outlined" style={styles.profileButton}>
                         Profile
-                      </Button>
+                      </Button> */}
+
+                      <Link
+                        href={{
+                          pathname: "/interpreter/[id]",
+                          params: { id: interpreter.id }
+                        }}
+                        asChild
+                      >
+                        <Button mode="outlined" style={styles.profileButton}>
+                          Profile
+                        </Button>
+                      </Link>
+                      
                       <Button mode="contained" style={styles.bookButton}>
                         Book Now
                       </Button>
