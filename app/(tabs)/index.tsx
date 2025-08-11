@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Image, ScrollView, StyleSheet, View } from "react-native"
+import { Image, ScrollView, StyleSheet, View, Alert } from "react-native"
 import { Button, Card, Chip, Text } from "react-native-paper"
+import { useRouter } from 'expo-router'
 import { useAuth } from "../../contexts/AuthContext"
 import { useAppTheme } from "../../hooks/useAppTheme"
 
@@ -27,6 +28,7 @@ export default function HomeScreen() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
   const theme = useAppTheme()
+  const router = useRouter()
 
   const isInterpreter = userProfile?.userType === "interpreter"
 
@@ -49,6 +51,14 @@ export default function HomeScreen() {
         interpreter: "Sarah Johnson",
         email: "sarah@gmail.com",
       },
+      {
+        id: 3,
+        date: "17/05/2024",
+        time: "09:00 - 10:00",
+        status: "Completed",
+        interpreter: "Mike Davis",
+        email: "mike@gmail.com",
+      },
     ])
 
     setContacts([
@@ -56,13 +66,13 @@ export default function HomeScreen() {
         id: 1,
         name: "John Smith",
         email: "john@gmail.com",
-        avatar: "/placeholder.svg?height=50&width=50",
+        avatar: "https://ui-avatars.com/api/?name=John+Smith&background=6366f1&color=fff&size=128",
       },
       {
         id: 2,
         name: "Sarah Johnson",
         email: "sarah@gmail.com",
-        avatar: "/placeholder.svg?height=50&width=50",
+        avatar: "https://ui-avatars.com/api/?name=Sarah+Johnson&background=10b981&color=fff&size=128",
       },
     ])
   }, [])
@@ -80,6 +90,134 @@ export default function HomeScreen() {
       default:
         return theme.colors.onSurfaceVariant
     }
+  }
+
+  const handleJoinAppointment = (appointment: Appointment) => {
+    // 检查预约状态
+    if (appointment.status !== 'Approved') {
+      let message = '';
+      switch (appointment.status) {
+        case 'Pending':
+          message = 'This appointment is still pending approval.';
+          break;
+        case 'Rejected':
+          message = 'This appointment has been rejected.';
+          break;
+        case 'Completed':
+          message = 'This appointment has already been completed.';
+          break;
+        default:
+          message = 'This appointment is not available for joining.';
+      }
+      
+      Alert.alert(
+        'Cannot Join Appointment',
+        message,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // 检查预约时间（可选）
+    const appointmentDate = new Date(`${appointment.date.split('/').reverse().join('-')}T${appointment.time.split(' - ')[0]}`);
+    const now = new Date();
+    const timeDiff = appointmentDate.getTime() - now.getTime();
+    const minutesDiff = Math.floor(timeDiff / (1000 * 60));
+
+    // 如果预约时间还未到（提前15分钟可以进入）
+    if (minutesDiff > 15) {
+      Alert.alert(
+        'Appointment Not Ready',
+        `This appointment starts at ${appointment.time}. You can join 15 minutes before the scheduled time.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // 导航到视频通话页面
+    router.push({
+      pathname: '/video-call',
+      params: {
+        appointmentId: appointment.id.toString(),
+        interpreterName: appointment.interpreter,
+        userType: userProfile?.userType || 'client',
+        appointmentTime: `${appointment.date} ${appointment.time}`,
+      }
+    });
+  }
+
+  const handleAddToCalendar = (appointment: Appointment) => {
+    // 这里可以集成日历功能
+    Alert.alert(
+      'Add to Calendar',
+      `Would you like to add "${appointment.interpreter}" appointment on ${appointment.date} ${appointment.time} to your calendar?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Add', 
+          onPress: () => {
+            // 实现添加到日历的逻辑
+            Alert.alert('Success', 'Appointment added to calendar!');
+          }
+        }
+      ]
+    );
+  }
+
+  const handleContactPress = (contact: Contact) => {
+    // 导航到聊天页面或显示联系方式
+    Alert.alert(
+      'Contact Options',
+      `Choose how to contact ${contact.name}:`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Send Message', onPress: () => {
+          // 导航到聊天页面
+          router.push('/chat');
+        }},
+        { text: 'Email', onPress: () => {
+          // 打开邮件应用
+          Alert.alert('Email', `Opening email to ${contact.email}`);
+        }}
+      ]
+    );
+  }
+
+  const handleSetAvailability = () => {
+    // 导航到设置可用时间的页面
+    Alert.alert(
+      'Set Availability',
+      'This will open the availability settings.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Continue', 
+          onPress: () => {
+            // 这里可以导航到设置页面
+            router.push('/settings');
+          }
+        }
+      ]
+    );
+  }
+
+  const getJoinButtonText = (status: string) => {
+    switch (status) {
+      case 'Approved':
+        return 'Join Appointment';
+      case 'Pending':
+        return 'Waiting Approval';
+      case 'Completed':
+        return 'Completed';
+      case 'Rejected':
+        return 'Rejected';
+      default:
+        return 'Join Appointment';
+    }
+  }
+
+  const isJoinButtonDisabled = (status: string) => {
+    return status !== 'Approved';
   }
 
   return (
@@ -101,7 +239,11 @@ export default function HomeScreen() {
         {contacts.map((contact) => (
           <Card key={contact.id} style={[styles.contactCard, { backgroundColor: theme.colors.surface }]}>
             <Card.Content style={styles.contactContent}>
-              <Image source={{ uri: contact.avatar }} style={styles.avatar} />
+              <Image 
+                source={{ uri: contact.avatar }} 
+                style={styles.avatar}
+                defaultSource={{ uri: 'https://ui-avatars.com/api/?name=User&background=cccccc&color=fff&size=128' }}
+              />
               <View style={styles.contactInfo}>
                 <Text variant="titleMedium" style={[styles.contactName, { color: theme.colors.onSurface }]}>
                   {contact.name}
@@ -110,7 +252,11 @@ export default function HomeScreen() {
                   {contact.email}
                 </Text>
               </View>
-              <Button mode="outlined" compact>
+              <Button 
+                mode="outlined" 
+                compact
+                onPress={() => handleContactPress(contact)}
+              >
                 Contact
               </Button>
             </Card.Content>
@@ -128,7 +274,7 @@ export default function HomeScreen() {
             <Card.Content>
               <View style={styles.appointmentHeader}>
                 <Text variant="titleMedium" style={[styles.appointmentTitle, { color: theme.colors.onSurface }]}>
-                  Appointment {appointment.id}
+                  Appointment #{appointment.id}
                 </Text>
                 <Chip
                   style={[styles.statusChip, { backgroundColor: getStatusColor(appointment.status) }]}
@@ -138,21 +284,41 @@ export default function HomeScreen() {
                 </Chip>
               </View>
               <Text variant="bodyLarge" style={[styles.appointmentDate, { color: theme.colors.onSurface }]}>
-                {appointment.date} • {appointment.time}
+                📅 {appointment.date} • ⏰ {appointment.time}
               </Text>
               <Text variant="bodyMedium" style={[styles.appointmentInterpreter, { color: theme.colors.onSurfaceVariant }]}>
-                Interpreter: {appointment.interpreter}
+                👨‍💼 Interpreter: {appointment.interpreter}
               </Text>
               <Text variant="bodyMedium" style={[styles.appointmentEmail, { color: theme.colors.onSurfaceVariant }]}>
-                Email: {appointment.email}
+                📧 Email: {appointment.email}
               </Text>
 
               <View style={styles.appointmentActions}>
-                <Button mode="outlined" compact style={styles.actionButton}>
+                <Button 
+                  mode="outlined" 
+                  compact 
+                  style={styles.actionButton}
+                  onPress={() => handleAddToCalendar(appointment)}
+                  disabled={appointment.status === 'Rejected'}
+                >
                   Add to Calendar
                 </Button>
-                <Button mode="contained" compact style={styles.actionButton}>
-                  Join Appointment
+                <Button 
+                  mode="contained" 
+                  compact 
+                  style={[
+                    styles.actionButton,
+                    isJoinButtonDisabled(appointment.status) && styles.disabledButton
+                  ]}
+                  onPress={() => handleJoinAppointment(appointment)}
+                  disabled={isJoinButtonDisabled(appointment.status)}
+                  buttonColor={
+                    appointment.status === 'Approved' 
+                      ? theme.colors.primary 
+                      : theme.colors.surfaceVariant
+                  }
+                >
+                  {getJoinButtonText(appointment.status)}
                 </Button>
               </View>
             </Card.Content>
@@ -168,9 +334,13 @@ export default function HomeScreen() {
           <Card style={[styles.availabilityCard, { backgroundColor: theme.colors.surfaceVariant }]}>
             <Card.Content>
               <Text variant="bodyLarge" style={[styles.availabilityText, { color: theme.colors.onSurface }]}>
-                Set your free times to receive appointment requests
+                📅 Set your free times to receive appointment requests
               </Text>
-              <Button mode="contained" style={styles.availabilityButton}>
+              <Button 
+                mode="contained" 
+                style={styles.availabilityButton}
+                onPress={handleSetAvailability}
+              >
                 Set Availability
               </Button>
             </Card.Content>
@@ -192,6 +362,7 @@ const styles = StyleSheet.create({
   greeting: {
     color: "#ffffff",
     marginBottom: 8, // spacing.sm
+    fontWeight: 'bold',
   },
   subtitle: {
     color: "#ffffff",
@@ -202,9 +373,11 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     marginBottom: 16, // spacing.md
+    fontWeight: '600',
   },
   contactCard: {
     marginBottom: 12, // spacing.sm + 4
+    elevation: 2,
   },
   contactContent: {
     flexDirection: "row",
@@ -215,16 +388,19 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     marginRight: 16, // spacing.md
+    backgroundColor: '#f0f0f0', // 占位背景色
   },
   contactInfo: {
     flex: 1,
   },
   contactName: {
     marginBottom: 4, // spacing.xs
+    fontWeight: '500',
   },
   contactEmail: {},
   appointmentCard: {
     marginBottom: 16, // spacing.md
+    elevation: 3,
   },
   appointmentHeader: {
     flexDirection: "row",
@@ -232,16 +408,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12, // spacing.sm + 4
   },
-  appointmentTitle: {},
+  appointmentTitle: {
+    fontWeight: '600',
+  },
   statusChip: {
     paddingHorizontal: 8, // spacing.sm
   },
   statusText: {
     color: "#ffffff",
     fontSize: 12,
+    fontWeight: '600',
   },
   appointmentDate: {
     marginBottom: 8, // spacing.sm
+    fontWeight: '500',
   },
   appointmentInterpreter: {
     marginBottom: 4, // spacing.xs
@@ -252,11 +432,17 @@ const styles = StyleSheet.create({
   appointmentActions: {
     flexDirection: "row",
     justifyContent: "space-between",
+    gap: 8,
   },
   actionButton: {
     flex: 0.48,
   },
-  availabilityCard: {},
+  disabledButton: {
+    opacity: 0.6,
+  },
+  availabilityCard: {
+    elevation: 2,
+  },
   availabilityText: {
     marginBottom: 16, // spacing.md
     textAlign: "center",

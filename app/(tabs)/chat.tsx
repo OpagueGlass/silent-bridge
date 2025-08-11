@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef, useEffect } from "react"
+import { useState, useRef } from "react"
 import { 
   View, 
   Text, 
@@ -9,112 +9,234 @@ import {
   TouchableOpacity, 
   Image,
   KeyboardAvoidingView,
-  Platform,
-  BackHandler
+  Platform
 } from "react-native"
 import { Card, TextInput, IconButton } from "react-native-paper"
 import { MaterialIcons } from "@expo/vector-icons"
-import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native"
-import { createStackNavigator, StackNavigationProp } from "@react-navigation/stack"
-import { RouteProp } from "@react-navigation/native"
 
-// 定义导航参数类型
-type RootStackParamList = {
-  ChatList: undefined
-  ChatDetail: { chatId: number; chatName: string; chatAvatar: string }
-}
+export default function ChatScreen() {
+  type Message = {
+    id: number
+    text: string
+    sender: "me" | "other"
+    time: string
+  }
 
-type ChatListNavigationProp = StackNavigationProp<RootStackParamList, 'ChatList'>
-type ChatDetailNavigationProp = StackNavigationProp<RootStackParamList, 'ChatDetail'>
-type ChatDetailRouteProp = RouteProp<RootStackParamList, 'ChatDetail'>
+  const [selectedChat, setSelectedChat] = useState<number | null>(null)
+  const [message, setMessage] = useState("")
+  const [messages, setMessages] = useState<Message[]>([])
+  const scrollViewRef = useRef<ScrollView>(null) // 添加ScrollView引用
 
-type Message = {
-  id: number
-  text: string
-  sender: "me" | "other"
-  time: string
-}
-
-const Stack = createStackNavigator<RootStackParamList>()
-
-// Mock chat data
-const chats = [
-  {
-    id: 1,
-    name: "John Smith",
-    lastMessage: "Thank you for the session today!",
-    time: "10:30",
-    avatar: "/placeholder.svg?height=50&width=50",
-    unread: 2,
-  },
-  {
-    id: 2,
-    name: "Sarah Johnson",
-    lastMessage: "Looking forward to our appointment",
-    time: "09:15",
-    avatar: "/placeholder.svg?height=50&width=50",
-    unread: 0,
-  },
-  {
-    id: 3,
-    name: "Mike Chen",
-    lastMessage: "Can we reschedule for tomorrow?",
-    time: "Yesterday",
-    avatar: "/placeholder.svg?height=50&width=50",
-    unread: 1,
-  },
-]
-
-// 初始消息数据
-const initialMessages: Record<number, Message[]> = {
-  1: [
+  // Mock chat data
+  const chats = [
     {
       id: 1,
-      text: "Hi! I have a question about our upcoming appointment.",
-      sender: "other",
-      time: "10:25",
+      name: "John Smith",
+      lastMessage: "Thank you for the session today!",
+      time: "10:30",
+      avatar: "/placeholder.svg?height=50&width=50",
+      unread: 2,
     },
     {
       id: 2,
-      text: "Of course! What would you like to know?",
-      sender: "me",
-      time: "10:26",
+      name: "Sarah Johnson",
+      lastMessage: "Looking forward to our appointment",
+      time: "09:15",
+      avatar: "/placeholder.svg?height=50&width=50",
+      unread: 0,
     },
     {
       id: 3,
-      text: "What should I prepare for the medical interpretation session?",
-      sender: "other",
-      time: "10:27",
-    },
-    {
-      id: 4,
-      text: "Please bring any medical documents and a list of questions you want to ask the doctor.",
-      sender: "me",
-      time: "10:28",
-    },
-  ],
-  2: [
-    {
-      id: 1,
-      text: "Hello! Looking forward to our appointment.",
-      sender: "other",
-      time: "09:15",
-    },
-  ],
-  3: [
-    {
-      id: 1,
-      text: "Can we reschedule for tomorrow?",
-      sender: "other",
+      name: "Mike Chen",
+      lastMessage: "Can we reschedule for tomorrow?",
       time: "Yesterday",
+      avatar: "/placeholder.svg?height=50&width=50",
+      unread: 1,
     },
-  ],
-}
+  ]
 
-// 聊天列表组件
-function ChatListScreen() {
-  const navigation = useNavigation<ChatListNavigationProp>()
-  
+  // 初始消息数据 - 为每个联系人设置默认消息
+  const initialMessages: Record<number, Message[]> = {
+    1: [
+      {
+        id: 1,
+        text: "Hi! I have a question about our upcoming appointment.",
+        sender: "other",
+        time: "10:25",
+      },
+      {
+        id: 2,
+        text: "Of course! What would you like to know?",
+        sender: "me",
+        time: "10:26",
+      },
+      {
+        id: 3,
+        text: "What should I prepare for the medical interpretation session?",
+        sender: "other",
+        time: "10:27",
+      },
+      {
+        id: 4,
+        text: "Please bring any medical documents and a list of questions you want to ask the doctor.",
+        sender: "me",
+        time: "10:28",
+      },
+    ],
+    2: [
+      {
+        id: 1,
+        text: "Hello! Looking forward to our appointment.",
+        sender: "other",
+        time: "09:15",
+      },
+    ],
+    3: [
+      {
+        id: 1,
+        text: "Can we reschedule for tomorrow?",
+        sender: "other",
+        time: "Yesterday",
+      },
+    ],
+  }
+
+  // 获取当前时间
+  const getCurrentTime = () => {
+    const now = new Date()
+    return now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0')
+  }
+
+  // 滚动到底部的函数
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true })
+    }, 100)
+  }
+
+  // 发送消息功能
+  const sendMessage = () => {
+    if (message.trim() && selectedChat) {
+      const newMessage: Message = {
+        id: Date.now(),
+        text: message.trim(),
+        sender: "me",
+        time: getCurrentTime(),
+      }
+      
+      setMessages(prevMessages => {
+        const newMessages = [...prevMessages, newMessage]
+        // 发送消息后滚动到底部
+        scrollToBottom()
+        return newMessages
+      })
+      
+      setMessage("")
+    }
+  }
+
+  // 当选择聊天时，加载该聊天的消息
+  const selectChat = (chatId: number) => {
+    setSelectedChat(chatId)
+    setMessages(initialMessages[chatId as keyof typeof initialMessages] || [])
+    // 选择聊天后滚动到底部
+    setTimeout(() => scrollToBottom(), 200)
+  }
+
+  if (selectedChat) {
+    const chat = chats.find((c) => c.id === selectedChat)
+
+    return (
+      <KeyboardAvoidingView 
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        {chat && (
+          <View style={styles.chatHeader}>
+            <TouchableOpacity 
+              onPress={() => {
+                setSelectedChat(null)
+                setMessages([])
+              }} 
+              style={styles.backButton}
+            >
+              <MaterialIcons name="arrow-back" size={24} color="#ffffff" />
+            </TouchableOpacity>
+            <Image source={{ uri: chat.avatar }} style={styles.headerAvatar} />
+            <View style={styles.headerInfo}>
+              <Text style={styles.headerName}>{chat.name}</Text>
+              <Text style={styles.headerStatus}>Online</Text>
+            </View>
+          </View>
+        )}
+
+        <ScrollView 
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled" // 允许在键盘显示时点击ScrollView
+          onContentSizeChange={() => scrollToBottom()} // 内容大小改变时滚动到底部
+        >
+          {messages.map((msg) => (
+            <View
+              key={msg.id}
+              style={[styles.messageContainer, msg.sender === "me" ? styles.myMessage : styles.otherMessage]}
+            >
+              <View style={[styles.messageBubble, msg.sender === "me" ? styles.myBubble : styles.otherBubble]}>
+                <Text
+                  style={[styles.messageText, msg.sender === "me" ? styles.myMessageText : styles.otherMessageText]}
+                >
+                  {msg.text}
+                </Text>
+                <Text
+                  style={[styles.messageTime, msg.sender === "me" ? styles.myMessageTime : styles.otherMessageTime]}
+                >
+                  {msg.time}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            value={message}
+            onChangeText={setMessage}
+            placeholder="Type a message..."
+            style={styles.messageInput}
+            mode="outlined"
+            multiline
+            maxLength={1000} // 限制消息长度
+            onFocus={() => {
+              // 当输入框获得焦点时滚动到底部
+              setTimeout(() => scrollToBottom(), 300)
+            }}
+            right={
+              <TextInput.Icon
+                icon="attachment"
+                onPress={() => {
+                  /* Handle attachment */
+                }}
+              />
+            }
+          />
+          <IconButton 
+            icon="send" 
+            mode="contained" 
+            onPress={sendMessage} 
+            style={[
+              styles.sendButton,
+              { opacity: message.trim() ? 1 : 0.5 }
+            ]}
+            disabled={!message.trim()}
+          />
+        </View>
+      </KeyboardAvoidingView>
+    )
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -123,16 +245,7 @@ function ChatListScreen() {
 
       <ScrollView style={styles.chatsList}>
         {chats.map((chat) => (
-          <TouchableOpacity 
-            key={chat.id} 
-            onPress={() => 
-              navigation.navigate('ChatDetail', {
-                chatId: chat.id,
-                chatName: chat.name,
-                chatAvatar: chat.avatar
-              })
-            }
-          >
+          <TouchableOpacity key={chat.id} onPress={() => selectChat(chat.id)}>
             <Card style={styles.chatCard}>
               <Card.Content style={styles.chatContent}>
                 <Image source={{ uri: chat.avatar }} style={styles.avatar} />
@@ -156,214 +269,6 @@ function ChatListScreen() {
         ))}
       </ScrollView>
     </View>
-  )
-}
-
-// 聊天详情组件
-function ChatDetailScreen() {
-  const navigation = useNavigation<ChatDetailNavigationProp>()
-  const route = useRoute<ChatDetailRouteProp>()
-  const { chatId, chatName, chatAvatar } = route.params
-  
-  const [message, setMessage] = useState("")
-  const [messages, setMessages] = useState<Message[]>([])
-  const scrollViewRef = useRef<ScrollView>(null)
-
-  // 获取当前时间
-  const getCurrentTime = () => {
-    const now = new Date()
-    return now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0')
-  }
-
-  // 滚动到底部的函数
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true })
-    }, 100)
-  }
-
-  // 发送消息功能
-  const sendMessage = () => {
-    if (message.trim()) {
-      const newMessage: Message = {
-        id: Date.now(),
-        text: message.trim(),
-        sender: "me",
-        time: getCurrentTime(),
-      }
-      
-      setMessages(prevMessages => {
-        const newMessages = [...prevMessages, newMessage]
-        scrollToBottom()
-        return newMessages
-      })
-      
-      setMessage("")
-    }
-  }
-
-  // 组件挂载时加载消息
-  useEffect(() => {
-    setMessages(initialMessages[chatId] || [])
-    setTimeout(() => scrollToBottom(), 200)
-  }, [chatId])
-
-  // 处理 Android 返回键
-  useFocusEffect(
-    React.useCallback(() => {
-      const onBackPress = () => {
-        navigation.goBack()
-        return true
-      }
-
-      if (Platform.OS === 'android') {
-        const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress)
-        return () => subscription?.remove()
-      }
-    }, [navigation])
-  )
-
-  return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
-      <ScrollView 
-        ref={scrollViewRef}
-        style={styles.messagesContainer}
-        contentContainerStyle={{ flexGrow: 1 }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        onContentSizeChange={() => scrollToBottom()}
-      >
-        {messages.map((msg) => (
-          <View
-            key={msg.id}
-            style={[styles.messageContainer, msg.sender === "me" ? styles.myMessage : styles.otherMessage]}
-          >
-            <View style={[styles.messageBubble, msg.sender === "me" ? styles.myBubble : styles.otherBubble]}>
-              <Text
-                style={[styles.messageText, msg.sender === "me" ? styles.myMessageText : styles.otherMessageText]}
-              >
-                {msg.text}
-              </Text>
-              <Text
-                style={[styles.messageTime, msg.sender === "me" ? styles.myMessageTime : styles.otherMessageTime]}
-              >
-                {msg.time}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </ScrollView>
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          value={message}
-          onChangeText={setMessage}
-          placeholder="Type a message..."
-          style={styles.messageInput}
-          mode="outlined"
-          multiline
-          maxLength={1000}
-          onFocus={() => {
-            setTimeout(() => scrollToBottom(), 300)
-          }}
-          right={
-            <TextInput.Icon
-              icon="attachment"
-              onPress={() => {
-                /* Handle attachment */
-              }}
-            />
-          }
-        />
-        <IconButton 
-          icon="send" 
-          mode="contained" 
-          onPress={sendMessage} 
-          style={[
-            styles.sendButton,
-            { opacity: message.trim() ? 1 : 0.5 }
-          ]}
-          disabled={!message.trim()}
-        />
-      </View>
-    </KeyboardAvoidingView>
-  )
-}
-
-// 主要的聊天组件
-export default function ChatScreen() {
-  return (
-    <Stack.Navigator
-      initialRouteName="ChatList"
-      screenOptions={{
-        headerShown: false, // 隐藏默认头部，使用自定义头部
-        gestureEnabled: true, // 启用手势
-        cardStyleInterpolator: ({ current, layouts }) => {
-          return {
-            cardStyle: {
-              transform: [
-                {
-                  translateX: current.progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [layouts.screen.width, 0],
-                  }),
-                },
-              ],
-            },
-          }
-        },
-      }}
-    >
-      <Stack.Screen 
-        name="ChatList" 
-        component={ChatListScreen}
-        options={{
-          title: 'Chat'
-        }}
-      />
-      <Stack.Screen 
-        name="ChatDetail" 
-        component={ChatDetailScreen}
-        options={({ route }) => ({
-          title: route.params.chatName,
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: '#2196F3',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-          headerLeft: ({ onPress }) => (
-            <TouchableOpacity
-              style={styles.headerBackButton}
-              onPress={onPress}
-            >
-              <MaterialIcons name="arrow-back" size={24} color="#ffffff" />
-            </TouchableOpacity>
-          ),
-          headerTitle: ({ children }) => (
-            <View style={styles.headerTitleContainer}>
-              <Image 
-                source={{ uri: route.params.chatAvatar }} 
-                style={styles.headerTitleAvatar} 
-              />
-              <View>
-                <Text style={styles.headerTitleText}>{children}</Text>
-                <Text style={styles.headerSubtitle}>Online</Text>
-              </View>
-            </View>
-          ),
-          // iOS 侧滑返回配置
-          gestureEnabled: true,
-          gestureDirection: 'horizontal',
-        })}
-      />
-    </Stack.Navigator>
   )
 }
 
@@ -434,28 +339,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "bold",
   },
-  headerBackButton: {
-    marginLeft: 15,
-    padding: 5,
-  },
-  headerTitleContainer: {
+  chatHeader: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#2196F3",
+    padding: 15,
+    paddingTop: 60,
+  },
+  backButton: {
+    marginRight: 15,
+  },
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 15,
+  },
+  headerInfo: {
     flex: 1,
   },
-  headerTitleAvatar: {
-    width: 35,
-    height: 35,
-    borderRadius: 17.5,
-    marginRight: 10,
-  },
-  headerTitleText: {
+  headerName: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#ffffff",
   },
-  headerSubtitle: {
-    fontSize: 12,
+  headerStatus: {
+    fontSize: 14,
     color: "#ffffff",
     opacity: 0.8,
   },
