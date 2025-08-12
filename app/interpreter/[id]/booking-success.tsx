@@ -95,7 +95,10 @@ export default function BookingSuccessScreen() {
                         <MaterialCommunityIcons name="message-text-outline" size={20} color={theme.colors.onPrimary} style={styles.buttonIcon} />
                         <Text style={[styles.buttonText, styles.buttonTextPrimary]}>Message {interpreter.name.split(' ')[0]}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.button, styles.buttonSecondary]}>
+                    <TouchableOpacity 
+                        style={[styles.button, styles.buttonSecondary]}
+                        onPress={() => router.replace('/(tabs)/search')}
+                    >
                         <MaterialCommunityIcons name="find-replace" size={20} color={theme.colors.primary} style={styles.buttonIcon} />
                         <Text style={[styles.buttonText, styles.buttonTextSecondary]}>Find Other Interpreters</Text>
                     </TouchableOpacity>
