@@ -108,12 +108,24 @@ export default function BookingScreen() {
       </View>
 
       {/* --- Action Buttons --- */}
-      <TouchableOpacity style={[styles.button, styles.buttonPrimary, { marginTop: 24 }]}>
+      <TouchableOpacity 
+        style={[styles.button, styles.buttonPrimary, { marginTop: 24 }]}
+        onPress={() => router.push({
+          pathname: "/interpreter/[id]/booking-success",
+          params: { 
+            interpreterId: id,
+            date: date,
+            time: time,
+          }
+        })}
+      >
         <Text style={[styles.buttonText, styles.buttonTextPrimary]}>Confirm & Book Session</Text>
       </TouchableOpacity>
+
       <TouchableOpacity onPress={() => router.back()}>
         <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
       </TouchableOpacity>
+      
     </View>
   </ScrollView>
   );
