@@ -112,11 +112,7 @@ export default function BookingScreen() {
         style={[styles.button, styles.buttonPrimary, { marginTop: 24 }]}
         onPress={() => router.push({
           pathname: "/interpreter/[id]/booking-success",
-          params: { 
-            interpreterId: id,
-            date: date,
-            time: time,
-          }
+          params: { id: interpreter.id, date, time } 
         })}
       >
         <Text style={[styles.buttonText, styles.buttonTextPrimary]}>Confirm & Book Session</Text>

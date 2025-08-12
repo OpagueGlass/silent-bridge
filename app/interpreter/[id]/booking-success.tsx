@@ -14,7 +14,7 @@ export default function BookingSuccessScreen() {
     const theme = useAppTheme();
     const styles = React.useMemo(() => createStyles(theme), [theme]);
     
-    const interpreterId = params.interpreterId as string;
+    const interpreterId = params.id as string;
     const date = params.date as string;
     const time = params.time as string;
 
