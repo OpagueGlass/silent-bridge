@@ -1,79 +1,48 @@
 "use client"
 
-import { useState, useRef } from "react"
-import { TouchableOpacity, Image, ScrollView, StyleSheet, View } from "react-native"
-import { RadioButton, Button, Card, Chip, Menu, Text, TextInput } from "react-native-paper"
-import { Slider } from "@miblanchard/react-native-slider";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useAuth } from "../../contexts/AuthContext"
-import { useAppTheme } from "../../hooks/useAppTheme"
+import { useState } from "react";
+import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Button, Card, Chip, RadioButton, Text, TextInput } from "react-native-paper";
+import { useAuth } from "../../contexts/AuthContext";
+import { useAppTheme } from "../../hooks/useAppTheme";
 
-import { interpreters } from '../data/mockData';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import DatePickerInput from '../../components/DatePickerInput';
 import TimePickerInput from '../../components/TimePickerInput';
-
-// // Mock interpreter data
-// const interpreters = [
-//   {
-//     id: 1,
-//     name: "John Smith",
-//     specialisation: "Medical Interpretation",
-//     rating: 4.8,
-//     pricePerHour: "RM 50",
-//     gender: "Male",
-//     age: 30,
-//     avatar: "/placeholder.svg?height=80&width=80",
-//     availability: [
-//       { date: '17/08/2025', slots: ['09:00', '10:00', '14:30'] },
-//       { date: '18/08/2025', slots: ['11:00', '15:00'] }
-//     ]
-//   },
-//   {
-//     id: 2,
-//     name: "Sarah Johnson",
-//     specialisation: "Legal Interpretation",
-//     rating: 4.9,
-//     pricePerHour: "RM 60",
-//     gender: "Female",
-//     age: 25,
-//     avatar: "/placeholder.svg?height=80&width=80",
-//     availability: [
-//       { date: '17/08/2025', slots: ['09:00', '10:00', '14:30'] },
-//       { date: '18/08/2025', slots: ['11:00', '15:00'] }
-//     ]
-//   },
-//   {
-//     id: 3,
-//     name: "Mike Chen",
-//     specialisation: "Educational Interpretation",
-//     rating: 4.7,
-//     pricePerHour: "RM 45",
-//     gender: "Male",
-//     age: 35,
-//     avatar: "/placeholder.svg?height=80&width=80",
-//     availability: [
-//       { date: '17/08/2025', slots: ['09:00', '10:00', '14:30'] },
-//       { date: '18/08/2025', slots: ['11:00', '15:00'] }
-//     ]
-//   },
-// ]
+import { interpreters } from '../data/mockData';
 
 export default function SearchScreen() {
+  const router = useRouter();
   const { userProfile } = useAuth()
 
+  const today = new Date();
+  const formatDate = (date: Date) => {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+  const formatTime = (date: Date) => {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
   const [searchQuery, setSearchQuery] = useState("")
-  const [appointmentDate, setAppointmentDate] = useState("");
-  const [selectedGender, setSelectedGender] = useState("");
-  const [appointmentTime, setAppointmentTime] = useState("");
-  const [ageRange, setAgeRange] = useState([25, 45]);
-  const [activeAgeThumb, setActiveAgeThumb] = useState(-1);
-  const ageRangeRef = useRef(ageRange);
+  const [appointmentDate, setAppointmentDate] = useState(formatDate(today));
+  const [appointmentTime, setAppointmentTime] = useState(formatTime(today));
+  const [selectedGender, setSelectedGender] = useState("Any");
+  const [ageRange, setAgeRange] = useState("Any");
   const [minRating, setMinRating] = useState(5);
 
   const [hasSearched, setHasSearched] = useState(false);
   const [displayedInterpreters, setDisplayedInterpreters] = useState<typeof interpreters>([]);
   const handleSearch = () => {
+      if (!appointmentDate || !appointmentTime || !selectedGender || !ageRange) {
+        alert("Please fill in date, time, gender, and age range before searching.");
+        return;
+      }
+
       const results = interpreters.filter((interpreter) => {
       const cleanedQuery = searchQuery.trim().toLowerCase();
       const nameWords = interpreter.name.toLowerCase().split(' ');
@@ -96,9 +65,13 @@ export default function SearchScreen() {
         return false;
       };
 
-      const genderMatch = selectedGender === "" || interpreter.gender === selectedGender;
+      const genderMatch = selectedGender === "" || selectedGender === "Any" || interpreter.gender === selectedGender;
 
-      const ageMatch = interpreter.age >= ageRange[0] && interpreter.age <= ageRange[1];
+      const ageMatch = (() => {
+        if (ageRange === "Any") return true;
+        const [min, max] = ageRange.split("-").map(Number);
+        return interpreter.age >= min && interpreter.age <= max;
+      })();
 
       const ratingMatch = interpreter.rating >= minRating;
 
@@ -179,73 +152,101 @@ export default function SearchScreen() {
         <Text style={styles.title}>Interpreter Discovery</Text>
 
         {/* --- SEARCH BY NAME --- */}
-        <TextInput
-          label="Search interpreters..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          mode="outlined"
-          style={styles.searchInput}
-          left={<TextInput.Icon icon="magnify" />}
-        />
-
-        {/* --- SEARCH BY DATE --- */}
-        <Text style={styles.filterLabel}>Appointment Date</Text>
-        <DatePickerInput
-          label="Select a date"
-          value={appointmentDate}
-          onChange={setAppointmentDate}
-        />
-
-        {/* --- SEARCH BY TIME --- */}
-        <Text style={styles.filterLabel}>Appointment Time</Text>
-        <TimePickerInput
-          label="Select a time"
-          value={appointmentTime}
-          onChange={setAppointmentTime}
-        />
+        <View style={styles.filterBlock}>
+          <TextInput
+            label="Search interpreters..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            mode="outlined"
+            style={styles.searchInput}
+            left={<TextInput.Icon icon="magnify" />}
+          />
+        </View>
+        
+        {/* --- SEARCH BY DATE AND TIME --- */}
+        <View style={styles.dateTimeRow}>
+          <View style={styles.dateTimeField}>
+            <Text style={styles.filterLabel}>Appointment Date</Text>
+            <DatePickerInput
+              label=""
+              value={appointmentDate}
+              onChange={setAppointmentDate}
+              style={styles.dateTimeInput}
+            />
+          </View>
+          <View style={styles.dateTimeField}>
+            <Text style={styles.filterLabel}>Appointment Time</Text>
+            <TimePickerInput
+              label=""
+              value={appointmentTime}
+              onChange={setAppointmentTime}
+              style={styles.dateTimeInput}
+            />
+          </View>
+        </View>
 
         {/* --- GENDER --- */}
         <Text style={styles.filterLabel}>Gender</Text>
-        <RadioButton.Group
-          value={selectedGender}
-          onValueChange={newValue => setSelectedGender(newValue)}
-        >
-          <View style={styles.radioButtonContainer}>
-            <RadioButton.Item label="Male" value="Male" />
-            <RadioButton.Item label="Female" value="Female" />
-          </View>
-        </RadioButton.Group>
+        <View style={styles.genderRow}>
+          {[
+            { value: 'Any', icon: <MaterialCommunityIcons name="account-group" size={22} />, label: 'Any' },
+            { value: 'Male', icon: <MaterialCommunityIcons name="face-man" size={22} />, label: 'Male' },
+            { value: 'Female', icon: <MaterialCommunityIcons name="face-woman" size={22} />, label: 'Female' },
+          ].map(option => {
+            const isSelected = selectedGender === option.value;
+            return (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.genderOption,
+                  isSelected && styles.genderOptionSelected
+                ]}
+                onPress={() => setSelectedGender(option.value)}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.genderIcon}>{option.icon}</Text>
+                <Text style={[
+                  styles.genderLabel,
+                  isSelected && styles.genderLabelSelected
+                ]}>
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
 
         {/* --- AGE --- */}
-        <View style={styles.sliderContainer}>
-          <Text style={styles.filterLabel}>Age</Text>
-          <Text style={styles.filterValue}>{ageRange[0]} - {ageRange[1]}</Text>
-        </View>
-        <Slider
-          value={ageRange}
-          onValueChange={newRange => {
-            if (newRange[0] !== ageRangeRef.current[0]) {
-              setActiveAgeThumb(0);
-            } else if (newRange[1] !== ageRangeRef.current[1]) {
-              setActiveAgeThumb(1);
-            }
-            ageRangeRef.current = newRange;
-            setAgeRange(newRange);
-          }}
-          renderThumbComponent={thumbIndex => {
-            const isActive = activeAgeThumb === thumbIndex; 
+        <Text style={styles.filterLabel}>Age</Text>
+        <View style={styles.genderRow}>
+          {[
+            { value: "Any", label: "Any" },
+            { value: "18-24", label: "18 - 24" },
+            { value: "25-44", label: "25 - 44" },
+            { value: "45-60", label: "45 - 60" },
+          ].map(option => {
+            const isSelected = ageRange === option.value;
             return (
-              <View style={styles.thumbContainer}>
-                {isActive && <View style={styles.thumbHalo} />}
-                <View style={styles.thumbCore} />
-              </View>
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.genderOption,
+                  isSelected && styles.genderOptionSelected
+                ]}
+                onPress={() => setAgeRange(option.value)}
+                activeOpacity={0.9}
+              >
+                <Text style={[
+                  styles.genderLabel,
+                  isSelected && styles.genderLabelSelected
+                ]}>
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
             );
-          }}
-          onSlidingComplete={() => setActiveAgeThumb(-1)}
-          minimumValue={18}
-          maximumValue={60}
-          step={1}
-        />
+          })}
+        </View>
 
         {/* --- Rating --- */}
         <View style={styles.sliderContainer}>
@@ -309,22 +310,28 @@ export default function SearchScreen() {
                     </View>
 
                     <View style={styles.interpreterActions}>
-                      {/* <Button mode="outlined" style={styles.profileButton}>
-                        Profile
-                      </Button> */}
-
-                      <Link
-                        href={{
-                          pathname: "/interpreter/[id]",
-                          params: { id: interpreter.id }
+                      <Button
+                        mode="outlined"
+                        style={styles.profileButton}
+                        onPress={() => {
+                          if (!appointmentDate || !appointmentTime) {
+                            alert("Please select a date and time first.");
+                            return;
+                          }
+                          
+                          router.push({
+                            pathname: "/interpreter/[id]",
+                            params: { 
+                              id: interpreter.id,
+                              date: appointmentDate,
+                              time: appointmentTime 
+                            }
+                          });
                         }}
-                        asChild
                       >
-                        <Button mode="outlined" style={styles.profileButton}>
-                          Profile
-                        </Button>
-                      </Link>
-                      
+                        Profile
+                      </Button>
+
                       <Button mode="contained" style={styles.bookButton}>
                         Book Now
                       </Button>
@@ -354,6 +361,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "#2196F3",
     paddingTop: 60,
+    overflow: 'visible', 
   },
   title: {
     fontSize: 24,
@@ -361,22 +369,88 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     marginBottom: 15,
   },
+  filterBlock: {
+    marginBottom: 16, 
+  },
   searchInput: {
     backgroundColor: "#ffffff",
+    height: 50
   },
-  filtersSection: {
-    padding: 20,
-    backgroundColor: "#ffffff",
+  dateTimeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    zIndex: 10, 
     marginBottom: 10,
   },
-  filtersTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 15,
-    color: "#333",
+  dateTimeField: {
+    flex: 1, 
   },
-  filterInput: {
-    marginBottom: 10,
+  filterLabel: {
+    fontSize: 16,
+    fontWeight: 'bold'
+  },
+  dateTimeInput: {
+    height: 50,
+    justifyContent: 'center',
+  },
+  genderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16
+  },
+  genderOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginHorizontal: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    height: 50
+  },
+  genderOptionSelected: {
+    backgroundColor: '#E3F2FD',
+    borderColor: '#2196F3',
+    shadowOpacity: 0.15,
+    elevation: 3,
+  },
+  genderIcon: {
+    fontSize: 20,
+    marginRight: 6,
+  },
+  genderLabel: {
+    fontSize: 15,
+    color: '#444',
+    fontWeight: '500',
+  },
+  genderLabelSelected: {
+    color: '#2196F3',
+    fontWeight: '600',
+  },
+  sliderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  filterValue: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  starContainer: {
+    flexDirection: 'row', 
+  },
+  searchButton: {
+    marginTop: 32, 
+    paddingVertical: 6, 
   },
   section: {
     padding: 20,
@@ -444,6 +518,23 @@ const styles = StyleSheet.create({
   bookButton: {
     flex: 0.48,
   },
+  thumbContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  thumbHalo: { 
+    height: 40, 
+    width: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    position: 'absolute', 
+  },
+  thumbCore: { 
+    height: 20,
+    width: 20,
+    borderRadius: 10,
+    backgroundColor: '#000000ff',
+  },
   requestCard: {
     marginBottom: 15,
   },
@@ -484,56 +575,4 @@ const styles = StyleSheet.create({
   rejectButton: {
     borderColor: "#F44336",
   },
-
-  radioButtonContainer: {
-    // Achieve horizontal arrangement
-    flexDirection: 'row', 
-    // Evenly distribute items with space around
-    justifyContent: 'space-around',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-
-  sliderContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-
-  starContainer: {
-    flexDirection: 'row', 
-  },
-
-  filterLabel: {
-    fontSize: 16,
-    fontWeight: 'bold'
-  },
-  filterValue: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  star: {
-    fontSize: 18,
-    color: '#F59E0B', 
-  },
-  thumbContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  thumbHalo: { 
-    height: 40, 
-    width: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
-    position: 'absolute', 
-  },
-  thumbCore: { 
-    height: 20,
-    width: 20,
-    borderRadius: 10,
-    backgroundColor: '#000000ff',
-  },
-  searchButton: {
-    marginTop: 32, 
-    paddingVertical: 6, 
-  },
-})
+});
