@@ -1,27 +1,29 @@
-"use client"
+'use client';
 
-import { useRouter } from "expo-router"
-import { StyleSheet, View } from "react-native"
-import { Button, Text } from "react-native-paper"
-import { useAuth } from "../../contexts/AuthContext"
-import { useAppTheme } from "../../hooks/useAppTheme"
-import { showError } from "../../utils/alert"
+import { useRouter } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
+import { Button, Text } from 'react-native-paper';
+import { useAuth } from '../../contexts/AuthContext';
+import { useAppTheme } from '../../hooks/useAppTheme';
+import { showError } from '../../utils/alert';
+import { supabase } from '@/utils/supabase';
+
+
 
 export default function LoginScreen() {
-  const router = useRouter()
-  const { handleSignIn, authState } = useAuth()
-  const theme = useAppTheme()
-
-  const handleGoogleSignIn = async () => {
+  const router = useRouter();
+  const { signIn, authState } = useAuth();
+  const theme = useAppTheme();
+  const handleSignIn = async () => {
     try {
-      await handleSignIn()
+      await signIn();
       if (authState.error) {
-        showError(authState.error)
+        showError(authState.error);
       }
     } catch (error) {
-      showError("Failed to sign in with Google")
+      showError('Failed to sign in with Google');
     }
-  }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -37,7 +39,7 @@ export default function LoginScreen() {
         <Text variant="displaySmall" style={[styles.title, { color: theme.colors.primary }]}>
           Silent Bridge
         </Text>
-        
+
         <Text variant="titleMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
           Connecting deaf users with interpreters
         </Text>
@@ -46,16 +48,16 @@ export default function LoginScreen() {
           Join our community to find professional interpreters or offer your interpretation services.
         </Text>
 
-        <Button 
-          mode="contained" 
-          onPress={handleGoogleSignIn} 
+        <Button
+          mode="contained"
+          onPress={handleSignIn}
           style={[styles.googleButton, { backgroundColor: theme.colors.primary }]}
           contentStyle={styles.googleButtonContent}
           icon="google"
-          loading={authState.isSigningIn}
-          disabled={authState.isSigningIn}
+          loading={authState.isLoading}
+          disabled={authState.isLoading}
         >
-          {authState.isSigningIn ? "Signing in..." : "Continue with Google"}
+          {authState.isLoading ? 'Signing in...' : 'Continue with Google'}
         </Button>
 
         {/* Register Section */}
@@ -63,9 +65,9 @@ export default function LoginScreen() {
           <Text variant="bodyMedium" style={[styles.registerText, { color: theme.colors.onSurfaceVariant }]}>
             New to Silent Bridge?
           </Text>
-          <Button 
-            mode="text" 
-            onPress={() => router.push("/auth/account-type")} 
+          <Button
+            mode="text"
+            onPress={() => router.push('/auth/account-type')}
             style={styles.registerButton}
             textColor={theme.colors.primary}
           >
@@ -74,7 +76,7 @@ export default function LoginScreen() {
         </View>
       </View>
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -145,4 +147,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
   },
-})
+});

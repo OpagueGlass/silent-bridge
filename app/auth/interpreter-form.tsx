@@ -10,8 +10,10 @@ import DatePickerInput from '../../components/DatePickerInput';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { showError, showSuccess, showValidationError } from '../../utils/alert';
+import { supabase } from '@/utils/supabase';
 
 export default function InterpreterFormScreen() {
+  const { session, signIn } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -33,8 +35,6 @@ export default function InterpreterFormScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const theme = useAppTheme();
-  const { createInterpreterProfile } = useAuth();
-  console.log(formData);
   const toggleSpecialisation = (specialisation: string) => {
     setFormData({
       ...formData,
@@ -49,40 +49,45 @@ export default function InterpreterFormScreen() {
     });
   };
 
-  const validateForm = () => {
-    if (!formData.name.trim()) {
-      showValidationError('Please enter your name');
-      return false;
-    }
-    if (!formData.dateOfBirth) {
-      showValidationError('Please select your date of birth');
-      return false;
-    }
-    if (!formData.gender) {
-      showValidationError('Please select your gender');
-      return false;
-    }
-    if (!formData.location) {
-      showValidationError('Please select your state');
-      return false;
-    }
+  const handleSignUp = async () => {
+    const validateForm = () => {
+      if (!formData.name.trim()) {
+        showValidationError('Please enter your name');
+        return false;
+      }
+      if (!formData.dateOfBirth) {
+        showValidationError('Please select your date of birth');
+        return false;
+      }
+      if (!formData.gender) {
+        showValidationError('Please select your gender');
+        return false;
+      }
+      if (!formData.location) {
+        showValidationError('Please select your state');
+        return false;
+      }
 
-    const hasSpecialisation = SPEC.some((spec) => formData[spec as keyof typeof formData]);
-    if (!hasSpecialisation) {
-      showValidationError('Please select at least one specialisation');
-      return false;
-    }
+      const hasSpecialisation = SPEC.some((spec) => formData[spec as keyof typeof formData]);
+      if (!hasSpecialisation) {
+        showValidationError('Please select at least one specialisation');
+        return false;
+      }
 
-    const hasLanguage = LANGUAGES.some((lang) => formData[lang.toLowerCase() as keyof typeof formData]);
-    if (!hasLanguage) {
-      showValidationError('Please select at least one language');
-      return false;
-    }
+      const hasLanguage = LANGUAGES.some((lang) => formData[lang.toLowerCase() as keyof typeof formData]);
+      if (!hasLanguage) {
+        showValidationError('Please select at least one language');
+        return false;
+      }
 
-    return true;
-  };
+      return true;
+    };
 
-  const handleGoogleSignUp = async () => {
+    const parseDate = (dateString: string) => {
+      const [day, month, year] = dateString.split('/').map((num) => parseInt(num, 10));
+      return new Date(year, month - 1, day);
+    };
+
     try {
       setIsSubmitting(true);
 
@@ -91,17 +96,17 @@ export default function InterpreterFormScreen() {
         return;
       }
 
-      const parseDate = (dateString: string) => {
-        const [day, month, year] = dateString.split('/').map((num) => parseInt(num, 10));
-        return new Date(year, month - 1, day);
-      };
-
       const profileData = {
+        id: session!.user.id,
         name: formData.name,
-        dateOfBirth: Timestamp.fromDate(parseDate(formData.dateOfBirth)),
+        dateOfBirth: parseDate(formData.dateOfBirth).toISOString(),
         gender: formData.gender,
         location: formData.location,
+        photo: session!.user.user_metadata.avatar_url,
+      };
 
+      const interpreterProfileData = {
+        id: session!.user.id,
         ...SPEC.reduce((acc, spec) => {
           acc[spec] = Boolean(formData[spec as keyof typeof formData]);
           return acc;
@@ -113,7 +118,11 @@ export default function InterpreterFormScreen() {
         }, {} as Record<string, boolean>),
       };
 
-      await createInterpreterProfile(profileData);
+      const { error } = await supabase.from('profile').insert(profileData);
+      if (error) throw error;
+
+      const { error: interpreterError } = await supabase.from('interpreter_profile').insert(interpreterProfileData);
+      if (interpreterError) throw interpreterError;
 
       showSuccess('Account created successfully!');
       router.replace('/(tabs)');
@@ -251,7 +260,7 @@ export default function InterpreterFormScreen() {
 
       <Button
         mode="contained"
-        onPress={handleGoogleSignUp}
+        onPress={handleSignUp}
         style={styles.submitButton}
         icon="google"
         loading={isSubmitting}

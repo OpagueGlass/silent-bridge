@@ -1,26 +1,29 @@
 "use client"
 
 import { useRouter } from "expo-router"
-import React from "react"
+import {useState, useEffect} from "react"
 import { Platform, ScrollView, StyleSheet, Text, View } from "react-native"
-import { Button, Card, List, Switch } from "react-native-paper"
+import { ActivityIndicator, Button, Card, List, Switch } from "react-native-paper"
 import { useAuth } from "../../contexts/AuthContext"
 import { showConfirmAlert } from "../../utils/alert"
+import { useAppTheme } from "../../hooks/useAppTheme"
 
 export default function SettingsScreen() {
-  const { userProfile, handleSignOut, isInterpreter } = useAuth()
   const router = useRouter()
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true)
-  const [emailNotifications, setEmailNotifications] = React.useState(true)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [emailNotifications, setEmailNotifications] = useState(true)
+  const { profile, isInterpreter, signOut } = useAuth()
+  const [isLoading, setIsLoading] = useState(true)
+  const theme = useAppTheme()
 
-  const signOut = async () => {
+  const handleSignOut = async () => {
     const confirmed = await showConfirmAlert(
       "Sign Out",
       "Are you sure you want to sign out?"
     )
     
     if (confirmed) {
-      await handleSignOut()
+      await signOut()
       router.replace("/auth")
     }
   }
@@ -34,8 +37,8 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Card style={styles.profileCard}>
           <Card.Content>
-            <Text style={styles.profileName}>{userProfile?.name}</Text>
-            <Text style={styles.profileEmail}>{userProfile?.email}</Text>
+            <Text style={styles.profileName}>{profile?.name}</Text>
+            <Text style={styles.profileEmail}>{profile?.email}</Text>
             <Text style={styles.profileType}>
               {isInterpreter ? "Interpreter" : "Deaf User"}
             </Text>
@@ -131,7 +134,7 @@ export default function SettingsScreen() {
       )}
 
       <View style={styles.section}>
-        <Button mode="contained" onPress={signOut} style={styles.signOutButton} buttonColor="#F44336">
+        <Button mode="contained" onPress={handleSignOut} style={styles.signOutButton} buttonColor="#F44336">
           Sign Out
         </Button>
       </View>

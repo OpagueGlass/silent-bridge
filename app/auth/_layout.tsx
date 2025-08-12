@@ -4,13 +4,13 @@ import { useAuth } from "../../contexts/AuthContext"
   
 
 export default function AuthLayout() {
-  const { authState, userProfile } = useAuth()
+  // const { authState, userProfile } = useAuth()
   
-  useEffect(() => {
-    if (authState.isAuthenticated && userProfile) {
-      router.replace("/(tabs)")
-    }
-  }, [authState.isAuthenticated, authState.isLoading, userProfile])
+  // useEffect(() => {
+  //   if (authState.isAuthenticated && userProfile) {
+  //     router.replace("/(tabs)")
+  //   }
+  // }, [authState.isAuthenticated, authState.isLoading, userProfile])
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

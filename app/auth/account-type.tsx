@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Button, RadioButton } from 'react-native-paper';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AccountTypeScreen() {
   const [accountType, setAccountType] = useState('');
+  const { getProfile, session } = useAuth()
   const router = useRouter();
-
   const handleContinue = () => {
     if (accountType === 'deaf_user') {
       router.push('/auth/deaf-user-form');

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Image, ScrollView, StyleSheet, View } from "react-native"
-import { Button, Card, Chip, Text } from "react-native-paper"
+import { ActivityIndicator, Button, Card, Chip, Text } from "react-native-paper"
 import { useAuth } from "../../contexts/AuthContext"
 import { useAppTheme } from "../../hooks/useAppTheme"
 
@@ -23,11 +23,14 @@ interface Contact {
 }
 
 export default function HomeScreen() {
-  const { userProfile, isInterpreter } = useAuth()
+  const { profile, isInterpreter } = useAuth()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
   const theme = useAppTheme()
-  
+
+  console.log('User Profile:', profile)
+  console.log('Is Interpreter Profile:', isInterpreter)
+
   // Mock data for demonstration
   useEffect(() => {
     setAppointments([
@@ -79,12 +82,12 @@ export default function HomeScreen() {
         return theme.colors.onSurfaceVariant
     }
   }
-
+  
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
         <Text variant="headlineMedium" style={styles.greeting}>
-          Welcome back, {userProfile?.name || "User"}!
+          Welcome back, {profile?.name || "User"}!
         </Text>
         <Text variant="bodyLarge" style={styles.subtitle}>
           {isInterpreter ? "Manage your interpreter services" : "Find your perfect interpreter"}

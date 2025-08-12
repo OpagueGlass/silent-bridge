@@ -9,31 +9,37 @@ import 'react-native-reanimated';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { theme } from '@/theme/theme';
+import { showError } from '@/utils/alert';
 
-function NavigationHandler() {
-  const { authState, userProfile } = useAuth();
+// function NavigationHandler() {
+//   const { authState, userProfile, user } = useAuth();
 
-  useEffect(() => {
-    // Add delay to ensure root layout is mounted
-    const handleNavigation = () => {
-      if (!authState.isLoading && !authState.isAuthenticated) {
-        router.replace("/auth");
-      }
-    };
+//   useEffect(() => {
+//     // Add delay to ensure root layout is mounted
+//     const handleNavigation = () => {
+//       if (!authState.isLoading && !userProfile) {
+        
+//         router.replace("/auth");
+//         if (user && !userProfile) {
+//           showError("Profile not found. Please complete your profile setup.");
+//         }
 
-    const timeoutId = setTimeout(handleNavigation, 1);
-    return () => clearTimeout(timeoutId);
-  }, [authState.isAuthenticated, authState.isLoading]);
+//       }
+//     };
 
-  return null;
-}
+//     const timeoutId = setTimeout(handleNavigation, 1);
+//     return () => clearTimeout(timeoutId);
+//   }, [userProfile, authState.isLoading]);
+
+//   return null;
+// }
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
-
+  
   if (!loaded) {
     // Async font loading only occurs in development.
     return null;
@@ -42,7 +48,7 @@ export default function RootLayout() {
   return (
     <PaperProvider theme={theme}>
       <AuthProvider>
-        <NavigationHandler />
+        {/* <NavigationHandler /> */}
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
