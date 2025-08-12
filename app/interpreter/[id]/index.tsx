@@ -1,15 +1,16 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { interpreters } from '../data/mockData';
+import { useLocalSearchParams, useRouter, Stack, Link } from 'expo-router';
+import { interpreters } from '../../data/mockData';
 import { Chip, Card, MD3Theme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAppTheme } from '../../hooks/useAppTheme'; 
+import { useAppTheme } from '../../../hooks/useAppTheme'; 
+
 
 export default function InterpreterDetailScreen() {
   const router = useRouter();
 
-  const { id } = useLocalSearchParams();
+  const { id, date, time } = useLocalSearchParams();
   const interpreter = interpreters.find((item) => item.id.toString() === id);
   
   const theme = useAppTheme();
@@ -24,7 +25,7 @@ export default function InterpreterDetailScreen() {
     );
   }
   
-  const initials = interpreter.name.split(' ').map(word => word[0]).slice(0, 2).join('');
+  const initials = interpreter.name.split(" ").map(word => word[0]).slice(0, 2).join("");
   const fullStars = Math.floor(interpreter.rating);
 
   return (
@@ -118,12 +119,19 @@ export default function InterpreterDetailScreen() {
         
         {/* --- Action Buttons Section --- */}
         <View style={styles.buttonSection}>
-            <TouchableOpacity style={[styles.button, styles.buttonPrimary]}>
-                <Text style={[styles.buttonText, styles.buttonTextPrimary]}>Book Session</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.button, styles.buttonSecondary]}>
-                <Text style={[styles.buttonText, styles.buttonTextSecondary]}>Start Chat</Text>
-            </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.button, styles.buttonPrimary, { marginBottom: 12 }]}
+            onPress={() => router.push({
+              pathname: `/interpreter/[id]/book`,
+              params: { id: interpreter.id, date, time } 
+            })}
+          >
+            <Text style={[styles.buttonText, styles.buttonTextPrimary]}>Book Session</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={[styles.button, styles.buttonSecondary]}>
+              <Text style={[styles.buttonText, styles.buttonTextSecondary]}>Start Chat</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </ScrollView>
