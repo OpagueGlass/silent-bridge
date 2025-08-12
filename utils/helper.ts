@@ -1,4 +1,5 @@
-import { AgeRange, AGE_RANGE } from "@/constants/data";
+import { AgeRange, AGE_RANGE, Spec, Language, State } from '@/constants/data';
+import { supabase } from './supabase';
 
 export const getAgeRangeFromDOB = (dateOfBirth: string): AgeRange => {
   const age = Math.floor((Date.now() - new Date(dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365));
@@ -8,4 +9,45 @@ export const getAgeRangeFromDOB = (dateOfBirth: string): AgeRange => {
   if (age < 50) return AGE_RANGE[3];
   if (age < 70) return AGE_RANGE[4];
   return AGE_RANGE[5];
+};
+
+export const getMinMaxDOB = (ageStart: number, ageEnd: number) => {
+  const minDOB = new Date();
+  minDOB.setFullYear(minDOB.getFullYear() - ageEnd);
+  const maxDOB = new Date();
+  maxDOB.setFullYear(maxDOB.getFullYear() - ageStart);
+  return { minDOB, maxDOB };
+};
+
+export const searchInterpreters = async (
+  spec: Spec,
+  language: string,
+  state: string,
+  ageStart: number,
+  ageEnd: number,
+  gender: string | null = null
+) => {
+  const { minDOB, maxDOB } = getMinMaxDOB(ageStart, ageEnd);
+
+  let query = supabase
+    .from('interpreter_profile')
+    .select(
+      `
+      *,
+      profile (*)
+    `
+    )
+    .eq(spec, true)
+    .eq(language, true)
+    .eq('profile.location', state)
+    .gte('profile.dateOfBirth', minDOB.toISOString())
+    .lte('profile.dateOfBirth', maxDOB.toISOString())
+    .not('profile', 'is', null);
+
+  if (gender) {
+    query = query.order('profile.gender', { ascending: gender === 'Female' });
+  }
+
+  const { data } = await query;
+  return data;
 };

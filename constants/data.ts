@@ -54,5 +54,6 @@ export type State = typeof STATES[number];
 export type AgeRange = typeof AGE_RANGE[number];
 export type UserType = "deaf_user" | "interpreter";
 export type Gender = "Male" | "Female"
+export type Spec = typeof SPEC[number];
 export type Specialisation = typeof SPECIALISATION[number];
 export type Language = typeof LANGUAGES[number];

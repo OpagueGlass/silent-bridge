@@ -7,6 +7,7 @@ import { Slider } from '@miblanchard/react-native-slider';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { searchInterpreters } from '@/utils/helper';
 
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,24 +29,6 @@ export default function SearchScreen() {
 
   const { isInterpreter } = useAuth();
 
-  const handleSearch = () => {
-    const results = interpreters.filter((interpreter) => {
-      const genderMatch = selectedGender === '' || interpreter.gender === selectedGender;
-
-      const price = Number(interpreter.pricePerHour.replace(/[^\d.]/g, ''));
-      const priceMatch = price >= priceRange[0] && price <= priceRange[1];
-
-      const [minAge, maxAge] = interpreter.age.split('-').map(Number);
-      const ageMatch = maxAge >= ageRange[0] && minAge <= ageRange[1];
-
-      const ratingMatch = interpreter.rating >= minRating;
-
-      return genderMatch && priceMatch && ageMatch && ratingMatch;
-    });
-
-    setDisplayedInterpreters(results);
-    setHasSearched(true);
-  };
 
   const theme = useAppTheme();
 
@@ -252,7 +235,11 @@ export default function SearchScreen() {
 
         <Button
           mode="contained"
-          onPress={() => console.log('Search button pressed!')}
+          onPress={async () => {
+            // Example search
+            const result = await searchInterpreters('oncology', 'english', 'Johor', 0, 31);
+            console.log(result);
+          }}
           style={styles.searchButton}
           buttonColor="#E0E0E0"
           textColor="#000000"
