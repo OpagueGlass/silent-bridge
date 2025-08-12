@@ -20,10 +20,7 @@ interface AuthContextType {
   profile: Profile | null;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
-  getProfile: () => Promise<void>;
-  getInterpreterProfile: () => Promise<void>;
-  isInterpreterProfile: () => Promise<boolean>;
-  loadProfile: () => Promise<boolean>;
+  loadProfile: (user: User | null) => Promise<boolean>;
   isInterpreter: boolean;
 }
 
@@ -43,8 +40,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
+      if (session?.user) {
+          await loadProfile(session.user);
+        }
     });
 
     const {
@@ -70,43 +70,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   };
 
-  const getProfile = async () => {
-    if (!session) return null;
-    const { data: profile } = await supabase.from('profile').select('*').eq('id', session.user.id).maybeSingle();
-    if (!profile) updateAuthState({ error: 'Profile not found' });
-    const { dateOfBirth, ...rest } = profile;
-    const ageRange = getAgeRangeFromDOB(dateOfBirth);
-    return { ...rest, ageRange };
-  };
-
-  const isInterpreterProfile = async () => {
-    if (!session) return false;
+  const isInterpreterProfile = async (user: User) => {
     const { data: interpreterProfile } = await supabase
       .from('interpreter_profile')
       .select('*')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .maybeSingle();
-    return !!interpreterProfile;
+    setIsInterpreter(!!interpreterProfile);
   };
 
-  const getInterpreterProfile = async () => {
-    if (!session) return null;
-    const { data: interpreterProfile } = await supabase
-      .from('interpreter_profile')
-      .select('*')
-      .eq('id', session.user.id)
-      .maybeSingle();
-    if (!interpreterProfile) updateAuthState({ error: 'Interpreter profile not found' });
-    return interpreterProfile;
-  };
+  const loadProfile = async (user: User | null): Promise<boolean> => {
 
-  const loadProfile = async (): Promise<boolean> => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
     if (user) {
       const { data: profile } = await supabase.from('profile').select('*').eq('id', user.id).maybeSingle();
-      setProfile(profile);
+      const { dateOfBirth, ...rest } = profile;
+      const ageRange = getAgeRangeFromDOB(dateOfBirth);
+      setProfile({ ...rest, ageRange });
+      await isInterpreterProfile(user);
       return true;
     }
     return false;
@@ -118,8 +98,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     profile,
     signIn,
     signOut,
-    getProfile,
-    getInterpreterProfile,
     isInterpreterProfile,
     loadProfile,
     isInterpreter,

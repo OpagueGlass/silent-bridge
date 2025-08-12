@@ -28,9 +28,6 @@ export default function HomeScreen() {
   const [contacts, setContacts] = useState<Contact[]>([])
   const theme = useAppTheme()
 
-  console.log('User Profile:', profile)
-  console.log('Is Interpreter Profile:', isInterpreter)
-
   // Mock data for demonstration
   useEffect(() => {
     setAppointments([

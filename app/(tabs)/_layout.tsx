@@ -11,7 +11,7 @@ import { ActivityIndicator } from 'react-native-paper';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const theme = useAppTheme();
-  const { authState } = useAuth();
+  const { authState, isInterpreter } = useAuth();
 
   
   if (authState.isLoading) {
@@ -37,7 +37,6 @@ export default function TabLayout() {
   // if (!authState.isAuthenticated || !userProfile) {
   //   return null;
   // }
-  const isInterpreter = false;
   
   return (
     <Tabs

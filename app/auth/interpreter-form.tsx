@@ -99,6 +99,7 @@ export default function InterpreterFormScreen() {
       const profileData = {
         id: session!.user.id,
         name: formData.name,
+        email: session!.user.email,
         dateOfBirth: parseDate(formData.dateOfBirth).toISOString(),
         gender: formData.gender,
         location: formData.location,

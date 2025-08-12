@@ -10,18 +10,17 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       // Supabase automatically exchanges the code for a session
-      // const {
-      //   data: { user },
-      // } = await supabase.auth.getUser();
-      // if (user) {
-      //   const { data: profile } = await supabase.from('profile').select('*').eq('id', user.id).maybeSingle();
-      const profile = await loadProfile();
-      if (profile) {
-        router.push('/');
-      } else {
-        router.push('/auth/account-type');
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const profile = await loadProfile(user);
+        if (profile) {
+          router.push('/');
+        } else {
+          router.push('/auth/account-type');
+        }
       }
-    };
+
 
     handleCallback();
   }, []);
