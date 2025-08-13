@@ -1,7 +1,7 @@
-import { Session, User } from '@supabase/supabase-js';
-import { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase';
-import { getAgeRangeFromDOB } from '../utils/helper';
+import { Session, User } from "@supabase/supabase-js";
+import { createContext, useContext, useState, useEffect } from "react";
+import { supabase } from "../utils/supabase";
+import { getAgeRangeFromDOB } from "../utils/helper";
 
 interface Profile {
   id: string;
@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isInterpreter, setIsInterpreter] = useState<boolean>(false);
   const [authState, setAuthState] = useState<AuthState>({
-    isLoading: false,
+    isLoading: true,
     error: null,
   });
 
@@ -43,8 +43,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
-          await loadProfile(session.user);
-        }
+        await loadProfile(session.user);
+      }
+      updateAuthState({ isLoading: false });
     });
 
     const {
@@ -58,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async () => {
     await supabase.auth.signInWithOAuth({
-      provider: 'google',
+      provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
@@ -68,21 +69,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    setIsInterpreter(false);
   };
 
   const isInterpreterProfile = async (user: User) => {
     const { data: interpreterProfile } = await supabase
-      .from('interpreter_profile')
-      .select('*')
-      .eq('id', user.id)
+      .from("interpreter_profile")
+      .select("*")
+      .eq("id", user.id)
       .maybeSingle();
     setIsInterpreter(!!interpreterProfile);
   };
 
   const loadProfile = async (user: User | null): Promise<boolean> => {
-
     if (user) {
-      const { data: profile } = await supabase.from('profile').select('*').eq('id', user.id).maybeSingle();
+      const { data: profile } = await supabase.from("profile").select("*").eq("id", user.id).maybeSingle();
       const { dateOfBirth, ...rest } = profile;
       const ageRange = getAgeRangeFromDOB(dateOfBirth);
       setProfile({ ...rest, ageRange });
@@ -98,7 +99,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     profile,
     signIn,
     signOut,
-    isInterpreterProfile,
     loadProfile,
     isInterpreter,
   };
@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

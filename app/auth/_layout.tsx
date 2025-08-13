@@ -1,11 +1,10 @@
-import { router, Stack } from "expo-router"
-import { useEffect } from "react"
-import { useAuth } from "../../contexts/AuthContext"
-  
+import { router, Stack } from "expo-router";
+import { useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 
 export default function AuthLayout() {
   // const { authState, userProfile } = useAuth()
-  
+
   // useEffect(() => {
   //   if (authState.isAuthenticated && userProfile) {
   //     router.replace("/(tabs)")
@@ -19,5 +18,5 @@ export default function AuthLayout() {
       <Stack.Screen name="deaf-user-form" />
       <Stack.Screen name="interpreter-form" />
     </Stack>
-  )
+  );
 }

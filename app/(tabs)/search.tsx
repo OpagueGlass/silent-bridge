@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { TouchableOpacity, Image, ScrollView, StyleSheet, View } from 'react-native';
-import { RadioButton, Button, Card, Chip, Menu, Text, TextInput, ActivityIndicator } from 'react-native-paper';
-import { Slider } from '@miblanchard/react-native-slider';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useAuth } from '../../contexts/AuthContext';
-import { useAppTheme } from '../../hooks/useAppTheme';
-import { searchInterpreters } from '@/utils/helper';
+import { useState, useRef, useEffect } from "react";
+import { TouchableOpacity, Image, ScrollView, StyleSheet, View } from "react-native";
+import { RadioButton, Button, Card, Chip, Menu, Text, TextInput, ActivityIndicator } from "react-native-paper";
+import { Slider } from "@miblanchard/react-native-slider";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useAuth } from "../../contexts/AuthContext";
+import { useAppTheme } from "../../hooks/useAppTheme";
+import { getMinMaxDOB, searchInterpreters } from "@/utils/helper";
 
 export default function SearchScreen() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const [selectedGender, setSelectedGender] = useState('');
+  const [selectedGender, setSelectedGender] = useState("");
   // --- Slider ---
   const [priceRange, setPriceRange] = useState([0, 200]);
   const [ageRange, setAgeRange] = useState([25, 45]);
@@ -29,40 +29,39 @@ export default function SearchScreen() {
 
   const { isInterpreter } = useAuth();
 
-
   const theme = useAppTheme();
 
   // Mock interpreter data
   const interpreters = [
     {
       id: 1,
-      name: 'John Smith',
-      specialisation: 'Medical Interpretation',
+      name: "John Smith",
+      specialisation: "Medical Interpretation",
       rating: 4.8,
-      pricePerHour: 'RM 50',
-      gender: 'Male',
-      age: '30-35',
-      avatar: '/placeholder.svg?height=80&width=80',
+      pricePerHour: "RM 50",
+      gender: "Male",
+      age: "30-35",
+      avatar: "/placeholder.svg?height=80&width=80",
     },
     {
       id: 2,
-      name: 'Sarah Johnson',
-      specialisation: 'Legal Interpretation',
+      name: "Sarah Johnson",
+      specialisation: "Legal Interpretation",
       rating: 4.9,
-      pricePerHour: 'RM 60',
-      gender: 'Female',
-      age: '25-30',
-      avatar: '/placeholder.svg?height=80&width=80',
+      pricePerHour: "RM 60",
+      gender: "Female",
+      age: "25-30",
+      avatar: "/placeholder.svg?height=80&width=80",
     },
     {
       id: 3,
-      name: 'Mike Chen',
-      specialisation: 'Educational Interpretation',
+      name: "Mike Chen",
+      specialisation: "Educational Interpretation",
       rating: 4.7,
-      pricePerHour: 'RM 45',
-      gender: 'Male',
-      age: '35-40',
-      avatar: '/placeholder.svg?height=80&width=80',
+      pricePerHour: "RM 45",
+      gender: "Male",
+      age: "35-40",
+      avatar: "/placeholder.svg?height=80&width=80",
     },
   ];
 
@@ -70,19 +69,19 @@ export default function SearchScreen() {
   const requests = [
     {
       id: 1,
-      clientName: 'Alice Wong',
-      date: '20/05/2024',
-      time: '10:00 - 11:00',
-      type: 'Medical Appointment',
-      status: 'Pending',
+      clientName: "Alice Wong",
+      date: "20/05/2024",
+      time: "10:00 - 11:00",
+      type: "Medical Appointment",
+      status: "Pending",
     },
     {
       id: 2,
-      clientName: 'David Lee',
-      date: '22/05/2024',
-      time: '14:00 - 15:30',
-      type: 'Legal Consultation',
-      status: 'Pending',
+      clientName: "David Lee",
+      date: "22/05/2024",
+      time: "14:00 - 15:30",
+      type: "Legal Consultation",
+      status: "Pending",
     },
   ];
 
@@ -98,7 +97,7 @@ export default function SearchScreen() {
             <Card key={request.id} style={styles.requestCard}>
               <Card.Content>
                 <View style={styles.requestHeader}>
-                  <Image source={{ uri: '/placeholder.svg?height=50&width=50' }} style={styles.clientAvatar} />
+                  <Image source={{ uri: "/placeholder.svg?height=50&width=50" }} style={styles.clientAvatar} />
                   <View style={styles.requestInfo}>
                     <Text style={styles.clientName}>{request.clientName}</Text>
                     <Text style={styles.requestType}>{request.type}</Text>
@@ -224,9 +223,9 @@ export default function SearchScreen() {
             {[1, 2, 3, 4, 5].map((i) => (
               <TouchableOpacity key={i} onPress={() => setMinRating(i)}>
                 <MaterialCommunityIcons
-                  name={i <= minRating ? 'star' : 'star-outline'}
+                  name={i <= minRating ? "star" : "star-outline"}
                   size={32}
-                  color={i <= minRating ? '#f8d706db' : '#64748B'}
+                  color={i <= minRating ? "#f8d706db" : "#64748B"}
                 />
               </TouchableOpacity>
             ))}
@@ -237,7 +236,7 @@ export default function SearchScreen() {
           mode="contained"
           onPress={async () => {
             // Example search
-            const result = await searchInterpreters('oncology', 'english', 'Johor', 0, 31);
+            const result = await searchInterpreters("oncology", "english", "Johor", 0, 31);
             console.log(result);
           }}
           style={styles.searchButton}
@@ -293,32 +292,32 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   header: {
     padding: 20,
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     paddingTop: 60,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
+    fontWeight: "bold",
+    color: "#ffffff",
     marginBottom: 15,
   },
   searchInput: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   filtersSection: {
     padding: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     marginBottom: 10,
   },
   filtersTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 15,
-    color: '#333',
+    color: "#333",
   },
   filterInput: {
     marginBottom: 10,
@@ -328,15 +327,15 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 15,
-    color: '#333',
+    color: "#333",
   },
   interpreterCard: {
     marginBottom: 15,
   },
   interpreterHeader: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 15,
   },
   interpreterAvatar: {
@@ -350,43 +349,43 @@ const styles = StyleSheet.create({
   },
   interpreterName: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 5,
   },
   interpreterSpecialisation: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 5,
   },
   interpreterMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 10,
   },
   interpreterRating: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   interpreterPrice: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#2196F3',
+    fontWeight: "bold",
+    color: "#2196F3",
   },
   interpreterTags: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 5,
   },
   tag: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: "#E3F2FD",
     height: 25,
   },
   tagText: {
     fontSize: 12,
-    color: '#2196F3',
+    color: "#2196F3",
   },
   interpreterActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   profileButton: {
     flex: 0.48,
@@ -398,7 +397,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   requestHeader: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 15,
   },
   clientAvatar: {
@@ -412,75 +411,75 @@ const styles = StyleSheet.create({
   },
   clientName: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 2,
   },
   requestType: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 2,
   },
   requestDateTime: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   requestActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   actionButton: {
     flex: 0.48,
   },
   rejectButton: {
-    borderColor: '#F44336',
+    borderColor: "#F44336",
   },
 
   radioButtonContainer: {
     // Achieve horizontal arrangement
-    flexDirection: 'row',
+    flexDirection: "row",
     // Evenly distribute items with space around
-    justifyContent: 'space-around',
+    justifyContent: "space-around",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 
   sliderContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
 
   starContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
 
   filterLabel: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   filterValue: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   star: {
     fontSize: 18,
-    color: '#F59E0B',
+    color: "#F59E0B",
   },
   thumbContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   thumbHalo: {
     height: 40,
     width: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
-    position: 'absolute',
+    backgroundColor: "rgba(99, 102, 241, 0.2)",
+    position: "absolute",
   },
   thumbCore: {
     height: 20,
     width: 20,
     borderRadius: 10,
-    backgroundColor: '#000000ff',
+    backgroundColor: "#000000ff",
   },
   searchButton: {
     marginTop: 32,

@@ -1,25 +1,25 @@
-'use client';
+"use client";
 
-import { LANGUAGES, SPEC, SPECIALISATION, STATES } from '@/constants/data';
-import { useRouter } from 'expo-router';
-import { Timestamp } from 'firebase/firestore';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, Checkbox, Menu, TextInput } from 'react-native-paper';
-import DatePickerInput from '../../components/DatePickerInput';
-import { useAuth } from '../../contexts/AuthContext';
-import { useAppTheme } from '../../hooks/useAppTheme';
-import { showError, showSuccess, showValidationError } from '../../utils/alert';
-import { supabase } from '@/utils/supabase';
+import { LANGUAGES, SPEC, SPECIALISATION, STATES } from "@/constants/data";
+import { useRouter } from "expo-router";
+import { Timestamp } from "firebase/firestore";
+import { useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Button, Card, Checkbox, Menu, TextInput } from "react-native-paper";
+import DatePickerInput from "../../components/DatePickerInput";
+import { useAuth } from "../../contexts/AuthContext";
+import { useAppTheme } from "../../hooks/useAppTheme";
+import { showError, showSuccess, showValidationError } from "../../utils/alert";
+import { supabase } from "@/utils/supabase";
 
 export default function InterpreterFormScreen() {
-  const { session, signIn } = useAuth();
+  const { session } = useAuth();
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    dateOfBirth: '',
-    gender: '',
-    location: '',
+    name: "",
+    email: "",
+    dateOfBirth: "",
+    gender: "",
+    location: "",
     ...SPEC.reduce((acc, spec) => {
       acc[spec] = false;
       return acc;
@@ -52,31 +52,31 @@ export default function InterpreterFormScreen() {
   const handleSignUp = async () => {
     const validateForm = () => {
       if (!formData.name.trim()) {
-        showValidationError('Please enter your name');
+        showValidationError("Please enter your name");
         return false;
       }
       if (!formData.dateOfBirth) {
-        showValidationError('Please select your date of birth');
+        showValidationError("Please select your date of birth");
         return false;
       }
       if (!formData.gender) {
-        showValidationError('Please select your gender');
+        showValidationError("Please select your gender");
         return false;
       }
       if (!formData.location) {
-        showValidationError('Please select your state');
+        showValidationError("Please select your state");
         return false;
       }
 
       const hasSpecialisation = SPEC.some((spec) => formData[spec as keyof typeof formData]);
       if (!hasSpecialisation) {
-        showValidationError('Please select at least one specialisation');
+        showValidationError("Please select at least one specialisation");
         return false;
       }
 
       const hasLanguage = LANGUAGES.some((lang) => formData[lang.toLowerCase() as keyof typeof formData]);
       if (!hasLanguage) {
-        showValidationError('Please select at least one language');
+        showValidationError("Please select at least one language");
         return false;
       }
 
@@ -84,7 +84,7 @@ export default function InterpreterFormScreen() {
     };
 
     const parseDate = (dateString: string) => {
-      const [day, month, year] = dateString.split('/').map((num) => parseInt(num, 10));
+      const [day, month, year] = dateString.split("/").map((num) => parseInt(num, 10));
       return new Date(year, month - 1, day);
     };
 
@@ -100,7 +100,7 @@ export default function InterpreterFormScreen() {
         id: session!.user.id,
         name: formData.name,
         email: session!.user.email,
-        dateOfBirth: parseDate(formData.dateOfBirth).toISOString(),
+        date_of_birth: parseDate(formData.dateOfBirth).toISOString(),
         gender: formData.gender,
         location: formData.location,
         photo: session!.user.user_metadata.avatar_url,
@@ -119,16 +119,16 @@ export default function InterpreterFormScreen() {
         }, {} as Record<string, boolean>),
       };
 
-      const { error } = await supabase.from('profile').insert(profileData);
+      const { error } = await supabase.from("profile").insert(profileData);
       if (error) throw error;
 
-      const { error: interpreterError } = await supabase.from('interpreter_profile').insert(interpreterProfileData);
+      const { error: interpreterError } = await supabase.from("interpreter_profile").insert(interpreterProfileData);
       if (interpreterError) throw interpreterError;
 
-      showSuccess('Account created successfully!');
-      router.replace('/(tabs)');
+      showSuccess("Account created successfully!");
+      router.replace("/(tabs)");
     } catch (error: any) {
-      showError(error.message || 'Failed to create account with Google. Please try again.');
+      showError(error.message || "Failed to create account with Google. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -174,14 +174,14 @@ export default function InterpreterFormScreen() {
       >
         <Menu.Item
           onPress={() => {
-            setFormData({ ...formData, gender: 'Male' });
+            setFormData({ ...formData, gender: "Male" });
             setGenderMenuVisible(false);
           }}
           title="Male"
         />
         <Menu.Item
           onPress={() => {
-            setFormData({ ...formData, gender: 'Female' });
+            setFormData({ ...formData, gender: "Female" });
             setGenderMenuVisible(false);
           }}
           title="Female"
@@ -227,7 +227,7 @@ export default function InterpreterFormScreen() {
             {SPECIALISATION.map((specialisation, index) => (
               <View key={SPEC[index]} style={styles.checkboxItem}>
                 <Checkbox
-                  status={formData[SPEC[index] as keyof typeof formData] ? 'checked' : 'unchecked'}
+                  status={formData[SPEC[index] as keyof typeof formData] ? "checked" : "unchecked"}
                   onPress={() => toggleSpecialisation(SPEC[index])}
                 />
                 <Text style={styles.checkboxLabel}>{specialisation}</Text>
@@ -248,7 +248,7 @@ export default function InterpreterFormScreen() {
               return (
                 <View key={lower} style={styles.checkboxItem}>
                   <Checkbox
-                    status={formData[lower as keyof typeof formData] ? 'checked' : 'unchecked'}
+                    status={formData[lower as keyof typeof formData] ? "checked" : "unchecked"}
                     onPress={() => toggleLanguage(lower)}
                   />
                   <Text style={styles.checkboxLabel}>{language}</Text>
@@ -267,7 +267,7 @@ export default function InterpreterFormScreen() {
         loading={isSubmitting}
         disabled={isSubmitting}
       >
-        {isSubmitting ? 'Creating Account...' : 'Continue with Google'}
+        {isSubmitting ? "Creating Account..." : "Continue with Google"}
       </Button>
     </ScrollView>
   );
@@ -277,42 +277,42 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 10,
-    color: '#2196F3',
+    color: "#2196F3",
     marginTop: 40,
   },
   subtitle: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 30,
-    color: '#666',
+    color: "#666",
   },
   input: {
     marginBottom: 15,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginTop: 20,
     marginBottom: 5,
-    color: '#1e293b',
+    color: "#1e293b",
   },
   sectionSubtitle: {
     fontSize: 14,
     marginBottom: 15,
-    color: '#64748b',
+    color: "#64748b",
   },
   checkboxCard: {
     marginBottom: 20,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: "#f1f5f9",
     // elevation: 0,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 0,
@@ -320,30 +320,30 @@ const styles = StyleSheet.create({
     // shadowOpacity: 0.2,
     // shadowRadius: 1.41,
     borderRadius: 8,
-    borderColor: '#e2e8f0',
+    borderColor: "#e2e8f0",
     borderWidth: 0.2,
   },
   checkboxGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
   },
   checkboxContainer: {
     marginBottom: 20,
   },
   checkboxItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
-    width: '48%',
+    width: "48%",
     minWidth: 150,
   },
   checkboxLabel: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#333',
+    color: "#333",
     flex: 1,
-    flexWrap: 'wrap',
+    flexWrap: "wrap",
   },
   submitButton: {
     marginTop: 20,

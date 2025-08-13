@@ -64,7 +64,7 @@ export default function DeafUserFormScreen() {
         id: session!.user.id,
         name: formData.name,
         email: session!.user.email,
-        dateOfBirth: parseDate(formData.dateOfBirth).toISOString(),
+        date_of_birth: parseDate(formData.dateOfBirth).toISOString(),
         gender: formData.gender,
         location: formData.location,
         photo: session!.user.user_metadata.avatar_url,
