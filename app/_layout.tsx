@@ -1,57 +1,106 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
+// app/_layout.tsx
+import React, { useEffect } from 'react';
 import { Stack, router } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
 import { PaperProvider } from 'react-native-paper';
-import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { theme } from '@/theme/theme';
+import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { useAppTheme } from '../hooks/useAppTheme';
 
+/**
+ * Navigation Handler Component
+ * Handles automatic navigation based on authentication state
+ */
 function NavigationHandler() {
-  const { authState, userProfile } = useAuth();
+  const { authState, userProfile, user } = useAuth();
 
   useEffect(() => {
-    // Add delay to ensure root layout is mounted
     const handleNavigation = () => {
-      if (!authState.isLoading && !authState.isAuthenticated) {
-        router.replace("/auth");
+      console.log('Navigation check:', {
+        isLoading: authState.isLoading,
+        isAuthenticated: authState.isAuthenticated,
+        hasUser: !!user,
+        hasProfile: !!userProfile
+      });
+
+      // Only redirect when loading is complete
+      if (!authState.isLoading) {
+        if (!authState.isAuthenticated || !user) {
+          // Not authenticated, redirect to auth
+          console.log('Redirecting to auth - not authenticated');
+          router.replace("/auth");
+        } else if (authState.isAuthenticated && user && userProfile) {
+          // Fully authenticated with profile, redirect to main app
+          console.log('User authenticated, ensuring on main tabs');
+          router.replace("/(tabs)");
+        }
+        // If authenticated but no profile, stay on current screen
+        // (might be in profile setup process)
       }
     };
 
-    const timeoutId = setTimeout(handleNavigation, 1);
+    // Small delay to ensure proper mounting
+    const timeoutId = setTimeout(handleNavigation, 100);
     return () => clearTimeout(timeoutId);
-  }, [authState.isAuthenticated, authState.isLoading]);
+  }, [authState.isAuthenticated, authState.isLoading, user, userProfile]);
 
   return null;
 }
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
+/**
+ * Root Layout with Auth Provider
+ */
+function RootLayoutWithAuth() {
+  const theme = useAppTheme();
 
   return (
-    <PaperProvider theme={theme}>
-      <AuthProvider>
-        <NavigationHandler />
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="auth" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
+    <SafeAreaProvider>
+      <PaperProvider theme={theme}>
+        <StatusBar style="auto" />
+        <AuthProvider>
+          <NavigationHandler />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen 
+              name="index" 
+              options={{ headerShown: false }} 
+            />
+            <Stack.Screen 
+              name="auth" 
+              options={{ 
+                headerShown: false,
+                gestureEnabled: false // Prevent swipe back on auth screen
+              }} 
+            />
+            <Stack.Screen 
+              name="(tabs)" 
+              options={{ 
+                headerShown: false,
+                gestureEnabled: false // Prevent swipe back from main app
+              }} 
+            />
+            <Stack.Screen 
+              name="videocall" 
+              options={{ 
+                headerShown: true,
+                title: 'Video Call',
+                presentation: 'fullScreenModal'
+              }} 
+            />
+            <Stack.Screen 
+              name="+not-found" 
+              options={{ 
+                headerShown: true,
+                title: 'Page Not Found'
+              }} 
+            />
           </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </AuthProvider>
-    </PaperProvider>
+        </AuthProvider>
+      </PaperProvider>
+    </SafeAreaProvider>
   );
+}
+
+export default function RootLayout() {
+  return <RootLayoutWithAuth />;
 }

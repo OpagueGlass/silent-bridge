@@ -1,13 +1,11 @@
-// Import AsyncStorage polyfill first
+// utils/firebase.js
 import './asyncStorage';
 
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -20,15 +18,36 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig)
+const app = initializeApp(firebaseConfig);
 
+if (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
+  GoogleSignin.configure({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    scopes: [
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/calendar.events',
+      'https://www.googleapis.com/auth/userinfo.profile',
+      'https://www.googleapis.com/auth/userinfo.email'
+    ],
+    offlineAccess: true,
+    forceCodeForRefreshToken: true,
+  });
+} else {
+  console.warn('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID not found in environment variables');
+}
 
-// Initialize Firebase services
-// initializeAuth(app, {
-//   persistence: getReactNativePersistence(ReactNativeAsyncStorage),
-// });
-export const auth = getAuth(app)
-export const db = getFirestore(app)
-export const storage = getStorage(app)
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);
 
-export default app
+export const getCurrentUserToken = async () => {
+  try {
+    const tokens = await GoogleSignin.getTokens();
+    return tokens.accessToken;
+  } catch (error) {
+    console.error('Failed to get user token:', error);
+    throw error;
+  }
+};
+
+export default app;
