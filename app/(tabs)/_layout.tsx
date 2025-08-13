@@ -46,6 +46,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <MaterialIcons name="chat" size={size} color={color} />,
         }}
       />
+      <Tabs.Screen 
+        name="sign" 
+          options={{ 
+            title: "Signs",
+            tabBarIcon: ({ color, size }) => <MaterialIcons name="sign-language" size={size} color={color} />,
+          }} 
+      /> 
       <Tabs.Screen
         name="settings"
         options={{
