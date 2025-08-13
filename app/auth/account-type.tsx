@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Button, RadioButton } from 'react-native-paper';
-import { useRouter } from 'expo-router';
+import { useState } from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { Button, RadioButton } from "react-native-paper";
+import { useRouter } from "expo-router";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AccountTypeScreen() {
-  const [accountType, setAccountType] = useState('');
+  const [accountType, setAccountType] = useState("");
   const router = useRouter();
-
   const handleContinue = () => {
-    if (accountType === 'deaf_user') {
-      router.push('/auth/deaf-user-form');
-    } else if (accountType === 'interpreter') {
-      router.push('/auth/interpreter-form');
+    if (accountType === "deaf_user") {
+      router.push("/auth/deaf-user-form");
+    } else if (accountType === "interpreter") {
+      router.push("/auth/interpreter-form");
     }
   };
 
@@ -46,28 +46,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    justifyContent: 'center',
-    backgroundColor: '#ffffff',
+    justifyContent: "center",
+    backgroundColor: "#ffffff",
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 10,
-    color: '#2196F3',
+    color: "#2196F3",
   },
   subtitle: {
     fontSize: 18,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 40,
-    color: '#666',
+    color: "#666",
   },
   radioContainer: {
     marginBottom: 40,
   },
   radioItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 20,
     paddingVertical: 10,
   },

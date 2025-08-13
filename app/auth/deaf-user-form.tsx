@@ -2,7 +2,6 @@
 
 import { STATES } from '@/constants/data';
 import { useRouter } from 'expo-router';
-import { Timestamp } from 'firebase/firestore';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Menu, Text, TextInput } from 'react-native-paper';
@@ -10,6 +9,7 @@ import DatePickerInput from '../../components/DatePickerInput';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { showError, showSuccess, showValidationError } from '../../utils/alert';
+import { supabase } from '@/utils/supabase';
 
 export default function DeafUserFormScreen() {
   const [formData, setFormData] = useState({
@@ -24,9 +24,9 @@ export default function DeafUserFormScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const theme = useAppTheme();
-  const { createDeafUserProfile } = useAuth();
+  const { session } = useAuth();
 
-  const signUp = async () => {
+  const handleSignUp = async () => {
     const validateForm = () => {
       if (!formData.name.trim()) {
         showValidationError('Please enter your name');
@@ -54,19 +54,24 @@ export default function DeafUserFormScreen() {
 
     try {
       setIsSubmitting(true);
+      
       if (!validateForm()) {
         setIsSubmitting(false);
         return;
       }
 
       const profileData = {
+        id: session!.user.id,
         name: formData.name,
-        dateOfBirth: Timestamp.fromDate(parseDate(formData.dateOfBirth)),
+        email: session!.user.email,
+        date_of_birth: parseDate(formData.dateOfBirth).toISOString(),
         gender: formData.gender,
         location: formData.location,
+        photo: session!.user.user_metadata.avatar_url,
       };
 
-      await createDeafUserProfile(profileData);
+      const { error } = await supabase.from('profile').insert(profileData);
+      if (error) throw error
       showSuccess('Account created successfully!');
       router.replace('/(tabs)');
     } catch (error: any) {
@@ -164,7 +169,7 @@ export default function DeafUserFormScreen() {
       </Menu>
       <Button
         mode="contained"
-        onPress={signUp}
+        onPress={handleSignUp}
         style={styles.submitButton}
         icon="google"
         loading={isSubmitting}

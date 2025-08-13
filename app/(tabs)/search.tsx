@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
-import { useState, useRef } from "react"
-import { TouchableOpacity, Image, ScrollView, StyleSheet, View } from "react-native"
-import { RadioButton, Button, Card, Chip, Menu, Text, TextInput } from "react-native-paper"
+import { useState, useRef, useEffect } from "react";
+import { TouchableOpacity, Image, ScrollView, StyleSheet, View } from "react-native";
+import { RadioButton, Button, Card, Chip, Menu, Text, TextInput, ActivityIndicator } from "react-native-paper";
 import { Slider } from "@miblanchard/react-native-slider";
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useAuth } from "../../contexts/AuthContext"
-import { useAppTheme } from "../../hooks/useAppTheme"
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useAuth } from "../../contexts/AuthContext";
+import { useAppTheme } from "../../hooks/useAppTheme";
+import { getMinMaxDOB, searchInterpreters } from "@/utils/helper";
 
 export default function SearchScreen() {
-  const { userProfile, isInterpreter } = useAuth()
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const [selectedGender, setSelectedGender] = useState("")
+  const [selectedGender, setSelectedGender] = useState("");
   // --- Slider ---
   const [priceRange, setPriceRange] = useState([0, 200]);
   const [ageRange, setAgeRange] = useState([25, 45]);
@@ -27,26 +27,9 @@ export default function SearchScreen() {
   const [displayedInterpreters, setDisplayedInterpreters] = useState<typeof interpreters>([]);
   const [hasSearched, setHasSearched] = useState(false);
 
-  const handleSearch = () => {
-    const results = interpreters.filter((interpreter) => {
-      const genderMatch = selectedGender === "" || interpreter.gender === selectedGender;
+  const { isInterpreter } = useAuth();
 
-      const price = Number(interpreter.pricePerHour.replace(/[^\d.]/g, ''));
-      const priceMatch = price >= priceRange[0] && price <= priceRange[1];
-
-      const [minAge, maxAge] = interpreter.age.split('-').map(Number);
-      const ageMatch = maxAge >= ageRange[0] && minAge <= ageRange[1];
-
-      const ratingMatch = interpreter.rating >= minRating;
-
-      return genderMatch && priceMatch && ageMatch && ratingMatch;
-    });
-
-    setDisplayedInterpreters(results);
-    setHasSearched(true);
-  };
-
-  const theme = useAppTheme()
+  const theme = useAppTheme();
 
   // Mock interpreter data
   const interpreters = [
@@ -80,7 +63,7 @@ export default function SearchScreen() {
       age: "35-40",
       avatar: "/placeholder.svg?height=80&width=80",
     },
-  ]
+  ];
 
   // Mock requests for interpreters
   const requests = [
@@ -100,7 +83,7 @@ export default function SearchScreen() {
       type: "Legal Consultation",
       status: "Pending",
     },
-  ]
+  ];
 
   if (isInterpreter) {
     return (
@@ -137,7 +120,7 @@ export default function SearchScreen() {
           ))}
         </View>
       </ScrollView>
-    )
+    );
   }
 
   return (
@@ -159,10 +142,7 @@ export default function SearchScreen() {
       {/* --- GENDER --- */}
       <View style={styles.section}>
         <Text style={styles.filterLabel}>Gender</Text>
-        <RadioButton.Group
-          value={selectedGender}
-          onValueChange={newValue => setSelectedGender(newValue)}
-        >
+        <RadioButton.Group value={selectedGender} onValueChange={(newValue) => setSelectedGender(newValue)}>
           <View style={styles.radioButtonContainer}>
             <RadioButton.Item label="Male" value="Male" />
             <RadioButton.Item label="Female" value="Female" />
@@ -172,22 +152,24 @@ export default function SearchScreen() {
         {/* --- PRICE --- */}
         <View style={styles.sliderContainer}>
           <Text style={styles.filterLabel}>Price per hour</Text>
-          <Text style={styles.filterValue}>RM{priceRange[0]} - RM{priceRange[1]}</Text>
+          <Text style={styles.filterValue}>
+            RM{priceRange[0]} - RM{priceRange[1]}
+          </Text>
         </View>
         <Slider
           value={priceRange}
-          onValueChange={newRange => {
+          onValueChange={(newRange) => {
             if (newRange[0] !== priceRangeRef.current[0]) {
-              setActivePriceThumb(0); 
+              setActivePriceThumb(0);
             } else if (newRange[1] !== priceRangeRef.current[1]) {
-              setActivePriceThumb(1); 
+              setActivePriceThumb(1);
             }
             priceRangeRef.current = newRange;
             // Achieve real-time change on the value displayed
-            setPriceRange(newRange); 
-          }}   
-          renderThumbComponent={thumbIndex => {
-            const isActive = activePriceThumb === thumbIndex; 
+            setPriceRange(newRange);
+          }}
+          renderThumbComponent={(thumbIndex) => {
+            const isActive = activePriceThumb === thumbIndex;
             return (
               <View style={styles.thumbContainer}>
                 {isActive && <View style={styles.thumbHalo} />}
@@ -195,20 +177,22 @@ export default function SearchScreen() {
               </View>
             );
           }}
-          onSlidingComplete={() => setActivePriceThumb(-1)}     
-          minimumValue={0}   
-          maximumValue={200} 
-          step={5}    
+          onSlidingComplete={() => setActivePriceThumb(-1)}
+          minimumValue={0}
+          maximumValue={200}
+          step={5}
         />
 
         {/* --- AGE --- */}
         <View style={styles.sliderContainer}>
           <Text style={styles.filterLabel}>Age</Text>
-          <Text style={styles.filterValue}>{ageRange[0]} - {ageRange[1]}</Text>
+          <Text style={styles.filterValue}>
+            {ageRange[0]} - {ageRange[1]}
+          </Text>
         </View>
         <Slider
           value={ageRange}
-          onValueChange={newRange => {
+          onValueChange={(newRange) => {
             if (newRange[0] !== ageRangeRef.current[0]) {
               setActiveAgeThumb(0);
             } else if (newRange[1] !== ageRangeRef.current[1]) {
@@ -217,8 +201,8 @@ export default function SearchScreen() {
             ageRangeRef.current = newRange;
             setAgeRange(newRange);
           }}
-          renderThumbComponent={thumbIndex => {
-            const isActive = activeAgeThumb === thumbIndex; 
+          renderThumbComponent={(thumbIndex) => {
+            const isActive = activeAgeThumb === thumbIndex;
             return (
               <View style={styles.thumbContainer}>
                 {isActive && <View style={styles.thumbHalo} />}
@@ -237,14 +221,11 @@ export default function SearchScreen() {
           <Text style={styles.filterLabel}>Ratings</Text>
           <View style={styles.starContainer}>
             {[1, 2, 3, 4, 5].map((i) => (
-              <TouchableOpacity
-                key={i} 
-                onPress={() => setMinRating(i)} 
-              >
+              <TouchableOpacity key={i} onPress={() => setMinRating(i)}>
                 <MaterialCommunityIcons
-                  name={i <= minRating ? 'star' : 'star-outline'}
+                  name={i <= minRating ? "star" : "star-outline"}
                   size={32}
-                  color={i <= minRating ? '#f8d706db' : '#64748B'}
+                  color={i <= minRating ? "#f8d706db" : "#64748B"}
                 />
               </TouchableOpacity>
             ))}
@@ -252,17 +233,20 @@ export default function SearchScreen() {
         </View>
 
         <Button
-          mode="contained" 
-          onPress={() => console.log("Search button pressed!")} 
-          style={styles.searchButton} 
+          mode="contained"
+          onPress={async () => {
+            // Example search
+            const result = await searchInterpreters("oncology", "english", "Johor", 0, 31);
+            console.log(result);
+          }}
+          style={styles.searchButton}
           buttonColor="#E0E0E0"
-          textColor="#000000" 
+          textColor="#000000"
         >
           Search
         </Button>
-
       </View>
-      
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Top 5 Matches</Text>
 
@@ -302,7 +286,7 @@ export default function SearchScreen() {
         ))}
       </View>
     </ScrollView>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -452,53 +436,53 @@ const styles = StyleSheet.create({
 
   radioButtonContainer: {
     // Achieve horizontal arrangement
-    flexDirection: 'row', 
+    flexDirection: "row",
     // Evenly distribute items with space around
-    justifyContent: 'space-around',
+    justifyContent: "space-around",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 
   sliderContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
 
   starContainer: {
-    flexDirection: 'row', 
+    flexDirection: "row",
   },
 
   filterLabel: {
     fontSize: 16,
-    fontWeight: 'bold'
+    fontWeight: "bold",
   },
   filterValue: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   star: {
     fontSize: 18,
-    color: '#F59E0B', 
+    color: "#F59E0B",
   },
   thumbContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
-  thumbHalo: { 
-    height: 40, 
+  thumbHalo: {
+    height: 40,
     width: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
-    position: 'absolute', 
+    backgroundColor: "rgba(99, 102, 241, 0.2)",
+    position: "absolute",
   },
-  thumbCore: { 
+  thumbCore: {
     height: 20,
     width: 20,
     borderRadius: 10,
-    backgroundColor: '#000000ff',
+    backgroundColor: "#000000ff",
   },
   searchButton: {
-    marginTop: 32, 
-    paddingVertical: 6, 
+    marginTop: 32,
+    paddingVertical: 6,
   },
-})
+});

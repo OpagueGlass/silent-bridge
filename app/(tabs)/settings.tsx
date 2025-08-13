@@ -1,29 +1,29 @@
-"use client"
+"use client";
 
-import { useRouter } from "expo-router"
-import React from "react"
-import { Platform, ScrollView, StyleSheet, Text, View } from "react-native"
-import { Button, Card, List, Switch } from "react-native-paper"
-import { useAuth } from "../../contexts/AuthContext"
-import { showConfirmAlert } from "../../utils/alert"
+import { useRouter } from "expo-router";
+import { useState, useEffect } from "react";
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Button, Card, List, Switch } from "react-native-paper";
+import { useAuth } from "../../contexts/AuthContext";
+import { showConfirmAlert } from "../../utils/alert";
+import { useAppTheme } from "../../hooks/useAppTheme";
 
 export default function SettingsScreen() {
-  const { userProfile, handleSignOut, isInterpreter } = useAuth()
-  const router = useRouter()
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true)
-  const [emailNotifications, setEmailNotifications] = React.useState(true)
+  const router = useRouter();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const { profile, isInterpreter, signOut } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const theme = useAppTheme();
 
-  const signOut = async () => {
-    const confirmed = await showConfirmAlert(
-      "Sign Out",
-      "Are you sure you want to sign out?"
-    )
-    
+  const handleSignOut = async () => {
+    const confirmed = await showConfirmAlert("Sign Out", "Are you sure you want to sign out?");
+
     if (confirmed) {
-      await handleSignOut()
-      router.replace("/auth")
+      await signOut();
+      router.replace("/auth");
     }
-  }
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -34,11 +34,9 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Card style={styles.profileCard}>
           <Card.Content>
-            <Text style={styles.profileName}>{userProfile?.name}</Text>
-            <Text style={styles.profileEmail}>{userProfile?.email}</Text>
-            <Text style={styles.profileType}>
-              {isInterpreter ? "Interpreter" : "Deaf User"}
-            </Text>
+            <Text style={styles.profileName}>{profile?.name}</Text>
+            <Text style={styles.profileEmail}>{profile?.email}</Text>
+            <Text style={styles.profileType}>{isInterpreter ? "Interpreter" : "Deaf User"}</Text>
             <Button
               mode="outlined"
               style={styles.editProfileButton}
@@ -131,7 +129,7 @@ export default function SettingsScreen() {
       )}
 
       <View style={styles.section}>
-        <Button mode="contained" onPress={signOut} style={styles.signOutButton} buttonColor="#F44336">
+        <Button mode="contained" onPress={handleSignOut} style={styles.signOutButton} buttonColor="#F44336">
           Sign Out
         </Button>
       </View>
@@ -140,7 +138,7 @@ export default function SettingsScreen() {
         <Text style={styles.versionText}>Version 1.0.0</Text>
       </View>
     </ScrollView>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -201,4 +199,4 @@ const styles = StyleSheet.create({
     color: "#666",
     fontSize: 14,
   },
-})
+});
