@@ -18,6 +18,7 @@ interface AuthContextType {
   session: Session | null;
   authState: AuthState;
   profile: Profile | null;
+  providerToken: string | null;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
   loadProfile: (user: User | null) => Promise<boolean>;
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [providerToken, setProviderToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isInterpreter, setIsInterpreter] = useState<boolean>(false);
   const [authState, setAuthState] = useState<AuthState>({
@@ -42,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
+      setProviderToken(session?.provider_token || null);
       if (session?.user) {
         await loadProfile(session.user);
       }
@@ -52,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      setProviderToken(session?.provider_token || null);
     });
 
     return () => subscription.unsubscribe();
@@ -61,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
+        scopes: "https://www.googleapis.com/auth/calendar.events",
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
@@ -101,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     authState,
     session,
     profile,
+    providerToken,
     signIn,
     signOut,
     loadProfile,
