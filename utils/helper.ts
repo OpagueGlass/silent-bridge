@@ -43,7 +43,7 @@ export const searchInterpreters = async (
     .gt("profile.date_of_birth", minDOB.toISOString())
     .lt("profile.date_of_birth", maxDOB.toISOString())
     .not("profile", "is", null)
-    .limit(5)
+    .limit(5);
 
   if (gender) {
     query = query.order("profile.gender", { ascending: gender === "Female" });
@@ -51,4 +51,32 @@ export const searchInterpreters = async (
 
   const { data } = await query;
   return data;
+};
+
+export const getMeetLink = async (providerToken: string) => {
+  // Use providerToken to create a Google Meet link via Google Calendar API
+  const event = {
+    summary: "Meeting Title",
+    start: { dateTime: "2025-08-19T10:00:00+08:00" },
+    end: { dateTime: "2025-08-19T11:00:00+08:00" },
+    conferenceData: {
+      createRequest: { requestId: "unique-request-id" },
+    },
+  };
+
+  const response = await fetch(
+    "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${providerToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(event),
+    }
+  );
+
+  const result = await response.json();
+  const meetLink = result.conferenceData?.entryPoints?.find((ep: any) => ep.entryPointType === "video")?.uri;
+  console.log("Google Meet Link:", meetLink);
 };
