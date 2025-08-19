@@ -2,7 +2,6 @@
 
 import { LANGUAGES, SPEC, SPECIALISATION, STATES } from "@/constants/data";
 import { useRouter } from "expo-router";
-import { Timestamp } from "firebase/firestore";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button, Card, Checkbox, Menu, TextInput } from "react-native-paper";
@@ -20,34 +19,14 @@ export default function InterpreterFormScreen() {
     dateOfBirth: "",
     gender: "",
     location: "",
-    ...SPEC.reduce((acc, spec) => {
-      acc[spec] = false;
-      return acc;
-    }, {} as Record<string, boolean>),
-
-    ...LANGUAGES.reduce((acc, lang) => {
-      acc[lang.toLowerCase()] = false;
-      return acc;
-    }, {} as Record<string, boolean>),
+    specialisations: SPEC.map((_) => false),
+    languages: LANGUAGES.map((_) => false),
   });
   const [genderMenuVisible, setGenderMenuVisible] = useState(false);
   const [stateMenuVisible, setStateMenuVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const theme = useAppTheme();
-  const toggleSpecialisation = (specialisation: string) => {
-    setFormData({
-      ...formData,
-      [specialisation]: !formData[specialisation as keyof typeof formData],
-    });
-  };
-
-  const toggleLanguage = (language: string) => {
-    setFormData({
-      ...formData,
-      [language]: !formData[language as keyof typeof formData],
-    });
-  };
 
   const handleSignUp = async () => {
     const validateForm = () => {
@@ -68,14 +47,12 @@ export default function InterpreterFormScreen() {
         return false;
       }
 
-      const hasSpecialisation = SPEC.some((spec) => formData[spec as keyof typeof formData]);
-      if (!hasSpecialisation) {
+      if (!formData.specialisations.some((spec) => spec)) {
         showValidationError("Please select at least one specialisation");
         return false;
       }
 
-      const hasLanguage = LANGUAGES.some((lang) => formData[lang.toLowerCase() as keyof typeof formData]);
-      if (!hasLanguage) {
+      if (!formData.languages.some((lang) => lang)) {
         showValidationError("Please select at least one language");
         return false;
       }
@@ -108,16 +85,29 @@ export default function InterpreterFormScreen() {
 
       const interpreterProfileData = {
         id: session!.user.id,
-        ...SPEC.reduce((acc, spec) => {
-          acc[spec] = Boolean(formData[spec as keyof typeof formData]);
-          return acc;
-        }, {} as Record<string, boolean>),
-
-        ...LANGUAGES.reduce((acc, lang) => {
-          acc[lang.toLowerCase()] = Boolean(formData[lang.toLowerCase() as keyof typeof formData]);
-          return acc;
-        }, {} as Record<string, boolean>),
       };
+
+      const interpreterLanguageData = formData.languages
+        .map((lang, index) => {
+          if (lang) {
+            return {
+              interpreter_id: session!.user.id,
+              language_id: index + 1,
+            };
+          }
+        })
+        .filter(Boolean);
+
+      const interpreterSpecialisationData = formData.specialisations
+        .map((spec, index) => {
+          if (spec) {
+            return {
+              interpreter_id: session!.user.id,
+              specialisation_id: index + 1,
+            };
+          }
+        })
+        .filter(Boolean);
 
       const { error } = await supabase.from("profile").insert(profileData);
       if (error) throw error;
@@ -125,8 +115,17 @@ export default function InterpreterFormScreen() {
       const { error: interpreterError } = await supabase.from("interpreter_profile").insert(interpreterProfileData);
       if (interpreterError) throw interpreterError;
 
+      const { error: languageError } = await supabase.from("interpreter_language").insert(interpreterLanguageData);
+
+      if (languageError) throw languageError;
+
+      const { error: specialisationError } = await supabase
+        .from("interpreter_specialisation")
+        .insert(interpreterSpecialisationData);
+      if (specialisationError) throw specialisationError;
+
       showSuccess("Account created successfully!");
-      router.replace("/(tabs)");
+      router.replace("/auth/callback");
     } catch (error: any) {
       showError(error.message || "Failed to create account with Google. Please try again.");
     } finally {
@@ -227,8 +226,11 @@ export default function InterpreterFormScreen() {
             {SPECIALISATION.map((specialisation, index) => (
               <View key={SPEC[index]} style={styles.checkboxItem}>
                 <Checkbox
-                  status={formData[SPEC[index] as keyof typeof formData] ? "checked" : "unchecked"}
-                  onPress={() => toggleSpecialisation(SPEC[index])}
+                  status={formData.specialisations[index] ? "checked" : "unchecked"}
+                  onPress={() => {
+                    formData.specialisations[index] = !formData.specialisations[index];
+                    setFormData({ ...formData });
+                  }}
                 />
                 <Text style={styles.checkboxLabel}>{specialisation}</Text>
               </View>
@@ -243,13 +245,16 @@ export default function InterpreterFormScreen() {
           <Text style={styles.sectionTitle}>Languages</Text>
           <Text style={styles.sectionSubtitle}>Select all that apply</Text>
           <View style={styles.checkboxGrid}>
-            {LANGUAGES.map((language) => {
+            {LANGUAGES.map((language, index) => {
               const lower = language.toLowerCase();
               return (
                 <View key={lower} style={styles.checkboxItem}>
                   <Checkbox
-                    status={formData[lower as keyof typeof formData] ? "checked" : "unchecked"}
-                    onPress={() => toggleLanguage(lower)}
+                    status={formData.languages[index] ? "checked" : "unchecked"}
+                    onPress={() => {
+                      formData.languages[index] = !formData.languages[index];
+                      setFormData({ ...formData });
+                    }}
                   />
                   <Text style={styles.checkboxLabel}>{language}</Text>
                 </View>

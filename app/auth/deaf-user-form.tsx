@@ -73,7 +73,7 @@ export default function DeafUserFormScreen() {
       const { error } = await supabase.from('profile').insert(profileData);
       if (error) throw error
       showSuccess('Account created successfully!');
-      router.replace('/(tabs)');
+      router.replace('/auth/callback');
     } catch (error: any) {
       showError(error.message || 'Failed to create account with Google. Please try again.');
     } finally {
