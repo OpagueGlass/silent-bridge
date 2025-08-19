@@ -56,21 +56,6 @@ export default function LoginScreen() {
         >
           {authState.isLoading ? "Signing in..." : "Continue with Google"}
         </Button>
-
-        {/* Register Section */}
-        <View style={styles.registerSection}>
-          <Text variant="bodyMedium" style={[styles.registerText, { color: theme.colors.onSurfaceVariant }]}>
-            New to Silent Bridge?
-          </Text>
-          <Button
-            mode="text"
-            onPress={() => router.push("/auth/account-type")}
-            style={styles.registerButton}
-            textColor={theme.colors.primary}
-          >
-            Create Account
-          </Button>
-        </View>
       </View>
     </View>
   );

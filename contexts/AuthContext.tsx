@@ -84,6 +84,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadProfile = async (user: User | null): Promise<boolean> => {
     if (user) {
       const { data: profile } = await supabase.from("profile").select("*").eq("id", user.id).maybeSingle();
+      if (!profile) {
+        setProfile(null);
+        return false;
+      }
       const { dateOfBirth, ...rest } = profile;
       const ageRange = getAgeRangeFromDOB(dateOfBirth);
       setProfile({ ...rest, ageRange });
