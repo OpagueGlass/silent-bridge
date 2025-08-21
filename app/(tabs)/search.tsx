@@ -16,6 +16,7 @@ import {
   Text,
   TextInput,
   MD3Theme,
+  Menu
 } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
@@ -23,19 +24,41 @@ import { useRouter } from "expo-router";
 import DatePickerInput from "../../components/DatePickerInput";
 import TimePickerInput from "../../components/TimePickerInput";
 import { interpreters } from "../data/mockData";
+import UserProfileModal from '../../components/UserProfileModal';
 
 export default function SearchScreen() {
   const router = useRouter();
   const { userProfile } = useAuth();
+
+  const [isProfileModalVisible, setProfileModalVisible] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const openProfileModal = (userId: number) => {
+    setSelectedUserId(userId);
+    setProfileModalVisible(true);
+  };
 
   const [searchMode, setSearchMode] = useState<"filter" | "name">("filter");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
+  const [duration, setDuration] = useState("00:15");
+  const [durationMenuVisible, setDurationMenuVisible] = useState(false);
+  const openMenu = () => setDurationMenuVisible(true);
+  const closeMenu = () => setDurationMenuVisible(false);
+  const durationOptions = [
+    "00:15", "00:30", "00:45",
+    "01:00", "01:15", "01:30",
+    "01:45", "02:00"
+  ];
+  const [selectedLanguage, setSelectedLanguage] = useState("Any");
+  const [languageMenuVisible, setLanguageMenuVisible] = useState(false);
+  const openLanguageMenu = () => setLanguageMenuVisible(true);
+  const closeLanguageMenu = () => setLanguageMenuVisible(false);
+  const languageOptions = ["Any", "English", "Malay", "Mandarin", "Tamil"];
   const [selectedGender, setSelectedGender] = useState("Any");
   const [ageRange, setAgeRange] = useState("Any");
-  const [minRating, setMinRating] = useState(5);
+  const [minRating, setMinRating] = useState(3);
 
   const [hasSearched, setHasSearched] = useState(false);
   const [displayedInterpreters, setDisplayedInterpreters] = useState<
@@ -66,6 +89,8 @@ export default function SearchScreen() {
           interpreter.availability
             ?.find((day) => day.date === appointmentDate)
             ?.slots.includes(appointmentTime) ?? false;
+        const languageMatch =
+        selectedLanguage === "Any" || interpreter.languages.includes(selectedLanguage);
         const genderMatch =
           selectedGender === "Any" || interpreter.gender === selectedGender;
         const ageMatch =
@@ -74,7 +99,8 @@ export default function SearchScreen() {
             : interpreter.age >= parseInt(ageRange.split("-")[0]) &&
               interpreter.age <= parseInt(ageRange.split("-")[1]);
         const ratingMatch = interpreter.rating >= minRating;
-        return dateAndTimeMatch && genderMatch && ageMatch && ratingMatch;
+
+        return dateAndTimeMatch && languageMatch && genderMatch && ageMatch && ratingMatch ;
       });
     }
     setDisplayedInterpreters(results);
@@ -84,7 +110,8 @@ export default function SearchScreen() {
   const theme = useAppTheme();
   const styles = createStyles(theme);
 
-  const isInterpreter = userProfile?.userType === "interpreter";
+  // const isInterpreter = userProfile?.userType === "interpreter";
+  const isInterpreter = true;
 
   // Mock requests for interpreters
   const requests = [
@@ -94,6 +121,7 @@ export default function SearchScreen() {
       date: "20/05/2024",
       time: "10:00 - 11:00",
       type: "Medical Appointment",
+      location: "Sunway Medical Centre", 
       status: "Pending",
     },
     {
@@ -102,12 +130,14 @@ export default function SearchScreen() {
       date: "22/05/2024",
       time: "14:00 - 15:30",
       type: "Legal Consultation",
+      location: "Lee Hishammuddin Allen & Gledhill",
       status: "Pending",
     },
   ];
 
   if (isInterpreter) {
     return (
+      <View>
       <ScrollView style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Appointment Requests</Text>
@@ -125,6 +155,12 @@ export default function SearchScreen() {
                   <View style={styles.requestInfo}>
                     <Text style={styles.clientName}>{request.clientName}</Text>
                     <Text style={styles.requestType}>{request.type}</Text>
+
+                    <View style={styles.requestLocationRow}>
+                      <MaterialCommunityIcons name="map-marker-outline" size={16} color="#666" />
+                      <Text style={styles.requestLocationText}>{request.location}</Text>
+                    </View>
+
                     <Text style={styles.requestDateTime}>
                       {request.date} • {request.time}
                     </Text>
@@ -132,6 +168,13 @@ export default function SearchScreen() {
                 </View>
 
                 <View style={styles.requestActions}>
+                  <Button 
+                    mode="text" 
+                    onPress={() => openProfileModal(request.id)}
+                    style={styles.profileTextButton}
+                  >
+                    Profile
+                  </Button>
                   <Button
                     mode="outlined"
                     style={[styles.actionButton, styles.rejectButton]}
@@ -148,6 +191,14 @@ export default function SearchScreen() {
           ))}
         </View>
       </ScrollView>
+
+      <UserProfileModal
+        visible={isProfileModalVisible}
+        userId={selectedUserId}
+        onClose={() => setProfileModalVisible(false)} 
+      />
+
+      </View>
     );
   }
 
@@ -197,6 +248,7 @@ export default function SearchScreen() {
                   value={appointmentDate}
                   onChange={setAppointmentDate}
                   style={styles.dateTimeInput}
+                  
                 />
               </View>
               <View style={styles.dateTimeField}>
@@ -207,6 +259,60 @@ export default function SearchScreen() {
                   onChange={setAppointmentTime}
                   style={styles.dateTimeInput}
                 />
+              </View>
+            </View>
+            
+            <View style={styles.durationLanguageRow}>
+              {/* --- DURATION --- */}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.filterLabel}>Duration</Text>
+                <Menu
+                  visible={durationMenuVisible}
+                  onDismiss={closeMenu}
+                  anchor={
+                    <TouchableOpacity onPress={openMenu} style={styles.dropdownAnchor}>
+                      <Text style={styles.dropdownText}>{duration}</Text>
+                      <MaterialCommunityIcons name="chevron-down" size={20} />
+                    </TouchableOpacity>
+                  }
+                >
+                  {durationOptions.map((option) => (
+                    <Menu.Item
+                      key={option}
+                      onPress={() => {
+                        setDuration(option);
+                        closeMenu();
+                      }}
+                      title={option}
+                    />
+                  ))}
+                </Menu>
+              </View>
+
+              {/* --- DOCTOR'S LANGUAGE --- */}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.filterLabel}>Doctor's Language</Text>
+                <Menu
+                  visible={languageMenuVisible}
+                  onDismiss={closeLanguageMenu}
+                  anchor={
+                    <TouchableOpacity onPress={openLanguageMenu} style={styles.dropdownAnchor}>
+                      <Text style={styles.dropdownText}>{selectedLanguage}</Text>
+                      <MaterialCommunityIcons name="chevron-down" size={20} />
+                    </TouchableOpacity>
+                  }
+                >
+                  {languageOptions.map((option) => (
+                    <Menu.Item
+                      key={option}
+                      onPress={() => {
+                        setSelectedLanguage(option);
+                        closeLanguageMenu();
+                      }}
+                      title={option}
+                    />
+                  ))}
+                </Menu>
               </View>
             </View>
 
@@ -292,7 +398,7 @@ export default function SearchScreen() {
 
             {/* --- Rating --- */}
             <View style={styles.sliderContainer}>
-              <Text style={styles.filterLabel}>Ratings</Text>
+              <Text style={styles.filterLabel}>Interpreter's Ratings</Text>
               <View style={styles.starContainer}>
                 {[1, 2, 3, 4, 5].map((i) => (
                   <TouchableOpacity key={i} onPress={() => setMinRating(i)}>
@@ -305,6 +411,13 @@ export default function SearchScreen() {
                 ))}
               </View>
             </View>
+
+            <TextInput
+              style={styles.dateTimeRow}
+              label="Enter hospital's name... (Optional)"
+              mode="outlined"
+            />
+            
           </>
         )}
 
@@ -432,6 +545,15 @@ const createStyles = (theme: MD3Theme) =>
     requestInfo: {
       flex: 1,
     },
+    requestLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    },
+    requestLocationText: {
+      fontSize: 14,
+      color: '#666',
+      marginLeft: 4,
+    },
     clientName: {
       fontSize: 16,
       fontWeight: "bold",
@@ -449,6 +571,10 @@ const createStyles = (theme: MD3Theme) =>
     requestActions: {
       flexDirection: "row",
       justifyContent: "space-between",
+      alignItems: 'center', 
+    },
+    profileTextButton: {
+    marginRight: 8,
     },
     actionButton: {
       flex: 0.48,
@@ -498,8 +624,15 @@ const createStyles = (theme: MD3Theme) =>
       zIndex: 10,
       marginBottom: 10,
     },
+    durationLanguageRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 12,
+      marginBottom: 10,
+    },
     dateTimeField: {
       flex: 1,
+      minWidth: 150, 
     },
     filterLabel: {
       fontSize: 16,
@@ -621,5 +754,20 @@ const createStyles = (theme: MD3Theme) =>
     },
     bookButton: {
       flex: 0.48,
+    },
+    dropdownContainer: {
+      marginVertical: 10,
+    },
+    dropdownAnchor: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: 12,
+      borderWidth: 1,
+      borderRadius: 4,
+      borderColor: "#ccc",
+    },
+    dropdownText: {
+      fontSize: 16,
     },
   });

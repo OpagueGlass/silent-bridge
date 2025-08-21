@@ -11,7 +11,8 @@ export const interpreters = [
     availability: [
       { date: '17/08/2025', slots: ['09:00', '14:30', '21:00'] },
       { date: '18/08/2025', slots: ['11:00', '15:00'] }
-    ]
+    ],
+    languages: ["English", "Malay"],
   },
   {
     id: 2,
@@ -25,7 +26,8 @@ export const interpreters = [
     availability: [
       { date: '17/08/2025', slots: ['09:00', '10:00', '14:30'] },
       { date: '18/08/2025', slots: ['11:00', '15:00'] }
-    ]
+    ],
+    languages: ["English", "Mandarin"],
   },
   {
     id: 3,
@@ -39,6 +41,7 @@ export const interpreters = [
     availability: [
       { date: '17/08/2025', slots: ['09:00', '10:00', '14:30'] },
       { date: '18/08/2025', slots: ['11:00', '15:00'] }
-    ]
+    ],
+    languages: ["Mandarin", "Tamil"],
   },
 ]
