@@ -28,7 +28,7 @@ import UserProfileModal from '../../components/UserProfileModal';
 
 export default function SearchScreen() {
   const router = useRouter();
-  const { userProfile } = useAuth();
+  const { isInterpreter } = useAuth();
 
   const [isProfileModalVisible, setProfileModalVisible] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
@@ -111,7 +111,6 @@ export default function SearchScreen() {
   const styles = createStyles(theme);
 
   // const isInterpreter = userProfile?.userType === "interpreter";
-  const isInterpreter = true;
 
   // Mock requests for interpreters
   const requests = [
