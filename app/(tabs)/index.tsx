@@ -92,11 +92,11 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+        {/* <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
           {isInterpreter ? "Recent Requests" : "Contacts"}
-        </Text>
+        </Text> */}
 
-        {contacts.map((contact) => (
+        {/* {contacts.map((contact) => (
           <Card key={contact.id} style={[styles.contactCard, { backgroundColor: theme.colors.surface }]}>
             <Card.Content style={styles.contactContent}>
               <Image source={{ uri: contact.avatar }} style={styles.avatar} />
@@ -113,7 +113,7 @@ export default function HomeScreen() {
               </Button>
             </Card.Content>
           </Card>
-        ))}
+        ))} */}
       </View>
 
       <View style={styles.section}>
