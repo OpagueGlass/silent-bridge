@@ -25,7 +25,6 @@ interface Contact {
 export default function HomeScreen() {
   const { profile, isInterpreter } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
   const theme = useAppTheme();
 
   // Mock data for demonstration
@@ -49,20 +48,6 @@ export default function HomeScreen() {
       },
     ]);
 
-    setContacts([
-      {
-        id: 1,
-        name: "John Smith",
-        email: "john@gmail.com",
-        avatar: "/placeholder.svg?height=50&width=50",
-      },
-      {
-        id: 2,
-        name: "Sarah Johnson",
-        email: "sarah@gmail.com",
-        avatar: "/placeholder.svg?height=50&width=50",
-      },
-    ]);
   }, []);
 
   const getStatusColor = (status: string) => {
