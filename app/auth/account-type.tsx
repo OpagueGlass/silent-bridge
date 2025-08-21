@@ -1,21 +1,21 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { View, Text, StyleSheet } from "react-native"
-import { Button, RadioButton } from "react-native-paper"
-import { useRouter } from "expo-router"
+import { useState } from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { Button, RadioButton } from "react-native-paper";
+import { useRouter } from "expo-router";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AccountTypeScreen() {
-  const [accountType, setAccountType] = useState("")
-  const router = useRouter()
-
+  const [accountType, setAccountType] = useState("");
+  const router = useRouter();
   const handleContinue = () => {
-    if (accountType === "deaf") {
-      router.push("/auth/deaf-user-form")
+    if (accountType === "deaf_user") {
+      router.push("/auth/deaf-user-form");
     } else if (accountType === "interpreter") {
-      router.push("/auth/interpreter-form")
+      router.push("/auth/interpreter-form");
     }
-  }
+  };
 
   return (
     <View style={styles.container}>
@@ -25,7 +25,7 @@ export default function AccountTypeScreen() {
       <View style={styles.radioContainer}>
         <RadioButton.Group onValueChange={setAccountType} value={accountType}>
           <View style={styles.radioItem}>
-            <RadioButton value="deaf" />
+            <RadioButton value="deaf_user" />
             <Text style={styles.radioLabel}>Deaf User</Text>
           </View>
           <View style={styles.radioItem}>
@@ -39,7 +39,7 @@ export default function AccountTypeScreen() {
         Continue
       </Button>
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -78,4 +78,4 @@ const styles = StyleSheet.create({
   continueButton: {
     paddingVertical: 8,
   },
-})
+});

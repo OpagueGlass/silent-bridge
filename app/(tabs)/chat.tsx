@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native"
-import { Card, TextInput, IconButton } from "react-native-paper"
-import { MaterialIcons } from "@expo/vector-icons"
+import { useState } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
+import { Card, TextInput, IconButton } from "react-native-paper";
+import { MaterialIcons } from "@expo/vector-icons";
 
 export default function ChatScreen() {
-  const [selectedChat, setSelectedChat] = useState(null)
-  const [message, setMessage] = useState("")
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [message, setMessage] = useState("");
 
   // Mock chat data
   const chats = [
@@ -35,7 +35,7 @@ export default function ChatScreen() {
       avatar: "/placeholder.svg?height=50&width=50",
       unread: 1,
     },
-  ]
+  ];
 
   // Mock messages for selected chat
   const messages = [
@@ -63,17 +63,17 @@ export default function ChatScreen() {
       sender: "me",
       time: "10:28",
     },
-  ]
+  ];
 
   const sendMessage = () => {
     if (message.trim()) {
       // Add message sending logic here
-      setMessage("")
+      setMessage("");
     }
-  }
+  };
 
   if (selectedChat) {
-    const chat = chats.find((c) => c.id === selectedChat)
+    const chat = chats.find((c) => c.id === selectedChat);
 
     return (
       <View style={styles.container}>
@@ -130,7 +130,7 @@ export default function ChatScreen() {
           <IconButton icon="send" mode="contained" onPress={sendMessage} style={styles.sendButton} />
         </View>
       </View>
-    )
+    );
   }
 
   return (
@@ -165,7 +165,7 @@ export default function ChatScreen() {
         ))}
       </ScrollView>
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -325,4 +325,4 @@ const styles = StyleSheet.create({
   sendButton: {
     backgroundColor: "#2196F3",
   },
-})
+});

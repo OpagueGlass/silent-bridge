@@ -1,164 +1,211 @@
-"use client";
+'use client';
 
-import { states } from "@/constants/data";
-import { useRouter } from "expo-router";
-import { useState } from "react";
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { Button, Menu, Text, TextInput } from "react-native-paper";
-import DatePickerInput from "../../components/DatePickerInput";
-import { useAuth } from "../../contexts/AuthContext";
-import { useAppTheme } from "../../hooks/useAppTheme";
+import { STATES } from '@/constants/data';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Button, Menu, Text, TextInput } from 'react-native-paper';
+import DatePickerInput from '../../components/DatePickerInput';
+import { useAuth } from '../../contexts/AuthContext';
+import { useAppTheme } from '../../hooks/useAppTheme';
+import { showError, showSuccess, showValidationError } from '../../utils/alert';
+import { supabase } from '@/utils/supabase';
 
 export default function DeafUserFormScreen() {
-    const [formData, setFormData] = useState({
-        name: "",
-        email: "",
-        dateOfBirth: "",
-        gender: "",
-        location: "",
-    });
-    const [genderMenuVisible, setGenderMenuVisible] = useState(false);
-    const [stateMenuVisible, setStateMenuVisible] = useState(false);
-    const router = useRouter();
-    const { createUserProfile } = useAuth();
-    const theme = useAppTheme();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    dateOfBirth: '',
+    gender: '',
+    location: '',
+  });
+  const [genderMenuVisible, setGenderMenuVisible] = useState(false);
+  const [stateMenuVisible, setStateMenuVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
+  const theme = useAppTheme();
+  const { session } = useAuth();
 
-    const handleSubmit = async () => {
-        try {
-            await createUserProfile({
-                ...formData,
-                userType: "deaf",
-            });
-            Alert.alert("Success", "Account created successfully!", [
-                { text: "OK", onPress: () => router.replace("/auth") },
-            ]);
-        } catch (error) {
-            Alert.alert("Error", "Failed to create account");
-        }
+  const handleSignUp = async () => {
+    const validateForm = () => {
+      if (!formData.name.trim()) {
+        showValidationError('Please enter your name');
+        return false;
+      }
+      if (!formData.dateOfBirth) {
+        showValidationError('Please select your date of birth');
+        return false;
+      }
+      if (!formData.gender) {
+        showValidationError('Please select your gender');
+        return false;
+      }
+      if (!formData.location) {
+        showValidationError('Please select your state');
+        return false;
+      }
+      return true;
     };
 
-    return (
-        <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-            <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.primary }]}>
-                Deaf User Account
-            </Text>
-            <Text variant="bodyLarge" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-                Enter your details
-            </Text>
-            <TextInput
-                label="Name"
-                value={formData.name}
-                onChangeText={(text) => setFormData({ ...formData, name: text })}
-                mode="outlined"
-                style={styles.input}
-            />
-            <TextInput
-                label="Email"
-                value={formData.email}
-                onChangeText={(text) => setFormData({ ...formData, email: text })}
-                mode="outlined"
-                style={styles.input}
-                keyboardType="email-address"
-                autoCapitalize="none"
-            />
-            <DatePickerInput
-                label="Date of Birth"
-                value={formData.dateOfBirth}
-                onChange={(dateString) => setFormData({ ...formData, dateOfBirth: dateString })}
-                placeholder="Select your date of birth"
-                style={styles.input}
-            />
+    const parseDate = (dateString: string) => {
+      const [day, month, year] = dateString.split('/').map((num) => parseInt(num, 10));
+      return new Date(year, month - 1, day);
+    };
 
-            <Menu
-                visible={genderMenuVisible}
-                onDismiss={() => setGenderMenuVisible(false)}
-                anchor={
-                  <Pressable onPress={() => setGenderMenuVisible(true)}>
-                    <View pointerEvents="none">
-                        <TextInput
-                            label="Gender"
-                            value={formData.gender}
-                            mode="outlined"
-                            style={styles.input}
-                            right={<TextInput.Icon icon="chevron-down" onPress={() => setGenderMenuVisible(true)} />}
-                            showSoftInputOnFocus={false}
-                            editable={false}
-                        />
-                    </View>
-                  </Pressable>
-                }
-            >
-                <Menu.Item
-                    onPress={() => {
-                        setFormData({ ...formData, gender: "Male" });
-                        setGenderMenuVisible(false);
-                    }}
-                    title="Male"
-                />
-                <Menu.Item
-                    onPress={() => {
-                        setFormData({ ...formData, gender: "Female" });
-                        setGenderMenuVisible(false);
-                    }}
-                    title="Female"
-                />
-            </Menu>
-            <Menu
-                visible={stateMenuVisible}
-                onDismiss={() => setStateMenuVisible(false)}
-                anchor={
-                    <Pressable onPress={() => setStateMenuVisible(true)}>
-                      <View pointerEvents="none">
-                        <TextInput
-                            label="State"
-                            value={formData.location}
-                            mode="outlined"
-                            style={styles.input}
-                            right={<TextInput.Icon icon="chevron-down" onPress={() => setStateMenuVisible(true)} />}
-                            showSoftInputOnFocus={false}
-                            editable={false}
-                        />
-                      </View>
-                  </Pressable>
-                }
-            >
-              {states.map((state) => (
-                    <Menu.Item
-                        key={state}
-                        onPress={() => {
-                            setFormData({ ...formData, location: state });
-                            setStateMenuVisible(false);
-                        }}
-                        title={state}
-                    />
-                ))}
-            </Menu>
-            <Button mode="contained" onPress={handleSubmit} style={styles.submitButton}>
-                Confirm
-            </Button>
-        </ScrollView>
-    );
+    try {
+      setIsSubmitting(true);
+      
+      if (!validateForm()) {
+        setIsSubmitting(false);
+        return;
+      }
+
+      const profileData = {
+        id: session!.user.id,
+        name: formData.name,
+        email: session!.user.email,
+        date_of_birth: parseDate(formData.dateOfBirth).toISOString(),
+        gender: formData.gender,
+        location: formData.location,
+        photo: session!.user.user_metadata.avatar_url,
+      };
+
+      const { error } = await supabase.from('profile').insert(profileData);
+      if (error) throw error
+      showSuccess('Account created successfully!');
+      router.replace('/auth/callback');
+    } catch (error: any) {
+      showError(error.message || 'Failed to create account with Google. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <ScrollView style={styles.container}>
+      <Text variant="headlineMedium" style={styles.title}>
+        Deaf User Account
+      </Text>
+      <Text variant="bodyLarge" style={styles.subtitle}>
+        Enter your details
+      </Text>
+      <TextInput
+        label="Name"
+        value={formData.name}
+        onChangeText={(text) => setFormData({ ...formData, name: text })}
+        mode="outlined"
+        style={styles.input}
+      />
+      <DatePickerInput
+        label="Date of Birth"
+        value={formData.dateOfBirth}
+        onChange={(dateString) => setFormData({ ...formData, dateOfBirth: dateString })}
+        placeholder="Select your date of birth"
+        style={styles.input}
+      />
+      <Menu
+        visible={genderMenuVisible}
+        onDismiss={() => setGenderMenuVisible(false)}
+        anchor={
+          <Pressable onPress={() => setGenderMenuVisible(true)}>
+            <View pointerEvents="none">
+              <TextInput
+                label="Gender"
+                value={formData.gender}
+                mode="outlined"
+                style={styles.input}
+                right={<TextInput.Icon icon="chevron-down" onPress={() => setGenderMenuVisible(true)} />}
+                showSoftInputOnFocus={false}
+                editable={false}
+              />
+            </View>
+          </Pressable>
+        }
+      >
+        <Menu.Item
+          onPress={() => {
+            setFormData({ ...formData, gender: 'Male' });
+            setGenderMenuVisible(false);
+          }}
+          title="Male"
+        />
+        <Menu.Item
+          onPress={() => {
+            setFormData({ ...formData, gender: 'Female' });
+            setGenderMenuVisible(false);
+          }}
+          title="Female"
+        />
+      </Menu>
+      <Menu
+        visible={stateMenuVisible}
+        onDismiss={() => setStateMenuVisible(false)}
+        anchor={
+          <Pressable onPress={() => setStateMenuVisible(true)}>
+            <View pointerEvents="none">
+              <TextInput
+                label="State"
+                value={formData.location}
+                mode="outlined"
+                style={styles.input}
+                right={<TextInput.Icon icon="chevron-down" onPress={() => setStateMenuVisible(true)} />}
+                showSoftInputOnFocus={false}
+                editable={false}
+              />
+            </View>
+          </Pressable>
+        }
+      >
+        {STATES.map((state) => (
+          <Menu.Item
+            key={state}
+            onPress={() => {
+              setFormData({ ...formData, location: state });
+              setStateMenuVisible(false);
+            }}
+            title={state}
+          />
+        ))}
+      </Menu>
+      <Button
+        mode="contained"
+        onPress={handleSignUp}
+        style={styles.submitButton}
+        icon="google"
+        loading={isSubmitting}
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? 'Creating Account...' : 'Continue with Google'}
+      </Button>
+    </ScrollView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 24, // theme.spacing.lg
-    },
-    title: {
-        textAlign: "center",
-        marginBottom: 12, // theme.spacing.sm + 4
-        marginTop: 40,
-    },
-    subtitle: {
-        textAlign: "center",
-        marginBottom: 32, // theme.spacing.xl
-    },
-    input: {
-        marginBottom: 16, // theme.spacing.md
-    },
-    submitButton: {
-        marginTop: 24, // theme.spacing.lg
-        paddingVertical: 8, // theme.spacing.sm
-    },
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#ffffff',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 10,
+    color: '#2196F3',
+    marginTop: 40,
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 30,
+    color: '#666',
+  },
+  input: {
+    marginBottom: 15,
+  },
+  submitButton: {
+    marginTop: 20,
+    paddingVertical: 8,
+  },
 });

@@ -1,34 +1,32 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Image, ScrollView, StyleSheet, View } from "react-native"
-import { Button, Card, Chip, Text } from "react-native-paper"
-import { useAuth } from "../../contexts/AuthContext"
-import { useAppTheme } from "../../hooks/useAppTheme"
+import { useEffect, useState } from "react";
+import { Image, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Button, Card, Chip, Text } from "react-native-paper";
+import { useAuth } from "../../contexts/AuthContext";
+import { useAppTheme } from "../../hooks/useAppTheme";
 
 interface Appointment {
-  id: number
-  date: string
-  time: string
-  status: string
-  interpreter: string
-  email: string
+  id: number;
+  date: string;
+  time: string;
+  status: string;
+  interpreter: string;
+  email: string;
 }
 
 interface Contact {
-  id: number
-  name: string
-  email: string
-  avatar: string
+  id: number;
+  name: string;
+  email: string;
+  avatar: string;
 }
 
 export default function HomeScreen() {
-  const { userProfile } = useAuth()
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [contacts, setContacts] = useState<Contact[]>([])
-  const theme = useAppTheme()
-
-  const isInterpreter = userProfile?.userType === "interpreter"
+  const { profile, isInterpreter } = useAuth();
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const theme = useAppTheme();
 
   // Mock data for demonstration
   useEffect(() => {
@@ -49,7 +47,7 @@ export default function HomeScreen() {
         interpreter: "Sarah Johnson",
         email: "sarah@gmail.com",
       },
-    ])
+    ]);
 
     setContacts([
       {
@@ -64,29 +62,29 @@ export default function HomeScreen() {
         email: "sarah@gmail.com",
         avatar: "/placeholder.svg?height=50&width=50",
       },
-    ])
-  }, [])
+    ]);
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Approved":
-        return theme.colors.secondary // Using our custom secondary green
+        return theme.colors.secondary;
       case "Pending":
-        return theme.colors.tertiary // Using our custom tertiary amber
+        return theme.colors.tertiary;
       case "Rejected":
-        return theme.colors.error
+        return theme.colors.error;
       case "Completed":
-        return theme.colors.primary
+        return theme.colors.primary;
       default:
-        return theme.colors.onSurfaceVariant
+        return theme.colors.onSurfaceVariant;
     }
-  }
+  };
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
         <Text variant="headlineMedium" style={styles.greeting}>
-          Welcome back, {userProfile?.name || "User"}!
+          Welcome back, {profile?.name || "User"}!
         </Text>
         <Text variant="bodyLarge" style={styles.subtitle}>
           {isInterpreter ? "Manage your interpreter services" : "Find your perfect interpreter"}
@@ -140,7 +138,10 @@ export default function HomeScreen() {
               <Text variant="bodyLarge" style={[styles.appointmentDate, { color: theme.colors.onSurface }]}>
                 {appointment.date} • {appointment.time}
               </Text>
-              <Text variant="bodyMedium" style={[styles.appointmentInterpreter, { color: theme.colors.onSurfaceVariant }]}>
+              <Text
+                variant="bodyMedium"
+                style={[styles.appointmentInterpreter, { color: theme.colors.onSurfaceVariant }]}
+              >
                 Interpreter: {appointment.interpreter}
               </Text>
               <Text variant="bodyMedium" style={[styles.appointmentEmail, { color: theme.colors.onSurfaceVariant }]}>
@@ -178,7 +179,7 @@ export default function HomeScreen() {
         </View>
       )}
     </ScrollView>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -264,4 +265,4 @@ const styles = StyleSheet.create({
   availabilityButton: {
     marginTop: 12, // spacing.sm + 4
   },
-})
+});

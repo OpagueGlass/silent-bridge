@@ -1,166 +1,125 @@
-"use client"
+import { Session, User } from "@supabase/supabase-js";
+import { createContext, useContext, useState, useEffect } from "react";
+import { supabase } from "../utils/supabase";
+import { getAgeRangeFromDOB } from "../utils/helper";
 
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import * as Google from "expo-auth-session/providers/google"
-import * as WebBrowser from "expo-web-browser"
-import {
-    signOut as firebaseSignOut,
-    GoogleAuthProvider,
-    onAuthStateChanged,
-    signInWithCredential,
-    type User,
-} from "firebase/auth"
-import { doc, getDoc, setDoc } from "firebase/firestore"
-import type React from "react"
-import { createContext, useContext, useEffect, useState } from "react"
-import { auth, db } from "../utils/firebase"
+interface Profile {
+  id: string;
+  email: string;
+  name: string;
+}
 
-WebBrowser.maybeCompleteAuthSession()
-
-interface UserProfile {
-  id: string
-  name: string
-  email: string
-  userType: "deaf" | "interpreter"
-  dateOfBirth?: string
-  gender?: string
-  location?: string
-  specialisation?: string
-  createdAt: Date
+interface AuthState {
+  isLoading: boolean;
+  error: string | null;
 }
 
 interface AuthContextType {
-  user: User | null
-  userProfile: UserProfile | null
-  loading: boolean
-  signInWithGoogle: () => Promise<void>
-  signOut: () => Promise<void>
-  createUserProfile: (profileData: Partial<UserProfile>) => Promise<void>
+  session: Session | null;
+  authState: AuthState;
+  profile: Profile | null;
+  providerToken: string | null;
+  signIn: () => Promise<void>;
+  signOut: () => Promise<void>;
+  loadProfile: (user: User | null) => Promise<boolean>;
+  isInterpreter: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [session, setSession] = useState<Session | null>(null);
+  const [providerToken, setProviderToken] = useState<string | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isInterpreter, setIsInterpreter] = useState<boolean>(false);
+  const [authState, setAuthState] = useState<AuthState>({
+    isLoading: true,
+    error: null,
+  });
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: "your-web-client-id",
-    iosClientId: "your-ios-client-id",
-    androidClientId: "your-android-client-id",
-  })
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user)
-      if (user) {
-        await loadUserProfile(user.uid)
-      } else {
-        setUserProfile(null)
-      }
-      setLoading(false)
-    })
-
-    return unsubscribe
-  }, [])
+  const updateAuthState = (updates: Partial<AuthState>) => {
+    setAuthState((prev) => ({ ...prev, ...updates }));
+  };
 
   useEffect(() => {
-    if (response?.type === "success") {
-      const { authentication } = response
-      if (authentication?.accessToken) {
-        signInWithGoogleToken(authentication.accessToken)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session);
+      setProviderToken(session?.provider_token || null);
+      if (session?.user) {
+        await loadProfile(session.user);
       }
-    }
-  }, [response])
+      updateAuthState({ isLoading: false });
+    });
 
-  const signInWithGoogleToken = async (accessToken: string) => {
-    try {
-      const credential = GoogleAuthProvider.credential(null, accessToken)
-      await signInWithCredential(auth, credential)
-    } catch (error) {
-      console.error("Error signing in with Google:", error)
-      throw error
-    }
-  }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setProviderToken(session?.provider_token || null);
+    });
 
-  const signInWithGoogle = async () => {
-    try {
-      await promptAsync()
-    } catch (error) {
-      console.error("Error initiating Google sign in:", error)
-      throw error
-    }
-  }
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const signIn = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        scopes: "https://www.googleapis.com/auth/calendar.events",
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+  };
 
   const signOut = async () => {
-    try {
-      await firebaseSignOut(auth)
-      await AsyncStorage.clear()
-    } catch (error) {
-      console.error("Error signing out:", error)
-      throw error
-    }
-  }
+    await supabase.auth.signOut();
+    setProfile(null);
+    setIsInterpreter(false);
+  };
 
-  const loadUserProfile = async (userId: string) => {
-    try {
-      const docRef = doc(db, "users", userId)
-      const docSnap = await getDoc(docRef)
+  const isInterpreterProfile = async (user: User) => {
+    const { data: interpreterProfile } = await supabase
+      .from("interpreter_profile")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
+    setIsInterpreter(!!interpreterProfile);
+  };
 
-      if (docSnap.exists()) {
-        const data = docSnap.data()
-        setUserProfile({
-          id: userId,
-          ...data,
-          createdAt: data.createdAt?.toDate() || new Date(),
-        } as UserProfile)
+  const loadProfile = async (user: User | null): Promise<boolean> => {
+    if (user) {
+      const { data: profile } = await supabase.from("profile").select("*").eq("id", user.id).maybeSingle();
+      if (!profile) {
+        setProfile(null);
+        return false;
       }
-    } catch (error) {
-      console.error("Error loading user profile:", error)
+      const { dateOfBirth, ...rest } = profile;
+      const ageRange = getAgeRangeFromDOB(dateOfBirth);
+      setProfile({ ...rest, ageRange });
+      await isInterpreterProfile(user);
+      return true;
     }
-  }
-
-  const createUserProfile = async (profileData: Partial<UserProfile>) => {
-    try {
-      if (!user) throw new Error("No authenticated user")
-
-      const userProfile: UserProfile = {
-        id: user.uid,
-        name: profileData.name || "",
-        email: user.email || "",
-        userType: profileData.userType || "deaf",
-        dateOfBirth: profileData.dateOfBirth,
-        gender: profileData.gender,
-        location: profileData.location,
-        specialisation: profileData.specialisation,
-        createdAt: new Date(),
-      }
-
-      await setDoc(doc(db, "users", user.uid), userProfile)
-      setUserProfile(userProfile)
-    } catch (error) {
-      console.error("Error creating user profile:", error)
-      throw error
-    }
-  }
+    return false;
+  };
 
   const value = {
-    user,
-    userProfile,
-    loading,
-    signInWithGoogle,
+    authState,
+    session,
+    profile,
+    providerToken,
+    signIn,
     signOut,
-    createUserProfile,
-  }
+    loadProfile,
+    isInterpreter,
+  };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
-  return context
-}
+  return context;
+};

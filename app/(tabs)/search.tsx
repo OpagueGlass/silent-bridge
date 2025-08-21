@@ -507,6 +507,7 @@ export default function SearchScreen() {
   );
 }
 
+                  
 const createStyles = (theme: MD3Theme) =>
   StyleSheet.create({
     // Styles for the main container and the Interpreter view

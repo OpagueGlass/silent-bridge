@@ -1,15 +1,44 @@
-import { useAppTheme } from '@/hooks/useAppTheme';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { MaterialIcons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { useAuth } from "@/contexts/AuthContext";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import { useColorScheme } from "@/hooks/useColorScheme";
+import { MaterialIcons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import React from "react";
+import { Text, View } from "react-native";
+import { ActivityIndicator } from "react-native-paper";
 
 export default function TabLayout() {
-  // const { userProfile } = useAuth()
-  // const isInterpreter = userProfile?.userType === "interpreter"
-  const isInterpreter = false;
   const colorScheme = useColorScheme();
   const theme = useAppTheme();
+  const { authState, isInterpreter } = useAuth();
+
+  if (authState.isLoading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: theme.colors.background,
+        }}
+      >
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text
+          style={{
+            marginTop: 16,
+            color: theme.colors.onBackground,
+          }}
+        >
+          Loading...
+        </Text>
+      </View>
+    );
+  }
+
+  // // Don't render tabs if not authenticated
+  // if (!authState.isAuthenticated || !userProfile) {
+  //   return null;
+  // }
 
   return (
     <Tabs
@@ -26,23 +55,23 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: "Home",
           tabBarIcon: ({ color, size }) => <MaterialIcons name="home" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
-          title: isInterpreter ? 'Requests' : 'Search',
+          title: isInterpreter ? "Requests" : "Search",
           tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name={isInterpreter ? 'assignment' : 'search'} size={size} color={color} />
+            <MaterialIcons name={isInterpreter ? "assignment" : "search"} size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
-          title: 'Chat',
+          title: "Chat",
           tabBarIcon: ({ color, size }) => <MaterialIcons name="chat" size={size} color={color} />,
         }}
       />
@@ -56,7 +85,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: "Settings",
           tabBarIcon: ({ color, size }) => <MaterialIcons name="settings" size={size} color={color} />,
         }}
       />
