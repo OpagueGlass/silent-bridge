@@ -176,7 +176,7 @@ export default function BookingScreen() {
         />
 
         {/* --- Info Callouts --- */}
-        <View
+        {/* <View
           style={[styles.calloutCard, styles.calloutBlue, { marginTop: 24 }]}
         >
           <MaterialCommunityIcons
@@ -192,9 +192,9 @@ export default function BookingScreen() {
               All communication happens safely within the app.
             </Text>
           </View>
-        </View>
+        </View> */}
 
-        <View style={[styles.calloutCard, styles.calloutGreen]}>
+        <View style={[styles.calloutCard, styles.calloutGreen, { marginTop: 24 }]}>
           <MaterialCommunityIcons
             name="check-circle"
             size={24}

@@ -143,7 +143,7 @@ export default function BookingSuccessScreen() {
         </View>
 
         <View style={{ gap: 12 }}>
-          <TouchableOpacity style={[styles.button, styles.buttonPrimary]}>
+          {/* <TouchableOpacity style={[styles.button, styles.buttonPrimary]}>
             <MaterialCommunityIcons
               name="message-text-outline"
               size={20}
@@ -153,7 +153,7 @@ export default function BookingSuccessScreen() {
             <Text style={[styles.buttonText, styles.buttonTextPrimary]}>
               Message {interpreter.name.split(" ")[0]}
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           <TouchableOpacity
             style={[styles.button, styles.buttonSecondary]}
             onPress={() => router.replace("/(tabs)/search")}
