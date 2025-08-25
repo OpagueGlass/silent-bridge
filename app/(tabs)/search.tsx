@@ -1,6 +1,7 @@
 "use client";
 
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Image,
@@ -12,21 +13,20 @@ import {
 import {
   Button,
   Card,
+  Checkbox,
   Chip,
-  Text,
-  TextInput,
   MD3Theme,
   Menu,
-  Checkbox
+  Text,
+  TextInput,
 } from "react-native-paper";
-import { useAuth } from "../../contexts/AuthContext";
-import { useAppTheme } from "../../hooks/useAppTheme";
-import { useRouter } from "expo-router";
 import DatePickerInput from "../../components/DatePickerInput";
 import TimePickerInput from "../../components/TimePickerInput";
+import UserProfileModal from "../../components/UserProfileModal";
+import { SPECIALISATION } from "../../constants/data";
+import { useAuth } from "../../contexts/AuthContext";
+import { useAppTheme } from "../../hooks/useAppTheme";
 import { interpreters } from "../data/mockData";
-import UserProfileModal from '../../components/UserProfileModal';
-import { SPECIALISATION } from "../../constants/data"; 
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -94,10 +94,11 @@ export default function SearchScreen() {
           interpreter.availability
             ?.find((day) => day.date === appointmentDate)
             ?.slots.includes(appointmentTime) ?? false;
-        const languageMatch =
-        selectedLanguage === "Any" || interpreter.languages.includes(selectedLanguage);
+        const languageMatch = selectedLanguage === "Any" || interpreter.languages.includes(selectedLanguage);
         const specMatch = (() => {
-          const chosenSpecs = SPECIALISATION.filter((_, index) => selectedSpecs[index]);
+          const chosenSpecs = SPECIALISATION.filter(
+            (_, index) => selectedSpecs[index]
+          );
           if (chosenSpecs.length === 0) {
             return true;
           }
@@ -112,11 +113,38 @@ export default function SearchScreen() {
               interpreter.age <= parseInt(ageRange.split("-")[1]);
         const ratingMatch = interpreter.rating >= minRating;
 
-        return dateAndTimeMatch && languageMatch && specMatch && genderMatch && ageMatch && ratingMatch ;
+        return (
+          dateAndTimeMatch &&
+          languageMatch &&
+          specMatch &&
+          genderMatch &&
+          ageMatch &&
+          ratingMatch
+        );
       });
     }
     setDisplayedInterpreters(results);
     setHasSearched(true);
+  };
+
+  const handleToggleSearchMode = () => {
+    const newMode = searchMode === "filter" ? "name" : "filter";
+    setSearchMode(newMode);
+
+    if (newMode === "name") {
+      setAppointmentDate("");
+      setAppointmentTime("");
+      setDuration("00:15");
+      setSelectedLanguage("Any");
+      setSelectedSpecs(new Array(SPECIALISATION.length).fill(false));
+      setSelectedGender("Any");
+      setAgeRange("Any");
+      setMinRating(3);
+    } else {
+      setSearchQuery("");
+    }
+    setHasSearched(false);
+    setDisplayedInterpreters([]);
   };
 
   const theme = useAppTheme();
@@ -132,7 +160,7 @@ export default function SearchScreen() {
       date: "20/05/2024",
       time: "10:00 - 11:00",
       type: "Medical Appointment",
-      location: "Sunway Medical Centre", 
+      location: "Sunway Medical Centre",
       status: "Pending",
     },
     {
@@ -149,66 +177,73 @@ export default function SearchScreen() {
   if (isInterpreter) {
     return (
       <View>
-      <ScrollView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Appointment Requests</Text>
-        </View>
+        <ScrollView style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Appointment Requests</Text>
+          </View>
 
-        <View style={styles.section}>
-          {requests.map((request) => (
-            <Card key={request.id} style={styles.requestCard}>
-              <Card.Content>
-                <View style={styles.requestHeader}>
-                  <Image
-                    source={{ uri: "/placeholder.svg?height=50&width=50" }}
-                    style={styles.clientAvatar}
-                  />
-                  <View style={styles.requestInfo}>
-                    <Text style={styles.clientName}>{request.clientName}</Text>
-                    <Text style={styles.requestType}>{request.type}</Text>
+          <View style={styles.section}>
+            {requests.map((request) => (
+              <Card key={request.id} style={styles.requestCard}>
+                <Card.Content>
+                  <View style={styles.requestHeader}>
+                    <Image
+                      source={{ uri: "/placeholder.svg?height=50&width=50" }}
+                      style={styles.clientAvatar}
+                    />
+                    <View style={styles.requestInfo}>
+                      <Text style={styles.clientName}>
+                        {request.clientName}
+                      </Text>
+                      <Text style={styles.requestType}>{request.type}</Text>
 
-                    <View style={styles.requestLocationRow}>
-                      <MaterialCommunityIcons name="map-marker-outline" size={16} color="#666" />
-                      <Text style={styles.requestLocationText}>{request.location}</Text>
+                      <View style={styles.requestLocationRow}>
+                        <MaterialCommunityIcons
+                          name="map-marker-outline"
+                          size={16}
+                          color="#666"
+                        />
+                        <Text style={styles.requestLocationText}>
+                          {request.location}
+                        </Text>
+                      </View>
+
+                      <Text style={styles.requestDateTime}>
+                        {request.date} • {request.time}
+                      </Text>
                     </View>
-
-                    <Text style={styles.requestDateTime}>
-                      {request.date} • {request.time}
-                    </Text>
                   </View>
-                </View>
 
-                <View style={styles.requestActions}>
-                  <Button 
-                    mode="text" 
-                    onPress={() => openProfileModal(request.id)}
-                    style={styles.profileTextButton}
-                  >
-                    Profile
-                  </Button>
-                  <Button
-                    mode="outlined"
-                    style={[styles.actionButton, styles.rejectButton]}
-                    textColor="#F44336"
-                  >
-                    Reject
-                  </Button>
-                  <Button mode="contained" style={styles.actionButton}>
-                    Accept
-                  </Button>
-                </View>
-              </Card.Content>
-            </Card>
-          ))}
-        </View>
-      </ScrollView>
+                  <View style={styles.requestActions}>
+                    <Button
+                      mode="text"
+                      onPress={() => openProfileModal(request.id)}
+                      style={styles.profileTextButton}
+                    >
+                      Profile
+                    </Button>
+                    <Button
+                      mode="outlined"
+                      style={[styles.actionButton, styles.rejectButton]}
+                      textColor="#F44336"
+                    >
+                      Reject
+                    </Button>
+                    <Button mode="contained" style={styles.actionButton}>
+                      Accept
+                    </Button>
+                  </View>
+                </Card.Content>
+              </Card>
+            ))}
+          </View>
+        </ScrollView>
 
-      <UserProfileModal
-        visible={isProfileModalVisible}
-        userId={selectedUserId}
-        onClose={() => setProfileModalVisible(false)} 
-      />
-
+        <UserProfileModal
+          visible={isProfileModalVisible}
+          userId={selectedUserId}
+          onClose={() => setProfileModalVisible(false)}
+        />
       </View>
     );
   }
@@ -220,9 +255,7 @@ export default function SearchScreen() {
           <Text style={styles.title}>Interpreter Discovery</Text>
           <TouchableOpacity
             style={styles.toggleButton}
-            onPress={() =>
-              setSearchMode(searchMode === "filter" ? "name" : "filter")
-            }
+            onPress={handleToggleSearchMode}
           >
             <MaterialCommunityIcons
               name={searchMode === "filter" ? "account-search" : "tune"}
@@ -259,7 +292,6 @@ export default function SearchScreen() {
                   value={appointmentDate}
                   onChange={setAppointmentDate}
                   style={styles.dateTimeInput}
-                  
                 />
               </View>
               <View style={styles.dateTimeField}>
@@ -272,7 +304,7 @@ export default function SearchScreen() {
                 />
               </View>
             </View>
-            
+
             <View style={styles.durationLanguageRow}>
               {/* --- DURATION --- */}
               <View style={{ flex: 1 }}>
@@ -281,7 +313,10 @@ export default function SearchScreen() {
                   visible={durationMenuVisible}
                   onDismiss={closeMenu}
                   anchor={
-                    <TouchableOpacity onPress={openMenu} style={styles.dropdownAnchor}>
+                    <TouchableOpacity
+                      onPress={openMenu}
+                      style={styles.dropdownAnchor}
+                    >
                       <Text style={styles.dropdownText}>{duration}</Text>
                       <MaterialCommunityIcons name="chevron-down" size={20} />
                     </TouchableOpacity>
@@ -307,8 +342,13 @@ export default function SearchScreen() {
                   visible={languageMenuVisible}
                   onDismiss={closeLanguageMenu}
                   anchor={
-                    <TouchableOpacity onPress={openLanguageMenu} style={styles.dropdownAnchor}>
-                      <Text style={styles.dropdownText}>{selectedLanguage}</Text>
+                    <TouchableOpacity
+                      onPress={openLanguageMenu}
+                      style={styles.dropdownAnchor}
+                    >
+                      <Text style={styles.dropdownText}>
+                        {selectedLanguage}
+                      </Text>
                       <MaterialCommunityIcons name="chevron-down" size={20} />
                     </TouchableOpacity>
                   }
@@ -450,7 +490,6 @@ export default function SearchScreen() {
               label="Enter hospital's name... (Optional)"
               mode="outlined"
             />
-            
           </>
         )}
 
@@ -521,7 +560,29 @@ export default function SearchScreen() {
                         Profile
                       </Button>
 
-                      <Button mode="contained" style={styles.bookButton}>
+                      <Button
+                        mode="contained"
+                        style={styles.bookButton}
+                        onPress={() => {
+                          if (searchMode === "filter") {
+                            router.push({
+                              pathname: `/interpreter/[id]/book`,
+                              params: {
+                                id: interpreter.id,
+                                date: appointmentDate,
+                                time: appointmentTime,
+                              },
+                            });
+                          } else {
+                            router.push({
+                              pathname: `/interpreter/[id]/book`,
+                              params: {
+                                id: interpreter.id,
+                              },
+                            });
+                          }
+                        }}
+                      >
                         Book Now
                       </Button>
                     </View>
@@ -540,7 +601,6 @@ export default function SearchScreen() {
   );
 }
 
-                  
 const createStyles = (theme: MD3Theme) =>
   StyleSheet.create({
     // Styles for the main container and the Interpreter view
@@ -580,12 +640,12 @@ const createStyles = (theme: MD3Theme) =>
       flex: 1,
     },
     requestLocationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
     },
     requestLocationText: {
       fontSize: 14,
-      color: '#666',
+      color: "#666",
       marginLeft: 4,
     },
     clientName: {
@@ -605,10 +665,10 @@ const createStyles = (theme: MD3Theme) =>
     requestActions: {
       flexDirection: "row",
       justifyContent: "space-between",
-      alignItems: 'center', 
+      alignItems: "center",
     },
     profileTextButton: {
-    marginRight: 8,
+      marginRight: 8,
     },
     actionButton: {
       flex: 0.48,
