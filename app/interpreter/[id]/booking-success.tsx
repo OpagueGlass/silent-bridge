@@ -1,10 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Linking,
+  Alert,
+  Pressable,
 } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { interpreters } from "../../data/mockData";
@@ -23,6 +26,27 @@ export default function BookingSuccessScreen() {
   const interpreterId = params.id as string;
   const date = params.date as string;
   const time = params.time as string;
+
+  const [isHovering, setIsHovering] = useState(false);
+  const handleEmailPress = async () => {
+    if (!interpreter?.email) return;
+
+    const subject = `Inquiry Regarding Booking Request`;
+    const url = `mailto:${interpreter.email}?subject=${encodeURIComponent(
+      subject
+    )}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert("Cannot open email", "No email app is available.");
+      }
+    } catch (error) {
+      Alert.alert("Error", "An unexpected error occurred.");
+    }
+  };
 
   const interpreter = interpreters.find(
     (item) => item.id.toString() === interpreterId
@@ -77,13 +101,41 @@ export default function BookingSuccessScreen() {
             >
               <Text style={styles.avatarText}>{initials}</Text>
             </LinearGradient>
+
             <View style={styles.interpreterInfo}>
-              <Text style={styles.interpreterName}>{interpreter.name}</Text>
+
+              <View style={styles.nameRow}>
+
+                <Text style={styles.interpreterName}>{interpreter.name}</Text>
+                <View> 
+                  <Pressable
+                    onHoverIn={() => setIsHovering(true)}
+                    onHoverOut={() => setIsHovering(false)}
+                  >
+                    <TouchableOpacity onPress={handleEmailPress}>
+                      <MaterialCommunityIcons 
+                        name="email-fast" 
+                        size={20} 
+                        color="darkblue"
+                      />
+                    </TouchableOpacity>
+                  </Pressable>
+
+                  {isHovering && (
+                    <View style={styles.customTooltip}>
+                      <Text style={styles.customTooltipText}>{interpreter.email}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
               <Text style={styles.interpreterSubtitle}>
                 {interpreter.specialisation}
               </Text>
+
             </View>
           </View>
+
           <View style={styles.divider} />
 
           <View style={[styles.statusBadge, styles.statusBadgePending]}>
@@ -99,6 +151,7 @@ export default function BookingSuccessScreen() {
             />
             <Text style={styles.infoText}>{date}</Text>
           </View>
+
           <View style={styles.infoRow}>
             <MaterialCommunityIcons
               name="clock-outline"
@@ -107,6 +160,7 @@ export default function BookingSuccessScreen() {
             />
             <Text style={styles.infoText}>{time}</Text>
           </View>
+
         </View>
 
         <View style={styles.section}>
@@ -292,10 +346,31 @@ const createStyles = (theme: MD3Theme) =>
     interpreterInfo: {
       flex: 1,
     },
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    customTooltip: {
+      position: 'absolute',
+      bottom: '100%', 
+      left: '50%',
+      transform: [{ translateX: -50 }], 
+      backgroundColor: '#616161', 
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 4,
+      marginBottom: 8, 
+    },
+    customTooltipText: {
+      color: 'white',
+      fontSize: 12,
+    },
     interpreterName: {
       fontSize: 16,
-      fontWeight: "600",
+      fontWeight: '600',
       color: theme.colors.onSurface,
+      marginRight: 8, // Adds space between the name and the separator
     },
     interpreterSubtitle: {
       color: theme.colors.onSurfaceVariant,
