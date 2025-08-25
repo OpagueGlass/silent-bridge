@@ -85,6 +85,12 @@ export default function BookingSuccessScreen() {
             </View>
           </View>
           <View style={styles.divider} />
+
+          <View style={[styles.statusBadge, styles.statusBadgePending]}>
+            <MaterialCommunityIcons name="clock-outline" size={16} color="#9D5200" />
+            <Text style={styles.statusText}>Pending Approval</Text>
+          </View>
+
           <View style={styles.infoRow}>
             <MaterialCommunityIcons
               name="calendar-blank"
@@ -171,7 +177,7 @@ export default function BookingSuccessScreen() {
         </View>
 
         {/* --- Mock Session Details --- */}
-        <View style={[styles.section, { paddingVertical: 30 }]}>
+        {/* <View style={[styles.section, { paddingVertical: 30 }]}>
           <Text style={styles.sectionTitle}>Session Details</Text>
           <View style={styles.sessionDetailsContainer}>
             <View style={styles.sessionDetailsRow}>
@@ -189,7 +195,7 @@ export default function BookingSuccessScreen() {
               </Text>
             </View>
           </View>
-        </View>
+        </View> */}
 
         {/* --- Changed Your Mind --- */}
         <View style={styles.changedMindContainer}>
@@ -431,5 +437,23 @@ const createStyles = (theme: MD3Theme) =>
     },
     supportLink: {
       color: theme.colors.primary,
+    },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 999, 
+      alignSelf: 'flex-start', 
+      marginBottom: 16, 
+    },
+    statusBadgePending: {
+      backgroundColor: '#FFEFCF', 
+    },
+    statusText: {
+      marginLeft: 6,
+      color: '#9D5200', 
+      fontWeight: '600',
+      fontSize: 14,
     },
   });
