@@ -17,7 +17,7 @@ export const interpreters = [
   {
     id: 2,
     name: "Sarah Johnson",
-    specialisation: "Legal Interpretation",
+    specialisation: "Accident and Emergency",
     rating: 5.0,
     pricePerHour: "RM 60",
     gender: "Female",

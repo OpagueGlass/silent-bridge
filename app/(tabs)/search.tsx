@@ -16,7 +16,8 @@ import {
   Text,
   TextInput,
   MD3Theme,
-  Menu
+  Menu,
+  Checkbox
 } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
@@ -25,6 +26,7 @@ import DatePickerInput from "../../components/DatePickerInput";
 import TimePickerInput from "../../components/TimePickerInput";
 import { interpreters } from "../data/mockData";
 import UserProfileModal from '../../components/UserProfileModal';
+import { SPECIALISATION } from "../../constants/data"; 
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -55,6 +57,9 @@ export default function SearchScreen() {
   const [languageMenuVisible, setLanguageMenuVisible] = useState(false);
   const openLanguageMenu = () => setLanguageMenuVisible(true);
   const closeLanguageMenu = () => setLanguageMenuVisible(false);
+  const [selectedSpecs, setSelectedSpecs] = useState(
+    new Array(SPECIALISATION.length).fill(false)
+  );
   const languageOptions = ["Any", "English", "Malay", "Mandarin", "Tamil"];
   const [selectedGender, setSelectedGender] = useState("Any");
   const [ageRange, setAgeRange] = useState("Any");
@@ -91,6 +96,13 @@ export default function SearchScreen() {
             ?.slots.includes(appointmentTime) ?? false;
         const languageMatch =
         selectedLanguage === "Any" || interpreter.languages.includes(selectedLanguage);
+        const specMatch = (() => {
+          const chosenSpecs = SPECIALISATION.filter((_, index) => selectedSpecs[index]);
+          if (chosenSpecs.length === 0) {
+            return true;
+          }
+          return chosenSpecs.some(spec => interpreter.specialisation.includes(spec));
+        })();
         const genderMatch =
           selectedGender === "Any" || interpreter.gender === selectedGender;
         const ageMatch =
@@ -100,7 +112,7 @@ export default function SearchScreen() {
               interpreter.age <= parseInt(ageRange.split("-")[1]);
         const ratingMatch = interpreter.rating >= minRating;
 
-        return dateAndTimeMatch && languageMatch && genderMatch && ageMatch && ratingMatch ;
+        return dateAndTimeMatch && languageMatch && specMatch && genderMatch && ageMatch && ratingMatch ;
       });
     }
     setDisplayedInterpreters(results);
@@ -314,6 +326,28 @@ export default function SearchScreen() {
                 </Menu>
               </View>
             </View>
+
+            {/* --- SPECIALISATIONS --- */}
+            <Text style={styles.filterLabel}>Specialisation</Text>
+            <Card style={styles.checkboxCard}>
+              <Card.Content>
+                <View style={styles.checkboxGrid}>
+                  {SPECIALISATION.map((spec, index) => (
+                    <View key={spec} style={styles.checkboxItem}>
+                      <Checkbox
+                        status={selectedSpecs[index] ? "checked" : "unchecked"}
+                        onPress={() => {
+                          const newSpecs = [...selectedSpecs];
+                          newSpecs[index] = !newSpecs[index];
+                          setSelectedSpecs(newSpecs);
+                        }}
+                      />
+                      <Text style={styles.checkboxLabel}>{spec}</Text>
+                    </View>
+                  ))}
+                </View>
+              </Card.Content>
+            </Card>
 
             {/* --- GENDER --- */}
             <Text style={styles.filterLabel}>Gender</Text>
@@ -769,5 +803,24 @@ const createStyles = (theme: MD3Theme) =>
     },
     dropdownText: {
       fontSize: 16,
+    },
+    checkboxCard: {
+      marginBottom: 20,
+      backgroundColor: "#ffff",
+      borderRadius: 12,
+    },
+    checkboxGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+    },
+    checkboxItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      width: "50%", 
+    },
+    checkboxLabel: {
+      marginLeft: 2,
+      fontSize: 15,
+      color: "#333",
     },
   });
