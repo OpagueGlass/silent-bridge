@@ -39,6 +39,9 @@ export default function DatePickerInput({
   minDate = new Date(1920, 0, 1)
 }: DatePickerInputProps) {
 
+  const maxDateConstraint = new Date();
+  maxDateConstraint.setDate(maxDateConstraint.getDate() + 30);
+
   // For All
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -243,6 +246,7 @@ export default function DatePickerInput({
                   selected={selectedDate}
                   onChange={handleDateSelection}
                   minDate={minDate}
+                  maxDate={maxDateConstraint}
                   dateFormat="dd/MM/yyyy"
                   inline
                   calendarClassName="custom-datepicker"
@@ -288,6 +292,7 @@ export default function DatePickerInput({
                     themeVariant="light"
                     onChange={(_event: DateTimePickerEvent, date?: Date) => date && setTempDate(date)}
                     minimumDate={minDate}
+                    maximumDate={maxDateConstraint} 
                   />
                   <View style={styles.modalActions}>
                     <Button title="Cancel" onPress={() => setShowDatePicker(false)} color="red" />
@@ -304,6 +309,7 @@ export default function DatePickerInput({
                 display="default"
                 onChange={onDateChange}
                 minimumDate={minDate}
+                maximumDate={maxDateConstraint} 
               />
             )
           )}
