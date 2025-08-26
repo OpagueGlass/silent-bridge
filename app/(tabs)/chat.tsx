@@ -1,109 +1,182 @@
 "use client";
 
-import { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
-import { Card, TextInput, IconButton } from "react-native-paper";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/utils/supabase";
 import { MaterialIcons } from "@expo/vector-icons";
+import { RealtimeChannel } from "@supabase/supabase-js";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+} from "react-native";
+import {
+  Card,
+  TextInput,
+  IconButton,
+  Appbar,
+  Avatar,
+} from "react-native-paper";
+
+// 为我们的数据定义清晰的类型
+interface ChatUser {
+  id: string;
+  name: string;
+  photo: string;
+}
+
+interface ChatListItem {
+  room_id: string;
+  other_user: ChatUser;
+  last_message?: string; // 暂时可选
+  unread_count?: number; // 暂时可选
+}
+
+interface Message {
+  id: number;
+  room_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+}
 
 export default function ChatScreen() {
-  const [selectedChat, setSelectedChat] = useState(null);
-  const [message, setMessage] = useState("");
+  const { profile } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [chats, setChats] = useState<ChatListItem[]>([]);
+  const [selectedChat, setSelectedChat] = useState<ChatListItem | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
-  // Mock chat data
-  const chats = [
-    {
-      id: 1,
-      name: "John Smith",
-      lastMessage: "Thank you for the session today!",
-      time: "10:30",
-      avatar: "/placeholder.svg?height=50&width=50",
-      unread: 2,
-    },
-    {
-      id: 2,
-      name: "Sarah Johnson",
-      lastMessage: "Looking forward to our appointment",
-      time: "09:15",
-      avatar: "/placeholder.svg?height=50&width=50",
-      unread: 0,
-    },
-    {
-      id: 3,
-      name: "Mike Chen",
-      lastMessage: "Can we reschedule for tomorrow?",
-      time: "Yesterday",
-      avatar: "/placeholder.svg?height=50&width=50",
-      unread: 1,
-    },
-  ];
+  // 1. 获取用户的聊天列表
+  useEffect(() => {
+    const fetchUserChats = async () => {
+      if (!profile) return;
+      setLoading(true);
+      const { data, error } = await supabase.rpc("get_user_chats");
 
-  // Mock messages for selected chat
-  const messages = [
-    {
-      id: 1,
-      text: "Hi! I have a question about our upcoming appointment.",
-      sender: "other",
-      time: "10:25",
-    },
-    {
-      id: 2,
-      text: "Of course! What would you like to know?",
-      sender: "me",
-      time: "10:26",
-    },
-    {
-      id: 3,
-      text: "What should I prepare for the medical interpretation session?",
-      sender: "other",
-      time: "10:27",
-    },
-    {
-      id: 4,
-      text: "Please bring any medical documents and a list of questions you want to ask the doctor.",
-      sender: "me",
-      time: "10:28",
-    },
-  ];
+      if (error) {
+        console.error("Error fetching user chats:", error);
+      } else {
+        setChats(data || []);
+      }
+      setLoading(false);
+    };
 
-  const sendMessage = () => {
-    if (message.trim()) {
-      // Add message sending logic here
-      setMessage("");
+    fetchUserChats();
+  }, [profile]);
+
+  // 2. 当用户选择一个聊天时，获取历史消息并设置实时订阅
+  useEffect(() => {
+    const fetchMessagesAndSubscribe = async () => {
+      if (!selectedChat) return;
+
+      // 获取历史消息
+      const { data: initialMessages, error: messagesError } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .eq("room_id", selectedChat.room_id)
+        .order("created_at", { ascending: true });
+
+      if (messagesError) {
+        console.error("Error fetching messages:", messagesError);
+      } else {
+        setMessages(initialMessages || []);
+      }
+
+      // **关键部分：设置实时订阅**
+      const channel = supabase
+        .channel(`chat_room:${selectedChat.room_id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "chat_messages",
+            filter: `room_id=eq.${selectedChat.room_id}`,
+          },
+          (payload) => {
+            // 当收到新消息时，将其添加到消息列表的末尾
+            setMessages((prevMessages) => [...prevMessages, payload.new as Message]);
+          }
+        )
+        .subscribe();
+      
+      channelRef.current = channel;
+    };
+    
+    fetchMessagesAndSubscribe();
+
+    // 组件卸载或选择新聊天时，取消上一个订阅，防止内存泄漏
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [selectedChat]);
+
+  // 3. 发送新消息的函数
+  const handleSendMessage = async () => {
+    if (newMessage.trim() === "" || !profile || !selectedChat) return;
+
+    const messageToSend = {
+      room_id: selectedChat.room_id,
+      sender_id: profile.id,
+      content: newMessage,
+    };
+
+    const { error } = await supabase.from("chat_messages").insert(messageToSend);
+
+    if (error) {
+      console.error("Error sending message:", error);
+    } else {
+      setNewMessage(""); // 发送成功后清空输入框
     }
   };
 
-  if (selectedChat) {
-    const chat = chats.find((c) => c.id === selectedChat);
+  // --- 界面渲染部分 ---
 
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  // 如果选择了某个聊天，则显示消息界面
+  if (selectedChat) {
     return (
       <View style={styles.container}>
-        <View style={styles.chatHeader}>
-          <TouchableOpacity onPress={() => setSelectedChat(null)} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="#ffffff" />
-          </TouchableOpacity>
-          <Image source={{ uri: chat.avatar }} style={styles.headerAvatar} />
-          <View style={styles.headerInfo}>
-            <Text style={styles.headerName}>{chat.name}</Text>
-            <Text style={styles.headerStatus}>Online</Text>
-          </View>
-        </View>
+        <Appbar.Header>
+          <Appbar.BackAction onPress={() => setSelectedChat(null)} />
+          <Avatar.Image size={40} source={{ uri: selectedChat.other_user.photo }} style={styles.headerAvatar} />
+          <Appbar.Content title={selectedChat.other_user.name} subtitle="Online" />
+        </Appbar.Header>
 
-        <ScrollView style={styles.messagesContainer}>
+        <ScrollView contentContainerStyle={styles.messagesContainer}>
           {messages.map((msg) => (
             <View
               key={msg.id}
-              style={[styles.messageContainer, msg.sender === "me" ? styles.myMessage : styles.otherMessage]}
+              style={[
+                styles.messageContainer,
+                msg.sender_id === profile?.id ? styles.myMessage : styles.otherMessage,
+              ]}
             >
-              <View style={[styles.messageBubble, msg.sender === "me" ? styles.myBubble : styles.otherBubble]}>
-                <Text
-                  style={[styles.messageText, msg.sender === "me" ? styles.myMessageText : styles.otherMessageText]}
-                >
-                  {msg.text}
-                </Text>
-                <Text
-                  style={[styles.messageTime, msg.sender === "me" ? styles.myMessageTime : styles.otherMessageTime]}
-                >
-                  {msg.time}
+              <View
+                style={[
+                  styles.messageBubble,
+                  msg.sender_id === profile?.id ? styles.myBubble : styles.otherBubble,
+                ]}
+              >
+                <Text style={msg.sender_id === profile?.id ? styles.myMessageText : styles.otherMessageText}>
+                  {msg.content}
                 </Text>
               </View>
             </View>
@@ -112,54 +185,41 @@ export default function ChatScreen() {
 
         <View style={styles.inputContainer}>
           <TextInput
-            value={message}
-            onChangeText={setMessage}
-            placeholder="Type a message..."
             style={styles.messageInput}
+            value={newMessage}
+            onChangeText={setNewMessage}
+            placeholder="Type a message..."
             mode="outlined"
             multiline
-            right={
-              <TextInput.Icon
-                icon="attachment"
-                onPress={() => {
-                  /* Handle attachment */
-                }}
-              />
-            }
           />
-          <IconButton icon="send" mode="contained" onPress={sendMessage} style={styles.sendButton} />
+          <IconButton
+            icon="send"
+            size={24}
+            onPress={handleSendMessage}
+            style={styles.sendButton}
+            iconColor="#ffffff"
+          />
         </View>
       </View>
     );
   }
 
+  // 默认显示聊天列表
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Chat</Text>
-      </View>
-
+      <Appbar.Header>
+        <Appbar.Content title="Chats" />
+      </Appbar.Header>
       <ScrollView style={styles.chatsList}>
         {chats.map((chat) => (
-          <TouchableOpacity key={chat.id} onPress={() => setSelectedChat(chat.id)}>
+          <TouchableOpacity key={chat.room_id} onPress={() => setSelectedChat(chat)}>
             <Card style={styles.chatCard}>
-              <Card.Content style={styles.chatContent}>
-                <Image source={{ uri: chat.avatar }} style={styles.avatar} />
-                <View style={styles.chatInfo}>
-                  <View style={styles.chatHeader}>
-                    <Text style={styles.chatName}>{chat.name}</Text>
-                    <Text style={styles.chatTime}>{chat.time}</Text>
-                  </View>
-                  <Text style={styles.lastMessage} numberOfLines={1}>
-                    {chat.lastMessage}
-                  </Text>
-                </View>
-                {chat.unread > 0 && (
-                  <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadText}>{chat.unread}</Text>
-                  </View>
-                )}
-              </Card.Content>
+              <Card.Title
+                title={chat.other_user.name}
+                subtitle={chat.last_message || "No messages yet"}
+                left={(props) => <Avatar.Image {...props} source={{ uri: chat.other_user.photo }} />}
+                right={(props) => (chat.unread_count || 0) > 0 && <Text {...props}>{chat.unread_count}</Text>}
+              />
             </Card>
           </TouchableOpacity>
         ))}
@@ -168,161 +228,80 @@ export default function ChatScreen() {
   );
 }
 
+// --- 样式部分 ---
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  header: {
-    padding: 20,
-    backgroundColor: "#2196F3",
-    paddingTop: 60,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#ffffff",
-  },
-  chatsList: {
-    flex: 1,
-  },
-  chatCard: {
-    marginHorizontal: 10,
-    marginVertical: 5,
-  },
-  chatContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 15,
-  },
-  chatInfo: {
-    flex: 1,
-  },
-  chatHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 5,
-  },
-  chatName: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  chatTime: {
-    fontSize: 12,
-    color: "#666",
-  },
-  lastMessage: {
-    fontSize: 14,
-    color: "#666",
-  },
-  unreadBadge: {
-    backgroundColor: "#2196F3",
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 10,
-  },
-  unreadText: {
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  chatHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#2196F3",
-    padding: 15,
-    paddingTop: 60,
-  },
-  backButton: {
-    marginRight: 15,
-  },
-  headerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 15,
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  headerName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#ffffff",
-  },
-  headerStatus: {
-    fontSize: 14,
-    color: "#ffffff",
-    opacity: 0.8,
-  },
-  messagesContainer: {
-    flex: 1,
-    padding: 15,
-  },
-  messageContainer: {
-    marginBottom: 15,
-  },
-  myMessage: {
-    alignItems: "flex-end",
-  },
-  otherMessage: {
-    alignItems: "flex-start",
-  },
-  messageBubble: {
-    maxWidth: "80%",
-    padding: 12,
-    borderRadius: 18,
-  },
-  myBubble: {
-    backgroundColor: "#2196F3",
-    borderBottomRightRadius: 4,
-  },
-  otherBubble: {
-    backgroundColor: "#ffffff",
-    borderBottomLeftRadius: 4,
-  },
-  messageText: {
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  myMessageText: {
-    color: "#ffffff",
-  },
-  otherMessageText: {
-    color: "#333",
-  },
-  messageTime: {
-    fontSize: 12,
-  },
-  myMessageTime: {
-    color: "#ffffff",
-    opacity: 0.8,
-    textAlign: "right",
-  },
-  otherMessageTime: {
-    color: "#666",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    padding: 15,
-    backgroundColor: "#ffffff",
-    alignItems: "flex-end",
-  },
-  messageInput: {
-    flex: 1,
-    marginRight: 10,
-    maxHeight: 100,
-  },
-  sendButton: {
-    backgroundColor: "#2196F3",
-  },
+    container: {
+        flex: 1,
+        backgroundColor: "#f5f5f5",
+    },
+    centered: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    chatsList: {
+        flex: 1,
+    },
+    chatCard: {
+        marginHorizontal: 10,
+        marginVertical: 5,
+    },
+    headerAvatar: {
+        marginLeft: -8,
+        marginRight: 8,
+    },
+    messagesContainer: {
+        flexGrow: 1,
+        padding: 15,
+    },
+    messageContainer: {
+        marginBottom: 15,
+        maxWidth: '80%',
+    },
+    myMessage: {
+        alignSelf: 'flex-end',
+        alignItems: "flex-end",
+    },
+    otherMessage: {
+        alignSelf: 'flex-start',
+        alignItems: "flex-start",
+    },
+    messageBubble: {
+        padding: 12,
+        borderRadius: 18,
+    },
+    myBubble: {
+        backgroundColor: "#2196F3",
+        borderBottomRightRadius: 4,
+    },
+    otherBubble: {
+        backgroundColor: "#ffffff",
+        borderBottomLeftRadius: 4,
+        elevation: 1,
+    },
+    myMessageText: {
+        color: "#ffffff",
+        fontSize: 16,
+    },
+    otherMessageText: {
+        color: "#333",
+        fontSize: 16,
+    },
+    inputContainer: {
+        flexDirection: "row",
+        padding: 10,
+        backgroundColor: "#ffffff",
+        borderTopWidth: 1,
+        borderTopColor: '#e0e0e0',
+        alignItems: "center",
+    },
+    messageInput: {
+        flex: 1,
+        marginRight: 10,
+    },
+    sendButton: {
+        backgroundColor: "#2196F3",
+        margin: 0,
+    },
 });

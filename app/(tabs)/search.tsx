@@ -1,488 +1,173 @@
+// app/(tabs)/search.tsx
+
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { TouchableOpacity, Image, ScrollView, StyleSheet, View } from "react-native";
-import { RadioButton, Button, Card, Chip, Menu, Text, TextInput, ActivityIndicator } from "react-native-paper";
-import { Slider } from "@miblanchard/react-native-slider";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { Button, Card, Text, TextInput, ActivityIndicator } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
-import { useAppTheme } from "../../hooks/useAppTheme";
-import { getMinMaxDOB, searchInterpreters } from "@/utils/helper";
+import { scheduleMeetLinkViaEdge } from "@/utils/helper";
+import { supabase } from "@/utils/supabase";
+import { showError, showSuccess } from "@/utils/alert";
+
+// Define a type for our interpreter data for better type safety
+interface InterpreterProfile {
+    id: string; // This is a UUID
+    name: string;
+    email: string;
+    // Add other fields like specialization, avatar_url etc. as you expand
+}
 
 export default function SearchScreen() {
-  const [searchQuery, setSearchQuery] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isBooking, setIsBooking] = useState<string | null>(null);
+    const [interpreters, setInterpreters] = useState<InterpreterProfile[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-  const [selectedGender, setSelectedGender] = useState("");
-  // --- Slider ---
-  const [priceRange, setPriceRange] = useState([0, 200]);
-  const [ageRange, setAgeRange] = useState([25, 45]);
-  const [minRating, setMinRating] = useState(5);
-  // --- Slider State ---
-  // -1 non activate, 0 left, 1 right
-  const [activePriceThumb, setActivePriceThumb] = useState(-1);
-  const [activeAgeThumb, setActiveAgeThumb] = useState(-1);
-  const priceRangeRef = useRef(priceRange);
-  const ageRangeRef = useRef(ageRange);
+    const { profile: currentUser, session } = useAuth();
 
-  const [displayedInterpreters, setDisplayedInterpreters] = useState<typeof interpreters>([]);
-  const [hasSearched, setHasSearched] = useState(false);
+    // Fetch real interpreter profiles from the database when the component loads
+    useEffect(() => {
+        const fetchInterpreters = async () => {
+            try {
+                // Fetch all profiles that have an entry in the 'interpreter_profile' table.
+                // This ensures we only get users who have registered as interpreters.
+                const { data, error } = await supabase
+                    .from('profile')
+                    .select(`
+                        id,
+                        name,
+                        email,
+                        interpreter_profile!inner(*)
+                    `);
 
-  const { isInterpreter } = useAuth();
+                if (error) {
+                    throw error;
+                }
+                
+                setInterpreters(data || []);
+            } catch (error: any) {
+                showError("Failed to load interpreters: " + error.message);
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-  const theme = useAppTheme();
+        fetchInterpreters();
+    }, []);
 
-  // Mock interpreter data
-  const interpreters = [
-    {
-      id: 1,
-      name: "John Smith",
-      specialisation: "Medical Interpretation",
-      rating: 4.8,
-      pricePerHour: "RM 50",
-      gender: "Male",
-      age: "30-35",
-      avatar: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: 2,
-      name: "Sarah Johnson",
-      specialisation: "Legal Interpretation",
-      rating: 4.9,
-      pricePerHour: "RM 60",
-      gender: "Female",
-      age: "25-30",
-      avatar: "/placeholder.svg?height=80&width=80",
-    },
-    {
-      id: 3,
-      name: "Mike Chen",
-      specialisation: "Educational Interpretation",
-      rating: 4.7,
-      pricePerHour: "RM 45",
-      gender: "Male",
-      age: "35-40",
-      avatar: "/placeholder.svg?height=80&width=80",
-    },
-  ];
+    const handleBookNow = async (interpreter: InterpreterProfile) => {
+        if (!currentUser || !session) {
+            showError("You must be logged in to book an appointment.");
+            return;
+        }
 
-  // Mock requests for interpreters
-  const requests = [
-    {
-      id: 1,
-      clientName: "Alice Wong",
-      date: "20/05/2024",
-      time: "10:00 - 11:00",
-      type: "Medical Appointment",
-      status: "Pending",
-    },
-    {
-      id: 2,
-      clientName: "David Lee",
-      date: "22/05/2024",
-      time: "14:00 - 15:30",
-      type: "Legal Consultation",
-      status: "Pending",
-    },
-  ];
+        setIsBooking(interpreter.id);
 
-  if (isInterpreter) {
+        try {
+            // Step 1: Create the initial appointment record in the database
+            const startTime = new Date();
+            const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hour later
+
+            const { data: newAppointment, error: insertError } = await supabase
+                .from('appointment')
+                .insert({
+                    deaf_user_id: currentUser.id,
+                    interpreter_id: interpreter.id,
+                    start_time: startTime.toISOString(),
+                    end_time: endTime.toISOString(),
+                    status: 'pending_confirmation', // Default status
+                })
+                .select()
+                .single();
+            
+            if (insertError) {
+                // This could fail due to RLS policies or other database constraints
+                throw insertError;
+            }
+
+            // Step 2: Call the Edge Function to create the Google Meet and update the appointment
+            const meetLink = await scheduleMeetLinkViaEdge({
+                appointmentId: newAppointment.id,
+                title: `Interpretation Session: ${currentUser.name} & ${interpreter.name}`,
+                description: `A session scheduled for ${startTime.toLocaleString()}`,
+                startTime: startTime,
+                endTime: endTime,
+                attendees: [currentUser.email, interpreter.email],
+            });
+
+            if (meetLink) {
+                showSuccess(`Booking complete! The Google Meet link has been created and saved.`);
+                console.log(`Booking complete for appointment ID: ${newAppointment.id}. Link: ${meetLink}`);
+            }
+
+        } catch (error: any) {
+            console.error("Full booking process failed:", error);
+            showError(error.message || "An unexpected error occurred during the booking process.");
+        } finally {
+            setIsBooking(null); // Reset booking state
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator animating={true} size="large" />
+                <Text style={styles.loadingText}>Loading Interpreters...</Text>
+            </View>
+        );
+    }
+
     return (
-      <ScrollView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Appointment Requests</Text>
-        </View>
-
-        <View style={styles.section}>
-          {requests.map((request) => (
-            <Card key={request.id} style={styles.requestCard}>
-              <Card.Content>
-                <View style={styles.requestHeader}>
-                  <Image source={{ uri: "/placeholder.svg?height=50&width=50" }} style={styles.clientAvatar} />
-                  <View style={styles.requestInfo}>
-                    <Text style={styles.clientName}>{request.clientName}</Text>
-                    <Text style={styles.requestType}>{request.type}</Text>
-                    <Text style={styles.requestDateTime}>
-                      {request.date} • {request.time}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.requestActions}>
-                  <Button mode="outlined" style={[styles.actionButton, styles.rejectButton]} textColor="#F44336">
-                    Reject
-                  </Button>
-                  <Button mode="contained" style={styles.actionButton}>
-                    Accept
-                  </Button>
-                </View>
-              </Card.Content>
-            </Card>
-          ))}
-        </View>
-      </ScrollView>
-    );
-  }
-
-  return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Interpreter Discovery</Text>
-
-        <TextInput
-          label="Search interpreters..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          mode="outlined"
-          style={styles.searchInput}
-          left={<TextInput.Icon icon="magnify" />}
-        />
-      </View>
-
-      {/* TEMPORARY VIEW AND TEXT STYLE */}
-      {/* --- GENDER --- */}
-      <View style={styles.section}>
-        <Text style={styles.filterLabel}>Gender</Text>
-        <RadioButton.Group value={selectedGender} onValueChange={(newValue) => setSelectedGender(newValue)}>
-          <View style={styles.radioButtonContainer}>
-            <RadioButton.Item label="Male" value="Male" />
-            <RadioButton.Item label="Female" value="Female" />
-          </View>
-        </RadioButton.Group>
-
-        {/* --- PRICE --- */}
-        <View style={styles.sliderContainer}>
-          <Text style={styles.filterLabel}>Price per hour</Text>
-          <Text style={styles.filterValue}>
-            RM{priceRange[0]} - RM{priceRange[1]}
-          </Text>
-        </View>
-        <Slider
-          value={priceRange}
-          onValueChange={(newRange) => {
-            if (newRange[0] !== priceRangeRef.current[0]) {
-              setActivePriceThumb(0);
-            } else if (newRange[1] !== priceRangeRef.current[1]) {
-              setActivePriceThumb(1);
-            }
-            priceRangeRef.current = newRange;
-            // Achieve real-time change on the value displayed
-            setPriceRange(newRange);
-          }}
-          renderThumbComponent={(thumbIndex) => {
-            const isActive = activePriceThumb === thumbIndex;
-            return (
-              <View style={styles.thumbContainer}>
-                {isActive && <View style={styles.thumbHalo} />}
-                <View style={styles.thumbCore} />
-              </View>
-            );
-          }}
-          onSlidingComplete={() => setActivePriceThumb(-1)}
-          minimumValue={0}
-          maximumValue={200}
-          step={5}
-        />
-
-        {/* --- AGE --- */}
-        <View style={styles.sliderContainer}>
-          <Text style={styles.filterLabel}>Age</Text>
-          <Text style={styles.filterValue}>
-            {ageRange[0]} - {ageRange[1]}
-          </Text>
-        </View>
-        <Slider
-          value={ageRange}
-          onValueChange={(newRange) => {
-            if (newRange[0] !== ageRangeRef.current[0]) {
-              setActiveAgeThumb(0);
-            } else if (newRange[1] !== ageRangeRef.current[1]) {
-              setActiveAgeThumb(1);
-            }
-            ageRangeRef.current = newRange;
-            setAgeRange(newRange);
-          }}
-          renderThumbComponent={(thumbIndex) => {
-            const isActive = activeAgeThumb === thumbIndex;
-            return (
-              <View style={styles.thumbContainer}>
-                {isActive && <View style={styles.thumbHalo} />}
-                <View style={styles.thumbCore} />
-              </View>
-            );
-          }}
-          onSlidingComplete={() => setActiveAgeThumb(-1)}
-          minimumValue={18}
-          maximumValue={60}
-          step={1}
-        />
-
-        {/* --- Rating --- */}
-        <View style={styles.sliderContainer}>
-          <Text style={styles.filterLabel}>Ratings</Text>
-          <View style={styles.starContainer}>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <TouchableOpacity key={i} onPress={() => setMinRating(i)}>
-                <MaterialCommunityIcons
-                  name={i <= minRating ? "star" : "star-outline"}
-                  size={32}
-                  color={i <= minRating ? "#f8d706db" : "#64748B"}
+        <ScrollView style={styles.container}>
+            <View style={styles.header}>
+                <Text style={styles.title}>Find an Interpreter</Text>
+                <TextInput
+                    placeholder="Search by name, language, etc."
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    style={styles.searchInput}
+                    left={<TextInput.Icon icon="magnify" />}
                 />
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+            </View>
 
-        <Button
-          mode="contained"
-          onPress={async () => {
-            // Example search
-            const result = await searchInterpreters("oncology", "english", "Johor", 0, 31);
-            console.log(result);
-          }}
-          style={styles.searchButton}
-          buttonColor="#E0E0E0"
-          textColor="#000000"
-        >
-          Search
-        </Button>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Top 5 Matches</Text>
-
-        {interpreters.map((interpreter) => (
-          <Card key={interpreter.id} style={styles.interpreterCard}>
-            <Card.Content>
-              <View style={styles.interpreterHeader}>
-                <Image source={{ uri: interpreter.avatar }} style={styles.interpreterAvatar} />
-                <View style={styles.interpreterInfo}>
-                  <Text style={styles.interpreterName}>{interpreter.name}</Text>
-                  <Text style={styles.interpreterSpecialisation}>{interpreter.specialisation}</Text>
-                  <View style={styles.interpreterMeta}>
-                    <Text style={styles.interpreterRating}>⭐ {interpreter.rating}</Text>
-                    <Text style={styles.interpreterPrice}>{interpreter.pricePerHour}/hour</Text>
-                  </View>
-                  <View style={styles.interpreterTags}>
-                    <Chip style={styles.tag} textStyle={styles.tagText}>
-                      {interpreter.gender}
-                    </Chip>
-                    <Chip style={styles.tag} textStyle={styles.tagText}>
-                      {interpreter.age}
-                    </Chip>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.interpreterActions}>
-                <Button mode="outlined" style={styles.profileButton}>
-                  Profile
-                </Button>
-                <Button mode="contained" style={styles.bookButton}>
-                  Book Now
-                </Button>
-              </View>
-            </Card.Content>
-          </Card>
-        ))}
-      </View>
-    </ScrollView>
-  );
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Available Interpreters</Text>
+                {interpreters.length > 0 ? interpreters.map((interpreter) => (
+                    <Card key={interpreter.id} style={styles.interpreterCard}>
+                        <Card.Title
+                            title={interpreter.name || 'Interpreter'}
+                            subtitle={interpreter.email}
+                        />
+                        <Card.Actions>
+                            <Button onPress={() => { /* Navigate to full profile */ }}>Profile</Button>
+                            <Button 
+                                mode="contained" 
+                                onPress={() => handleBookNow(interpreter)}
+                                loading={isBooking === interpreter.id}
+                                disabled={isBooking !== null} // Disable all booking buttons while one is in progress
+                            >
+                                {isBooking === interpreter.id ? 'Booking...' : 'Book Now'}
+                            </Button>
+                        </Card.Actions>
+                    </Card>
+                )) : (
+                    <Text>No interpreters are available at this time.</Text>
+                )}
+            </View>
+        </ScrollView>
+    );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  header: {
-    padding: 20,
-    backgroundColor: "#2196F3",
-    paddingTop: 60,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#ffffff",
-    marginBottom: 15,
-  },
-  searchInput: {
-    backgroundColor: "#ffffff",
-  },
-  filtersSection: {
-    padding: 20,
-    backgroundColor: "#ffffff",
-    marginBottom: 10,
-  },
-  filtersTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 15,
-    color: "#333",
-  },
-  filterInput: {
-    marginBottom: 10,
-  },
-  section: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 15,
-    color: "#333",
-  },
-  interpreterCard: {
-    marginBottom: 15,
-  },
-  interpreterHeader: {
-    flexDirection: "row",
-    marginBottom: 15,
-  },
-  interpreterAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginRight: 15,
-  },
-  interpreterInfo: {
-    flex: 1,
-  },
-  interpreterName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  interpreterSpecialisation: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 5,
-  },
-  interpreterMeta: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  interpreterRating: {
-    fontSize: 14,
-    color: "#333",
-  },
-  interpreterPrice: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#2196F3",
-  },
-  interpreterTags: {
-    flexDirection: "row",
-    gap: 5,
-  },
-  tag: {
-    backgroundColor: "#E3F2FD",
-    height: 25,
-  },
-  tagText: {
-    fontSize: 12,
-    color: "#2196F3",
-  },
-  interpreterActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  profileButton: {
-    flex: 0.48,
-  },
-  bookButton: {
-    flex: 0.48,
-  },
-  requestCard: {
-    marginBottom: 15,
-  },
-  requestHeader: {
-    flexDirection: "row",
-    marginBottom: 15,
-  },
-  clientAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 15,
-  },
-  requestInfo: {
-    flex: 1,
-  },
-  clientName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 2,
-  },
-  requestType: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 2,
-  },
-  requestDateTime: {
-    fontSize: 14,
-    color: "#333",
-  },
-  requestActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  actionButton: {
-    flex: 0.48,
-  },
-  rejectButton: {
-    borderColor: "#F44336",
-  },
-
-  radioButtonContainer: {
-    // Achieve horizontal arrangement
-    flexDirection: "row",
-    // Evenly distribute items with space around
-    justifyContent: "space-around",
-    fontSize: 16,
-    fontWeight: "500",
-  },
-
-  sliderContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-
-  starContainer: {
-    flexDirection: "row",
-  },
-
-  filterLabel: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  filterValue: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  star: {
-    fontSize: 18,
-    color: "#F59E0B",
-  },
-  thumbContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  thumbHalo: {
-    height: 40,
-    width: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(99, 102, 241, 0.2)",
-    position: "absolute",
-  },
-  thumbCore: {
-    height: 20,
-    width: 20,
-    borderRadius: 10,
-    backgroundColor: "#000000ff",
-  },
-  searchButton: {
-    marginTop: 32,
-    paddingVertical: 6,
-  },
+    container: { flex: 1, backgroundColor: "#f5f5f5" },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    loadingText: { marginTop: 10 },
+    header: { padding: 20, backgroundColor: "#2196F3", paddingTop: 60 },
+    title: { fontSize: 24, fontWeight: "bold", color: "#ffffff", marginBottom: 15 },
+    searchInput: { backgroundColor: "#ffffff" },
+    section: { padding: 20 },
+    sectionTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 15, color: "#333" },
+    interpreterCard: { marginBottom: 15 },
 });
+

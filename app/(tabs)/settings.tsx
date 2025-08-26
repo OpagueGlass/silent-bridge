@@ -1,52 +1,76 @@
+// app/(tabs)/settings.tsx
+
 "use client";
 
 import { useRouter } from "expo-router";
-import { useState, useEffect } from "react";
-import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
-import { ActivityIndicator, Button, Card, List, Switch } from "react-native-paper";
+import { useState } from "react";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Button, Card, List, Switch } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
-import { showConfirmAlert } from "../../utils/alert";
+import { showConfirmAlert, showError } from "../../utils/alert";
 import { useAppTheme } from "../../hooks/useAppTheme";
+import { getMeetLink } from "../../utils/helper"; // 导入我们创建的函数
 
 export default function SettingsScreen() {
   const router = useRouter();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
-  const { profile, isInterpreter, signOut } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
+  
+  // 从 AuthContext 获取所需的一切，包括 providerToken
+  const { profile, isInterpreter, signOut, providerToken } = useAuth();
+  
+  const [isTesting, setIsTesting] = useState(false);
   const theme = useAppTheme();
 
   const handleSignOut = async () => {
     const confirmed = await showConfirmAlert("Sign Out", "Are you sure you want to sign out?");
-
     if (confirmed) {
       await signOut();
       router.replace("/auth");
     }
   };
 
+  // --- 新增的测试函数 ---
+  const handleTestMeetLink = async () => {
+    if (!providerToken) {
+      showError("Provider token is not available. Please sign in again with Google.");
+      return;
+    }
+    
+    setIsTesting(true);
+    try {
+      // 调用 helper 中的函数
+      await getMeetLink(providerToken);
+    } catch (error: any) {
+      showError(error.message || "Failed to generate Google Meet link.");
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.colors.surfaceVariant }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Settings</Text>
       </View>
 
       <View style={styles.section}>
         <Card style={styles.profileCard}>
+          <Card.Title
+            title={profile?.name || "User"}
+            subtitle={profile?.email || "No email"}
+            left={(props) => <List.Icon {...props} icon="account-circle" />}
+          />
           <Card.Content>
-            <Text style={styles.profileName}>{profile?.name}</Text>
-            <Text style={styles.profileEmail}>{profile?.email}</Text>
-            <Text style={styles.profileType}>{isInterpreter ? "Interpreter" : "Deaf User"}</Text>
-            <Button
-              mode="outlined"
-              style={styles.editProfileButton}
-              onPress={() => {
-                /* Navigate to profile edit */
-              }}
-            >
+            <Text style={styles.profileType}>
+              {isInterpreter ? "Interpreter" : "Deaf User"}
+            </Text>
+          </Card.Content>
+          <Card.Actions>
+            <Button onPress={() => { /* Navigate to profile edit */ }}>
               Edit Profile
             </Button>
-          </Card.Content>
+          </Card.Actions>
         </Card>
       </View>
 
@@ -55,44 +79,41 @@ export default function SettingsScreen() {
         <Card style={styles.settingsCard}>
           <List.Item
             title="Push Notifications"
-            description="Receive notifications for appointments and messages"
             right={() => <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} />}
           />
           <List.Item
             title="Email Notifications"
-            description="Receive email updates about your account"
             right={() => <Switch value={emailNotifications} onValueChange={setEmailNotifications} />}
           />
+        </Card>
+      </View>
+      
+      {/* --- 新增的测试部分 --- */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Developer Tools</Text>
+        <Card style={styles.settingsCard}>
+          <List.Item
+            title="Test Google API"
+            description="Generates a Google Meet link using your token"
+          />
+          <Card.Actions>
+            <Button 
+              onPress={handleTestMeetLink} 
+              loading={isTesting} 
+              disabled={isTesting}
+            >
+              Test Google Meet Link
+            </Button>
+          </Card.Actions>
         </Card>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account</Text>
         <Card style={styles.settingsCard}>
-          <List.Item
-            title="Privacy Policy"
-            description="Read our privacy policy"
-            right={() => <List.Icon icon="chevron-right" />}
-            onPress={() => {
-              /* Navigate to privacy policy */
-            }}
-          />
-          <List.Item
-            title="Terms of Service"
-            description="Read our terms of service"
-            right={() => <List.Icon icon="chevron-right" />}
-            onPress={() => {
-              /* Navigate to terms */
-            }}
-          />
-          <List.Item
-            title="Help & Support"
-            description="Get help with using the app"
-            right={() => <List.Icon icon="chevron-right" />}
-            onPress={() => {
-              /* Navigate to help */
-            }}
-          />
+          <List.Item title="Privacy Policy" onPress={() => {}} right={(props) => <List.Icon {...props} icon="chevron-right" />} />
+          <List.Item title="Terms of Service" onPress={() => {}} right={(props) => <List.Icon {...props} icon="chevron-right" />} />
+          <List.Item title="Help & Support" onPress={() => {}} right={(props) => <List.Icon {...props} icon="chevron-right" />} />
         </Card>
       </View>
 
@@ -100,36 +121,20 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Interpreter Settings</Text>
           <Card style={styles.settingsCard}>
-            <List.Item
-              title="Availability"
-              description="Manage your available hours"
-              right={() => <List.Icon icon="chevron-right" />}
-              onPress={() => {
-                /* Navigate to availability settings */
-              }}
-            />
-            <List.Item
-              title="Specializations"
-              description="Update your areas of expertise"
-              right={() => <List.Icon icon="chevron-right" />}
-              onPress={() => {
-                /* Navigate to specializations */
-              }}
-            />
-            <List.Item
-              title="Pricing"
-              description="Set your hourly rates"
-              right={() => <List.Icon icon="chevron-right" />}
-              onPress={() => {
-                /* Navigate to pricing */
-              }}
-            />
+            <List.Item title="My Availability" onPress={() => {}} right={(props) => <List.Icon {...props} icon="chevron-right" />} />
+            <List.Item title="My Specializations" onPress={() => {}} right={(props) => <List.Icon {...props} icon="chevron-right" />} />
+            <List.Item title="Pricing & Payouts" onPress={() => {}} right={(props) => <List.Icon {...props} icon="chevron-right" />} />
           </Card>
         </View>
       )}
 
       <View style={styles.section}>
-        <Button mode="contained" onPress={handleSignOut} style={styles.signOutButton} buttonColor="#F44336">
+        <Button
+          mode="contained"
+          onPress={handleSignOut}
+          style={styles.signOutButton}
+          buttonColor={theme.colors.error}
+        >
           Sign Out
         </Button>
       </View>
@@ -141,10 +146,10 @@ export default function SettingsScreen() {
   );
 }
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
   },
   header: {
     padding: 20,
@@ -157,7 +162,8 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   section: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
   sectionTitle: {
     fontSize: 18,
@@ -168,25 +174,11 @@ const styles = StyleSheet.create({
   profileCard: {
     backgroundColor: "#ffffff",
   },
-  profileName: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  profileEmail: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 5,
-  },
   profileType: {
     fontSize: 14,
     color: "#2196F3",
-    marginBottom: 15,
     textTransform: "uppercase",
     fontWeight: "bold",
-  },
-  editProfileButton: {
-    marginTop: 10,
   },
   settingsCard: {
     backgroundColor: "#ffffff",
@@ -198,5 +190,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#666",
     fontSize: 14,
+    marginTop: 10,
+    paddingBottom: 20,
   },
 });
