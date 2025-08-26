@@ -90,9 +90,13 @@ export const searchInterpreters = async (
   state: string,
   ageStart: number,
   ageEnd: number,
+  date: Date,
+  startTime: string,
+  endTime: string,
   gender: string | null = null
 ) => {
   const { minDOB, maxDOB } = getMinMaxDOB(ageStart, ageEnd);
+  const day = date.getDay() === 0 ? 7 : date.getDay();
 
   // Build the query with necessary filters and order by rating in descending order
   let query = supabase
@@ -101,7 +105,8 @@ export const searchInterpreters = async (
       `
       profile (*),
       interpreter_specialisation (specialisation_id),
-      interpreter_language (language_id)
+      interpreter_language (language_id),
+      availability (*)
     `
     )
     .eq("interpreter_specialisation.specialisation_id", spec)
@@ -109,9 +114,13 @@ export const searchInterpreters = async (
     .eq("profile.location", state)
     .gt("profile.date_of_birth", minDOB.toISOString())
     .lt("profile.date_of_birth", maxDOB.toISOString())
+    .eq("availability.day_id", day)
+    .gte("availability.start_time", startTime)
+    .lte("availability.end_time", endTime)
     .not("profile", "is", null) // Exclude profiles that only meet some of the criteria
     .not("interpreter_specialisation", "is", null)
     .not("interpreter_language", "is", null)
+    .not("availability", "is", null)
     .order("profile(avg_rating)", { ascending: false, nullsFirst: false }); // requires brackets for workaround
 
   // Sort by gender if specified
