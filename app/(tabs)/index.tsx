@@ -1,168 +1,597 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, View } from "react-native";
-import { ActivityIndicator, Button, Card, Chip, Text } from "react-native-paper";
+import { useRouter } from "expo-router";
+import { useMemo, useState } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
+import {
+  Button,
+  Card,
+  Chip,
+  Dialog,
+  Menu,
+  Portal,
+  Text,
+  TextInput,
+} from "react-native-paper";
+import ReviewModal from "../../components/ReviewModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
-
-interface Appointment {
-  id: number;
-  date: string;
-  time: string;
-  status: string;
-  interpreter: string;
-  email: string;
-}
-
-interface Contact {
-  id: number;
-  name: string;
-  email: string;
-  avatar: string;
-}
+import {
+  Appointment,
+  appointments as userAppointments,
+} from "../data/mockBookings";
+import {
+  InterpreterRequest,
+  interpreterAppointments,
+} from "../data/mockBookingsDeaf";
 
 export default function HomeScreen() {
+  { /* --- INTERPRETER & CLIENT --- */ }
   const { profile, isInterpreter } = useAuth();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const theme = useAppTheme();
-
-  // Mock data for demonstration
-  useEffect(() => {
-    setAppointments([
-      {
-        id: 1,
-        date: "15/05/2024",
-        time: "10:00 - 11:00",
-        status: "Approved",
-        interpreter: "John Smith",
-        email: "john@gmail.com",
-      },
-      {
-        id: 2,
-        date: "16/05/2024",
-        time: "14:00 - 15:00",
-        status: "Pending",
-        interpreter: "Sarah Johnson",
-        email: "sarah@gmail.com",
-      },
-    ]);
-
-  }, []);
-
-  const getStatusColor = (status: string) => {
+  const router = useRouter();
+  const getStatusColor = (
+    status: Appointment["status"] | InterpreterRequest["status"]
+  ) => {
     switch (status) {
       case "Approved":
-        return theme.colors.secondary;
+        return "limegreen";
       case "Pending":
         return theme.colors.tertiary;
       case "Rejected":
         return theme.colors.error;
       case "Completed":
-        return theme.colors.primary;
+        return theme.colors.secondary;
+      case "Cancelled":
+        return theme.colors.onSurfaceDisabled;
       default:
         return theme.colors.onSurfaceVariant;
     }
   };
 
+  { /* --- CLIENT --- */ }
+  const [appointments, setAppointments] =
+    useState<Appointment[]>(userAppointments);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("Approved");
+  const [statusMenuVisible, setStatusMenuVisible] = useState(false);
+  const [isReviewModalVisible, setReviewModalVisible] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<Appointment | null>(null);
+  const [isCancelDialogVisible, setCancelDialogVisible] = useState(false);
+
+  const { completedAppointments, upcomingAppointments } = useMemo<{
+    completedAppointments: Appointment[];
+    upcomingAppointments: Appointment[];
+  }>(() => {
+    const completed = appointments
+      .filter((a) => a.status === "Completed")
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const upcoming = appointments
+      .filter((a) => a.status !== "Completed")
+      .filter((a) => {
+        const [year, month, day] = a.date.split("-").map(Number);
+        const appointmentDate = new Date(year, month - 1, day);
+        return appointmentDate >= today;
+      })
+      .filter((a) => {
+        const statusMatch = statusFilter === "All" || a.status === statusFilter;
+
+        const formattedQuery = searchQuery.trim().toLowerCase();
+        if (formattedQuery === "") {
+          return statusMatch;
+        }
+
+        const displayDate = new Date(a.date)
+          .toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })
+          .toLowerCase();
+        const interpreterName = a.interpreter.name.toLowerCase();
+        const queryMatch =
+          displayDate.includes(formattedQuery) ||
+          interpreterName.includes(formattedQuery);
+
+        return statusMatch && queryMatch;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    return { completedAppointments: completed, upcomingAppointments: upcoming };
+  }, [appointments, searchQuery, statusFilter]);
+
+  const handleCancelAppointment = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setCancelDialogVisible(true);
+  };
+
+  const performCancel = () => {
+    if (!selectedAppointment) return;
+    setAppointments((prev) =>
+      prev.map((app) =>
+        app.id === selectedAppointment.id
+          ? { ...app, status: "Cancelled" }
+          : app
+      )
+    );
+    setCancelDialogVisible(false);
+    setSelectedAppointment(null);
+  };
+
+  const hideCancelDialog = () => {
+    setCancelDialogVisible(false);
+    setSelectedAppointment(null);
+  };
+
+  const renderUserAppointmentActions = (
+    status: Appointment["status"],
+    appointment: Appointment
+  ) => {
+    switch (status) {
+      case "Approved":
+        return (
+          <>
+            <Button mode="contained" style={{ flex: 1 }}>
+              Join Appointment
+            </Button>
+          </>
+        );
+      case "Pending":
+        return (
+          <>
+            <Button
+              mode="contained"
+              disabled
+              style={styles.actionButtonPrimary}
+            >
+              Awaiting Approval
+            </Button>
+            <Button
+              mode="outlined"
+              style={[styles.actionButtonSecondary, styles.cancelButton]}
+              labelStyle={styles.cancelButtonLabel}
+              onPress={() => handleCancelAppointment(appointment)}
+            >
+              Cancel
+            </Button>
+          </>
+        );
+      case "Rejected":
+      case "Cancelled":
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const handleOpenReviewModal = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setReviewModalVisible(true);
+  };
+
+  const handleCloseReviewModal = () => {
+    setReviewModalVisible(false);
+    setSelectedAppointment(null);
+  };
+
+  const handleSubmitReview = (rating: number, comment: string) => {
+    if (selectedAppointment) {
+      console.log(
+        `Submitting review for appointment ID: ${selectedAppointment.id}`
+      );
+      console.log(`Rating: ${rating}`);
+      console.log(`Comment: "${comment}"`);
+    }
+    handleCloseReviewModal();
+    ("Thank you for your review!");
+  };
+
+  { /* --- INTERPRETER --- */ }
+  if (!isInterpreter) {
+    const [requests, setRequests] = useState<InterpreterRequest[]>(interpreterAppointments);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isClientReviewVisible, setClientReviewVisible] = useState(false);
+    const [requestToReview, setRequestToReview] = useState<InterpreterRequest | null>(null);
+
+    const handleOpenClientReview = (request: InterpreterRequest) => {
+      setRequestToReview(request);
+      setClientReviewVisible(true);
+    };
+    const handleCloseClientReview = () => {
+      setClientReviewVisible(false);
+      setRequestToReview(null);
+    };
+    const handleSubmitClientReview = (rating: number, comment: string) => {
+      if (requestToReview) {
+        console.log(`Interpreter reviewing client: ${requestToReview.clientName}`);
+        console.log(`Rating: ${rating}, Comment: "${comment}"`);
+      }
+      handleCloseClientReview();
+    };
+
+    const { interpreterCompleted, interpreterApproved } = useMemo(() => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const completed = requests
+        .filter((r) => r.status === "Completed")
+        .sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+
+      const approved = requests
+        .filter((r) => r.status === "Approved")
+        .filter((r) => {
+          const [year, month, day] = r.date.split("-").map(Number);
+          const requestDate = new Date(year, month - 1, day);
+          return requestDate >= today;
+        })
+        .filter((r) => {
+          const formattedQuery = searchQuery.trim().toLowerCase();
+          if (formattedQuery === "") return true;
+
+          const displayDate = new Date(r.date)
+            .toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })
+            .toLowerCase();
+          const clientName = r.clientName.toLowerCase();
+
+          return (
+            displayDate.includes(formattedQuery) ||
+            clientName.includes(formattedQuery)
+          );
+        })
+        .sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+
+      return { interpreterCompleted: completed, interpreterApproved: approved };
+    }, [requests, searchQuery]);
+
+    { /* --- INTERPRETER UI --- */ }
+    return (
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+      >
+        {/* --- HEADER --- */}
+        <View
+          style={[styles.header, { backgroundColor: theme.colors.primary }]}
+        >
+          <Text variant="headlineMedium" style={styles.greeting}>
+            Welcome back, {profile?.name || "Interpreter"}!
+          </Text>
+          <Text variant="bodyLarge" style={styles.subtitle}>
+            Manage your scheduled appointments
+          </Text>
+        </View>
+
+        {/* --- REVIEW COMPLETED SESSION --- */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text variant="titleLarge" style={styles.sectionTitle}>
+              Review Completed Sessions
+            </Text>
+            <Button mode="text" compact>
+              View All
+            </Button>
+          </View>
+          {interpreterCompleted.map((request) => (
+            <Card key={request.id} style={styles.reviewCard}>
+              <Card.Content style={styles.reviewContent}>
+                <View style={styles.reviewInfo}>
+                  <Text variant="titleMedium" style={styles.appointmentDate}>
+                    {new Date(request.date).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}{" "}
+                    Session
+                  </Text>
+                  <Text
+                    variant="bodyMedium"
+                    style={{ color: theme.colors.onSurfaceVariant }}
+                  >
+                    {request.clientName} • {request.duration}
+                  </Text>
+                </View>
+                <Button mode="contained" onPress={() => handleOpenClientReview(request)}>
+                  Review Client
+                </Button>
+              </Card.Content>
+            </Card>
+          ))}
+        </View>
+
+        {/* --- APPROVED APPOINTMENTS --- */}
+        <View style={styles.section}>
+          <Text variant="titleLarge" style={styles.sectionTitle}>
+            Approved Appointments
+          </Text>
+
+          {/* --- SEARCH INPUT --- */}
+          <View style={styles.filterContainer}>
+            <TextInput
+              mode="outlined"
+              placeholder="Search by date or client..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
+              left={<TextInput.Icon icon="magnify" />}
+            />
+          </View>
+
+          {/* --- RESULTS --- */}
+          {interpreterApproved.map((request) => (
+            <Card key={request.id} style={styles.appointmentCard}>
+              <Card.Content>
+                <View style={styles.appointmentHeader}>
+                  <Text variant="titleMedium" style={styles.appointmentDate}>
+                    {new Date(request.date).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}{" "}
+                    at {request.time}
+                  </Text>
+                  <Chip
+                    style={{ backgroundColor: "limegreen" }}
+                    textStyle={styles.statusText}
+                  >
+                    Approved
+                  </Chip>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailText} selectable>
+                    Client: {request.clientName}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailText} selectable>
+                    {request.clientEmail}
+                  </Text>
+                </View>
+                {request.duration && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailText}>
+                      Duration: {request.duration}
+                    </Text>
+                  </View>
+                )}
+                {request.doctorLanguage && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailText}>
+                      Doctor's Language: {request.doctorLanguage}
+                    </Text>
+                  </View>
+                )}
+                {request.location && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailText}>
+                      Location: {request.location}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={[styles.appointmentActions, { marginTop: 16 }]}>
+                  <Button mode="contained" style={{ flex: 1 }}>
+                    Join Appointment
+                  </Button>
+                </View>
+              </Card.Content>
+            </Card>
+          ))}
+        </View>
+        {requestToReview && (
+          <ReviewModal
+            visible={isClientReviewVisible}
+            onDismiss={handleCloseClientReview}
+            onSubmit={handleSubmitClientReview}
+            targetName={requestToReview.clientName}
+            sessionDate={requestToReview.date}
+            placeholderText="Share your experience with this client..."
+          />
+        )}
+      </ScrollView>
+    );
+  }
+
+  { /* --- CLIENT UI --- */ }
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
+      {/* --- HEADER --- */}
       <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
         <Text variant="headlineMedium" style={styles.greeting}>
           Welcome back, {profile?.name || "User"}!
         </Text>
         <Text variant="bodyLarge" style={styles.subtitle}>
-          {isInterpreter ? "Manage your interpreter services" : "Find your perfect interpreter"}
+          Find the right interpreter for your needs
         </Text>
       </View>
 
+      {/* --- REVIEW COMPLETED SESSION --- */}  
       <View style={styles.section}>
-        {/* <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-          {isInterpreter ? "Recent Requests" : "Contacts"}
-        </Text> */}
-
-        {/* {contacts.map((contact) => (
-          <Card key={contact.id} style={[styles.contactCard, { backgroundColor: theme.colors.surface }]}>
-            <Card.Content style={styles.contactContent}>
-              <Image source={{ uri: contact.avatar }} style={styles.avatar} />
-              <View style={styles.contactInfo}>
-                <Text variant="titleMedium" style={[styles.contactName, { color: theme.colors.onSurface }]}>
-                  {contact.name}
+        <View style={styles.sectionHeader}>
+          <Text variant="titleLarge" style={styles.sectionTitle}>
+            Review Completed Sessions
+          </Text>
+          <Button mode="text" compact>
+            View All
+          </Button>
+        </View>
+        {completedAppointments.map((appointment) => (
+          <Card key={appointment.id} style={styles.reviewCard}>
+            <Card.Content style={styles.reviewContent}>
+              <View style={styles.reviewInfo}>
+                <Text variant="titleMedium" style={styles.appointmentDate}>
+                  {new Date(appointment.date).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}{" "}
+                  Session
                 </Text>
-                <Text variant="bodyMedium" style={[styles.contactEmail, { color: theme.colors.onSurfaceVariant }]}>
-                  {contact.email}
-                </Text>
-              </View>
-              <Button mode="outlined" compact>
-                Contact
-              </Button>
-            </Card.Content>
-          </Card>
-        ))} */}
-      </View>
-
-      <View style={styles.section}>
-        <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-          Appointments
-        </Text>
-
-        {appointments.map((appointment) => (
-          <Card key={appointment.id} style={[styles.appointmentCard, { backgroundColor: theme.colors.surface }]}>
-            <Card.Content>
-              <View style={styles.appointmentHeader}>
-                <Text variant="titleMedium" style={[styles.appointmentTitle, { color: theme.colors.onSurface }]}>
-                  Appointment {appointment.id}
-                </Text>
-                <Chip
-                  style={[styles.statusChip, { backgroundColor: getStatusColor(appointment.status) }]}
-                  textStyle={styles.statusText}
+                <Text
+                  variant="bodyMedium"
+                  style={{ color: theme.colors.onSurfaceVariant }}
                 >
-                  {appointment.status}
-                </Chip>
+                  {appointment.interpreter.name} • {appointment.duration}
+                </Text>
               </View>
-              <Text variant="bodyLarge" style={[styles.appointmentDate, { color: theme.colors.onSurface }]}>
-                {appointment.date} • {appointment.time}
-              </Text>
-              <Text
-                variant="bodyMedium"
-                style={[styles.appointmentInterpreter, { color: theme.colors.onSurfaceVariant }]}
+              <Button
+                mode="contained"
+                onPress={() => handleOpenReviewModal(appointment)}
               >
-                Interpreter: {appointment.interpreter}
-              </Text>
-              <Text variant="bodyMedium" style={[styles.appointmentEmail, { color: theme.colors.onSurfaceVariant }]}>
-                Email: {appointment.email}
-              </Text>
-
-              <View style={styles.appointmentActions}>
-                <Button mode="outlined" compact style={styles.actionButton}>
-                  Add to Calendar
-                </Button>
-                <Button mode="contained" compact style={styles.actionButton}>
-                  Join Appointment
-                </Button>
-              </View>
+                Review
+              </Button>
             </Card.Content>
           </Card>
         ))}
       </View>
 
-      {isInterpreter && (
-        <View style={styles.section}>
-          <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-            Set Availability
-          </Text>
-          <Card style={[styles.availabilityCard, { backgroundColor: theme.colors.surfaceVariant }]}>
-            <Card.Content>
-              <Text variant="bodyLarge" style={[styles.availabilityText, { color: theme.colors.onSurface }]}>
-                Set your free times to receive appointment requests
-              </Text>
-              <Button mode="contained" style={styles.availabilityButton}>
-                Set Availability
+      {/* --- APPOINTMENTS --- */}
+      <View style={styles.section}>
+        <Text variant="titleLarge" style={styles.sectionTitle}>
+          Appointments
+        </Text>
+
+        {/* --- SEARCH INPUT --- */}
+        <View style={styles.filterContainer}>
+          <TextInput
+            mode="outlined"
+            placeholder="Search by date or interpreter..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+            left={<TextInput.Icon icon="magnify" />}
+          />
+
+          {/* --- RESULTS --- */}
+          <Menu
+            visible={statusMenuVisible}
+            onDismiss={() => setStatusMenuVisible(false)}
+            anchor={
+              <Button
+                mode="outlined"
+                onPress={() => setStatusMenuVisible(true)}
+                style={styles.filterButton}
+                icon="chevron-down"
+                contentStyle={{ flexDirection: "row-reverse" }}
+              >
+                {statusFilter}
               </Button>
+            }
+          >
+            {["All", "Approved", "Pending", "Rejected", "Cancelled"].map(
+              (status) => (
+                <Menu.Item
+                  key={status}
+                  onPress={() => {
+                    setStatusFilter(status);
+                    setStatusMenuVisible(false);
+                  }}
+                  title={status}
+                />
+              )
+            )}
+          </Menu>
+        </View>
+
+        {upcomingAppointments.map((appointment) => (
+          <Card
+            key={appointment.id}
+            style={[
+              styles.appointmentCard,
+              appointment.status === "Rejected" && styles.rejectedCard,
+            ]}
+          >
+            <Card.Content>
+              <View style={styles.appointmentHeader}>
+                <Text variant="titleMedium" style={styles.appointmentDate}>
+                  {new Date(appointment.date).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}{" "}
+                  at {appointment.time}
+                </Text>
+                <Chip
+                  style={[
+                    styles.statusChip,
+                    { backgroundColor: getStatusColor(appointment.status) },
+                  ]}
+                  textStyle={styles.statusText}
+                >
+                  {appointment.status}
+                </Chip>
+              </View>
+              <Text
+                variant="bodyMedium"
+                style={{ color: theme.colors.onSurfaceVariant }}
+              >
+                Interpreter: {appointment.interpreter.name}
+              </Text>
+              <Text
+                variant="bodyMedium"
+                style={{
+                  color: theme.colors.onSurfaceVariant,
+                  marginBottom: 16,
+                }}
+              >
+                {appointment.interpreter.email}
+              </Text>
+              {appointment.status === "Rejected" ? (
+                <View style={styles.rejectedMessageContainer}>
+                  <Text style={styles.rejectedMessageText}>
+                    the interpreter is unable to accept this request
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.appointmentActions}>
+                  {renderUserAppointmentActions(
+                    appointment.status,
+                    appointment
+                  )}
+                </View>
+              )}
             </Card.Content>
           </Card>
-        </View>
-      )}
+        ))}
+      </View>
+      <ReviewModal
+        visible={isReviewModalVisible}
+        onDismiss={handleCloseReviewModal}
+        onSubmit={handleSubmitReview}
+        targetName={selectedAppointment?.interpreter.name || ''}
+        sessionDate={selectedAppointment?.date || ''}
+        placeholderText="Share your experience with this interpreter..."
+      />
+      <Portal>
+        <Dialog visible={isCancelDialogVisible} onDismiss={hideCancelDialog}>
+          <Dialog.Title>Cancel Request</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium">
+              Are you sure you want to cancel this appointment request?
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={hideCancelDialog}>No</Button>
+            <Button onPress={performCancel} textColor={theme.colors.error}>
+              Yes, Cancel
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </ScrollView>
   );
 }
@@ -172,82 +601,119 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    padding: 24, // spacing.lg
+    padding: 24,
     paddingTop: 60,
   },
   greeting: {
     color: "#ffffff",
-    marginBottom: 8, // spacing.sm
+    marginBottom: 8,
   },
   subtitle: {
     color: "#ffffff",
     opacity: 0.9,
   },
   section: {
-    padding: 24, // spacing.lg
+    padding: 24,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
   },
   sectionTitle: {
-    marginBottom: 16, // spacing.md
+    fontWeight: "bold",
   },
-  contactCard: {
-    marginBottom: 12, // spacing.sm + 4
+  reviewCard: {
+    marginBottom: 12,
   },
-  contactContent: {
+  reviewContent: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
   },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 16, // spacing.md
+  reviewInfo: {
+    flex: 1,
+    marginRight: 8,
   },
-  contactInfo: {
+  filterContainer: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 24,
+  },
+  searchInput: {
     flex: 1,
   },
-  contactName: {
-    marginBottom: 4, // spacing.xs
+  filterButton: {
+    justifyContent: "center",
   },
-  contactEmail: {},
   appointmentCard: {
-    marginBottom: 16, // spacing.md
+    marginBottom: 16,
+  },
+  rejectedCard: {
+    backgroundColor: "#FFF1F2",
+    borderColor: "lightred",
+    borderWidth: 1,
+  },
+  rejectedMessageContainer: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: "#FEE2E2",
+    borderRadius: 8,
+  },
+  rejectedMessageText: {
+    color: "#991B1B",
+    textAlign: "center",
+    fontWeight: "500",
   },
   appointmentHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12, // spacing.sm + 4
+    marginBottom: 4,
   },
-  appointmentTitle: {},
-  statusChip: {
-    paddingHorizontal: 8, // spacing.sm
+  appointmentDate: {
+    fontWeight: "bold",
   },
+  appointmentType: {
+    marginBottom: 8,
+    fontWeight: "500",
+  },
+  statusChip: {},
   statusText: {
     color: "#ffffff",
     fontSize: 12,
-  },
-  appointmentDate: {
-    marginBottom: 8, // spacing.sm
-  },
-  appointmentInterpreter: {
-    marginBottom: 4, // spacing.xs
-  },
-  appointmentEmail: {
-    marginBottom: 16, // spacing.md
+    fontWeight: "bold",
   },
   appointmentActions: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
+    gap: 12,
+    marginTop: 8,
   },
-  actionButton: {
-    flex: 0.48,
+  actionButtonPrimary: {
+    flexShrink: 1,
   },
-  availabilityCard: {},
-  availabilityText: {
-    marginBottom: 16, // spacing.md
-    textAlign: "center",
+  actionButtonSecondary: {
+    flexShrink: 1,
   },
-  availabilityButton: {
-    marginTop: 12, // spacing.sm + 4
+  cancelButton: {
+    borderColor: "red",
+  },
+  cancelButtonLabel: {
+    color: "red",
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  detailIcon: {
+    marginRight: 8,
+    color: "#6B7280",
+  },
+  detailText: {
+    color: "#374151",
+    fontSize: 14,
   },
 });
