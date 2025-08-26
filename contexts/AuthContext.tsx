@@ -1,12 +1,18 @@
+import { hasInterpreterProfile, getProfile } from "@/utils/query";
 import { Session, User } from "@supabase/supabase-js";
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../utils/supabase";
-import { getAgeRangeFromDOB } from "../utils/helper";
+import { AgeRange } from "@/constants/data";
 
 interface Profile {
   id: string;
-  email: string;
   name: string;
+  email: string;
+  ageRange: AgeRange;
+  gender: string;
+  avg_rating: number | null;
+  location: string;
+  photo: string;
 }
 
 interface AuthState {
@@ -25,8 +31,15 @@ interface AuthContextType {
   isInterpreter: boolean;
 }
 
+// Create the AuthContext with default undefined value
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * AuthProvider component that provides authentication context to its children.
+ *
+ * @param props - The props for the provider.
+ * @returns The AuthProvider component.
+ */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [providerToken, setProviderToken] = useState<string | null>(null);
@@ -37,12 +50,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error: null,
   });
 
+  // Helper to update auth state
   const updateAuthState = (updates: Partial<AuthState>) => {
     setAuthState((prev) => ({ ...prev, ...updates }));
   };
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      // Checks for an existing session on initial load
       setSession(session);
       setProviderToken(session?.provider_token || null);
       if (session?.user) {
@@ -51,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       updateAuthState({ isLoading: false });
     });
 
+    // Listens for changes to auth state
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -61,6 +77,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  /**
+   * Signs in the user with Google OAuth and requests calendar access on first sign-in.
+   */
   const signIn = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -71,32 +90,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  /**
+   * Signs out the user.
+   */
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
     setIsInterpreter(false);
   };
 
-  const isInterpreterProfile = async (user: User) => {
-    const { data: interpreterProfile } = await supabase
-      .from("interpreter_profile")
-      .select("*")
-      .eq("id", user.id)
-      .maybeSingle();
-    setIsInterpreter(!!interpreterProfile);
+  /**
+   * Helper method to check if a user has an interpreter profile.
+   *
+   * @param user - The user to check.
+   */
+  const isInterpreterProfile = async (id: string) => {
+    const hasInterpreter = await hasInterpreterProfile(id);
+    setIsInterpreter(hasInterpreter);
   };
 
+  /**
+   * Loads the user's profile
+   *
+   * @param user - The user session to load the profile for.
+   * @returns A promise that resolves to true if the profile was loaded successfully, false otherwise.
+   */
   const loadProfile = async (user: User | null): Promise<boolean> => {
     if (user) {
-      const { data: profile } = await supabase.from("profile").select("*").eq("id", user.id).maybeSingle();
+      const id = user.id;
+      const profile = await getProfile(id);
       if (!profile) {
         setProfile(null);
         return false;
       }
-      const { dateOfBirth, ...rest } = profile;
-      const ageRange = getAgeRangeFromDOB(dateOfBirth);
-      setProfile({ ...rest, ageRange });
-      await isInterpreterProfile(user);
+      setProfile(profile);
+      await isInterpreterProfile(id);
       return true;
     }
     return false;
@@ -116,6 +144,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/**
+ * Custom hook to access the authentication context.
+ *
+ * @returns The authentication context value.
+ */
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
