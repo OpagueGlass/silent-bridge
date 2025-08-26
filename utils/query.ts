@@ -311,6 +311,33 @@ export const getReviewInterpreterAppointments = async (interpreter_id: string) =
 };
 
 /**
+ * Gets the pending requests for an interpreter.
+ *
+ * @param interpreter_id The ID of the interpreter
+ * @returns A list of pending requests for the interpreter
+ */
+export const getRequests = async (interpreter_id: string) => {
+  const { data, error } = await supabase
+    .from("request")
+    .select(
+      `
+      *,
+      appointment (*)
+    `
+    )
+    .eq("interpreter_id", interpreter_id)
+    .is("is_accepted", null) // Only get pending requests
+    .is("is_expired", false) // Only get non-expired requests
+
+  if (error) {
+    console.error("Error fetching requests:", error);
+    return [];
+  }
+
+  return data;
+};
+
+/**
  * Submits a rating for an appointment.
  *
  * @param appointment_id The ID of the appointment being rated
