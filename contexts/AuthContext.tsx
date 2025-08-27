@@ -1,19 +1,7 @@
-import { hasInterpreterProfile, getProfile } from "@/utils/query";
+import { hasInterpreterProfile, getProfile, Profile } from "@/utils/query";
 import { Session, User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../utils/supabase";
-import { AgeRange } from "@/constants/data";
-
-interface Profile {
-  id: string;
-  name: string;
-  email: string;
-  ageRange: AgeRange;
-  gender: string;
-  avg_rating: number | null;
-  location: string;
-  photo: string;
-}
 
 interface AuthState {
   isLoading: boolean;
