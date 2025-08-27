@@ -1,6 +1,69 @@
 import { supabase } from "./supabase";
 import { getAgeRangeFromDOB, getMinMaxDOB } from "./helper";
-import { LANGUAGES, SPECIALISATION } from "@/constants/data";
+import { AgeRange } from "@/constants/data";
+import { Tables } from "./database-types";
+
+// Profile and InterpreterProfile interfaces
+export interface Profile {
+  id: string;
+  name: string;
+  email: string;
+  ageRange: AgeRange;
+  gender: string;
+  avgRating: number | null;
+  location: string;
+  photo: string;
+}
+
+interface InterpreterProfile extends Profile {
+  interpreterSpecialisations: number[];
+  interpreterLanguages: number[];
+}
+
+// Convert Date to "HH:MM:SS+TZ" format for timetz
+const toTimetz = (date: Date): string => {
+  return `${date.toISOString().substring(11, 16)}:00+00`;
+};
+
+// Convert specialisation and language IDs from id to respective index in constants
+const convertToSpec = (specialisations: { specialisation_id: number }[]): number[] => {
+  return specialisations.map(({ specialisation_id }) => specialisation_id - 1);
+};
+
+const convertToLang = (languages: { language_id: number }[]): number[] => {
+  return languages.map(({ language_id }) => language_id - 1);
+};
+
+/**
+ * Convert a profile from the database format to the application format.
+ *
+ * @param profile The profile from the database
+ * @returns The converted profile
+ */
+const convertToProfile = (profile: Tables<"profile">): Profile => {
+  const { date_of_birth, avg_rating, ...rest } = profile;
+  const ageRange = getAgeRangeFromDOB(date_of_birth);
+  return { ...rest, ageRange, avgRating: avg_rating };
+};
+
+/**
+ * Convert the interpreter profile from the database format to the application format.
+ *
+ * @param data The interpreter profile from the database
+ * @returns The converted interpreter profile
+ */
+const convertToInterpreterProfile = (data: {
+  profile: Tables<"profile">;
+  interpreter_specialisation: { specialisation_id: number }[];
+  interpreter_language: { language_id: number }[];
+}): InterpreterProfile => {
+  const { profile, interpreter_specialisation, interpreter_language } = data;
+  return {
+    ...convertToProfile(profile),
+    interpreterLanguages: convertToLang(interpreter_language),
+    interpreterSpecialisations: convertToSpec(interpreter_specialisation),
+  };
+};
 
 /**
  * Retrieve the profile for a user.
@@ -8,14 +71,12 @@ import { LANGUAGES, SPECIALISATION } from "@/constants/data";
  * @param id ID of the user
  * @returns Profile or null if not found
  */
-export const getProfile = async (id: string) => {
+export const getProfile = async (id: string): Promise<Profile | null> => {
   const { data: profile } = await supabase.from("profile").select("*").eq("id", id).maybeSingle();
   if (!profile) {
     return null;
   }
-  const { date_of_birth, ...rest } = profile;
-  const ageRange = getAgeRangeFromDOB(date_of_birth);
-  return { ...rest, ageRange };
+  return convertToProfile(profile);
 };
 
 /**
@@ -39,7 +100,7 @@ export const hasInterpreterProfile = async (id: string) => {
  * @param id ID of the user
  * @returns Interpreter profile with specialisations and languages or null if not found
  */
-export const getInterpreterProfile = async (id: string) => {
+export const getInterpreterProfile = async (id: string): Promise<InterpreterProfile | null> => {
   const { data, error } = await supabase
     .from("interpreter_profile")
     .select(
@@ -53,24 +114,7 @@ export const getInterpreterProfile = async (id: string) => {
     .single();
 
   if (error) return null;
-  const {
-    profile: { date_of_birth },
-    // interpreter_specialisation,
-    // interpreter_language,
-  } = data;
-  const ageRange = getAgeRangeFromDOB(date_of_birth);
-  // Here's how you can get the languages and specialisation
-  // const interpreterLanguages = interpreter_language.map((lang) => LANGUAGES[lang.language_id - 1]);
-  // const interpreterSpecialisations = interpreter_specialisation.map(
-  //   (spec) => SPECIALISATION[spec.specialisation_id - 1]
-  // );
-
-  return {
-    ...data,
-    ageRange,
-    // interpreterLanguages,
-    // interpreterSpecialisations,
-  };
+  return convertToInterpreterProfile(data);
 };
 
 /**
@@ -81,6 +125,8 @@ export const getInterpreterProfile = async (id: string) => {
  * @param state Name of the state (A state from STATES)
  * @param ageStart Minimum age
  * @param ageEnd Maximum age
+ * @param startTime  Start time of the appointment
+ * @param endTime  End time of the appointment
  * @param gender Optional gender of the interpreter ("Male", "Female")
  * @returns The top 5 interpreters matching the criteria, sorted by average rating and gender if specified
  */
@@ -90,13 +136,14 @@ export const searchInterpreters = async (
   state: string,
   ageStart: number,
   ageEnd: number,
-  date: Date,
-  startTime: string,
-  endTime: string,
+  startTime: Date,
+  endTime: Date,
   gender: string | null = null
 ) => {
   const { minDOB, maxDOB } = getMinMaxDOB(ageStart, ageEnd);
-  const day = date.getDay() === 0 ? 7 : date.getDay();
+  const day = startTime.getDay() === 0 ? 7 : startTime.getDay();
+  const start_time = toTimetz(startTime);
+  const end_time = toTimetz(endTime);
 
   // Build the query with necessary filters and order by rating in descending order
   let query = supabase
@@ -106,7 +153,7 @@ export const searchInterpreters = async (
       profile (*),
       interpreter_specialisation (specialisation_id),
       interpreter_language (language_id),
-      availability (*)
+      availability (day_id, start_time, end_time)
     `
     )
     .eq("interpreter_specialisation.specialisation_id", spec)
@@ -115,8 +162,8 @@ export const searchInterpreters = async (
     .gt("profile.date_of_birth", minDOB.toISOString())
     .lt("profile.date_of_birth", maxDOB.toISOString())
     .eq("availability.day_id", day)
-    .gte("availability.start_time", startTime)
-    .lte("availability.end_time", endTime)
+    .gte("availability.start_time", start_time)
+    .lte("availability.end_time", end_time)
     .not("profile", "is", null) // Exclude profiles that only meet some of the criteria
     .not("interpreter_specialisation", "is", null)
     .not("interpreter_language", "is", null)
@@ -129,8 +176,14 @@ export const searchInterpreters = async (
   }
 
   // Limit to top 5 results
-  const { data } = await query.limit(5);
-  return data;
+  const { data, error } = await query.limit(5);
+
+  if (error) {
+    console.error("Error fetching interpreters:", error);
+    return [];
+  }
+
+  return data.map(convertToInterpreterProfile);
 };
 
 /**
@@ -140,7 +193,6 @@ export const searchInterpreters = async (
  * @param interpreter_id  ID of the interpreter
  * @param startTime  Start time of the appointment
  * @param endTime  End time of the appointment
- * @param meeting_url URL for the meeting
  * @param hospital_name Optional name of the hospital
  * @returns The ID of the created appointment or -1 if there was an error
  */
@@ -148,7 +200,6 @@ export const createAppointment = async (
   deaf_user_id: string,
   startTime: Date,
   endTime: Date,
-  meeting_url: string,
   hospital_name: string | null
 ) => {
   const start_time = startTime.toISOString();
@@ -161,7 +212,6 @@ export const createAppointment = async (
         deaf_user_id,
         start_time,
         end_time,
-        meeting_url,
         hospital_name,
       },
     ])
@@ -176,20 +226,30 @@ export const createAppointment = async (
   return data.id;
 };
 
+export const addAppointmentMeetingURL = async (appointment_id: number, meeting_url: string) => {
+  const { error } = await supabase.from("appointment").update({ meeting_url }).eq("id", appointment_id);
+
+  if (error) {
+    console.error("Error adding meeting URL to appointment:", error);
+  }
+};
+
 /**
  * Create a request to an interpreter for a specific appointment.
  *
  * @param appointment_id  ID of the appointment
  * @param interpreter_id  ID of the interpreter
+ * @param note Optional note for the request
  * @returns The ID of the created request or -1 if there was an error
  */
-export const createRequest = async (appointment_id: number, interpreter_id: string) => {
+export const createRequest = async (appointment_id: number, interpreter_id: string, note: string | null = null) => {
   const { data, error } = await supabase
     .from("request")
     .insert([
       {
         appointment_id,
         interpreter_id,
+        note,
       },
     ])
     .select("id")
@@ -208,18 +268,22 @@ export const createRequest = async (appointment_id: number, interpreter_id: stri
  *
  * @param request_id The ID of the request to update
  * @param is_accepted Whether the request is accepted or not
+ * @returns The appointment ID associated with the request or undefined if there was an error
  */
 export const updateRequest = async (request_id: number, is_accepted: boolean) => {
   const { data, error } = await supabase
     .from("request")
     .update({ is_accepted })
     .eq("id", request_id)
-    .select("id")
+    .select("appointment_id")
     .single();
 
   if (error || !data) {
     console.error("Error updating request:", error);
+    return -1;
   }
+
+  return data.appointment_id;
 };
 
 /**
@@ -336,7 +400,7 @@ export const getRequests = async (interpreter_id: string) => {
     )
     .eq("interpreter_id", interpreter_id)
     .is("is_accepted", null) // Only get pending requests
-    .is("is_expired", false) // Only get non-expired requests
+    .is("is_expired", false); // Only get non-expired requests
 
   if (error) {
     console.error("Error fetching requests:", error);
@@ -382,8 +446,8 @@ export const submitRating = async (
  *
  * @param interpreter_id The ID of the interpreter
  * @param day_id The ID of the day
- * @param start_time The start time of the availability
- * @param end_time The end time of the availability
+ * @param start_time The start time of the availability in timetz format
+ * @param end_time The end time of the availability in timetz format
  */
 export const setAvailability = async (interpreter_id: string, day_id: number, start_time: string, end_time: string) => {
   const { error } = await supabase.from("availability").upsert([
