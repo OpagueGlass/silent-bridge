@@ -2,7 +2,7 @@
 
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Image,
   ScrollView,
@@ -26,17 +26,67 @@ import UserProfileModal from "../../components/UserProfileModal";
 import { SPECIALISATION } from "../../constants/data";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
+import { interpreterAppointments } from "../data/mockBookingsDeaf";
 import { interpreters } from "../data/mockData";
 
 export default function SearchScreen() {
   const router = useRouter();
   const { isInterpreter } = useAuth();
+  const theme = useAppTheme();
+  const styles = createStyles(theme);
 
   const [isProfileModalVisible, setProfileModalVisible] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const openProfileModal = (userId: number) => {
     setSelectedUserId(userId);
     setProfileModalVisible(true);
+  };
+
+  const [requests, setRequests] = useState(interpreterAppointments);
+  const [statusFilter, setStatusFilter] = useState("Pending");
+  const [statusMenuVisible, setStatusMenuVisible] = useState(false);
+
+  const handleUpdateRequestStatus = (
+    requestId: number,
+    newStatus: "Approved" | "Rejected"
+  ) => {
+    setRequests((currentRequests) =>
+      currentRequests.map((req) =>
+        req.id === requestId ? { ...req, status: newStatus } : req
+      )
+    );
+  };
+
+  const processedRequests = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return requests
+      .filter((r) => r.status !== "Completed")
+      .filter((r) => {
+        const [year, month, day] = r.date.split("-").map(Number);
+        const requestDate = new Date(year, month - 1, day);
+        return requestDate >= today;
+      })
+      .filter((r) => {
+        return statusFilter === "All" || r.status === statusFilter;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [requests, statusFilter]);
+
+  const getStatusChipColor = (status: string) => {
+    switch (status) {
+      case "Approved":
+        return "limegreen";
+      case "Pending":
+        return theme.colors.tertiary;
+      case "Rejected":
+        return theme.colors.error;
+      case "Cancelled":
+        return theme.colors.onSurfaceDisabled;
+      default:
+        return theme.colors.onSurfaceVariant;
+    }
   };
 
   const [searchMode, setSearchMode] = useState<"filter" | "name">("filter");
@@ -147,95 +197,130 @@ export default function SearchScreen() {
     setDisplayedInterpreters([]);
   };
 
-  const theme = useAppTheme();
-  const styles = createStyles(theme);
-
-  // const isInterpreter = userProfile?.userType === "interpreter";
-
-  // Mock requests for interpreters
-  const requests = [
-    {
-      id: 1,
-      clientName: "Alice Wong",
-      date: "20/05/2024",
-      time: "10:00 - 11:00",
-      type: "Medical Appointment",
-      location: "Sunway Medical Centre",
-      status: "Pending",
-    },
-    {
-      id: 2,
-      clientName: "David Lee",
-      date: "22/05/2024",
-      time: "14:00 - 15:30",
-      type: "Legal Consultation",
-      location: "Lee Hishammuddin Allen & Gledhill",
-      status: "Pending",
-    },
-  ];
-
-  if (isInterpreter) {
+  if (!isInterpreter) {
     return (
-      <View>
-        <ScrollView style={styles.container}>
+      <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
+        <ScrollView>
           <View style={styles.header}>
-            <Text style={styles.title}>Appointment Requests</Text>
+            <Text style={styles.title}>Manage Appointment Requests</Text>
           </View>
 
           <View style={styles.section}>
-            {requests.map((request) => (
-              <Card key={request.id} style={styles.requestCard}>
-                <Card.Content>
-                  <View style={styles.requestHeader}>
-                    <Image
-                      source={{ uri: "/placeholder.svg?height=50&width=50" }}
-                      style={styles.clientAvatar}
-                    />
-                    <View style={styles.requestInfo}>
-                      <Text style={styles.clientName}>
-                        {request.clientName}
-                      </Text>
-                      <Text style={styles.requestType}>{request.type}</Text>
+            <Menu
+              visible={statusMenuVisible}
+              onDismiss={() => setStatusMenuVisible(false)}
+              anchor={
+                <Button
+                  mode="outlined"
+                  onPress={() => setStatusMenuVisible(true)}
+                  style={{ marginBottom: 20 }}
+                  icon="chevron-down"
+                  contentStyle={{ flexDirection: "row-reverse" }}
+                >
+                  Filter by: {statusFilter}
+                </Button>
+              }
+            >
+              {["All", "Pending", "Approved", "Rejected", "Cancelled"].map(status => (
+                <Menu.Item
+                  key={status}
+                  onPress={() => {
+                    setStatusFilter(status);
+                    setStatusMenuVisible(false);
+                  }}
+                  title={status}
+                />
+              ))}
+            </Menu>
 
-                      <View style={styles.requestLocationRow}>
-                        <MaterialCommunityIcons
-                          name="map-marker-outline"
-                          size={16}
-                          color="#666"
-                        />
-                        <Text style={styles.requestLocationText}>
-                          {request.location}
+            {processedRequests.length > 0 ? (
+              processedRequests.map((request) => (
+                <Card key={request.id} style={styles.requestCard}>
+                  <Card.Content>
+                    <View style={styles.requestHeader}>
+                      <View style={styles.requestInfo}>
+                        <Text style={styles.clientName}>
+                          {request.clientName}
+                        </Text>
+                        <Text style={styles.requestDateTime}>
+                          {new Date(request.date).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' })} • {request.time}
                         </Text>
                       </View>
-
-                      <Text style={styles.requestDateTime}>
-                        {request.date} • {request.time}
-                      </Text>
+                      <Chip
+                        style={{ backgroundColor: getStatusChipColor(request.status) }}
+                        textStyle={{ color: 'white', fontSize: 12 }}
+                      >
+                        {request.status}
+                      </Chip>
                     </View>
-                  </View>
 
-                  <View style={styles.requestActions}>
-                    <Button
-                      mode="text"
-                      onPress={() => openProfileModal(request.id)}
-                      style={styles.profileTextButton}
-                    >
-                      Profile
-                    </Button>
-                    <Button
-                      mode="outlined"
-                      style={[styles.actionButton, styles.rejectButton]}
-                      textColor="#F44336"
-                    >
-                      Reject
-                    </Button>
-                    <Button mode="contained" style={styles.actionButton}>
-                      Accept
-                    </Button>
-                  </View>
-                </Card.Content>
-              </Card>
-            ))}
+                    <View style={styles.detailsContainer}>
+                      <View style={styles.requestDetailRow}>
+                        <MaterialCommunityIcons name="email-outline" size={18} color="#666" />
+                        <Text style={styles.requestDetailText} selectable>{request.clientEmail}</Text>
+                      </View>
+                      <View style={styles.requestDetailRow}>
+                        <MaterialCommunityIcons name="hospital-building" size={18} color="#666" />
+                        <Text style={styles.requestDetailText}>Hospital: {request.location}</Text>
+                      </View>
+                      <View style={styles.requestDetailRow}>
+                        <MaterialCommunityIcons name="clock-outline" size={18} color="#666" />
+                        <Text style={styles.requestDetailText}>Duration: {request.duration}</Text>
+                      </View>
+                      {request.doctorLanguage && (
+                        <View style={styles.requestDetailRow}>
+                          <MaterialCommunityIcons name="translate" size={18} color="#666" />
+                          <Text style={styles.requestDetailText}>Doctor's Language: {request.doctorLanguage}</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <View style={styles.requestActions}>
+                      <Button
+                        mode="text"
+                        onPress={() => openProfileModal(request.id)}
+                        disabled={request.status === 'Rejected' || request.status === 'Cancelled'}
+                      >
+                        Profile
+                      </Button>
+                      
+                      {request.status === "Pending" && (
+                        <View style={styles.rightActionButtons}>
+                          <Button
+                            mode="outlined"
+                            style={[styles.rejectButton, styles.actionButton]}
+                            textColor="#F44336"
+                            onPress={() => handleUpdateRequestStatus(request.id, "Rejected")}
+                          >
+                            Reject
+                          </Button>
+                          <Button
+                            mode="contained"
+                            style={styles.actionButton}
+                            onPress={() => handleUpdateRequestStatus(request.id, "Approved")}
+                          >
+                            Accept
+                          </Button>
+                        </View>
+                      )}
+                      {request.status === "Approved" && (
+                        <Button
+                          mode="contained"
+                          style={styles.actionButton}
+                          onPress={() => alert(`Joining appointment with ${request.clientName}...`)}
+                        >
+                          Join Appointment
+                        </Button>
+                      )}
+                    </View>
+                  </Card.Content>
+                </Card>
+              ))
+            ) : (
+              <Text style={{ textAlign: 'center', color: '#666', marginTop: 20 }}>
+                No requests found for the selected filter.
+              </Text>
+            )}
           </View>
         </ScrollView>
 
@@ -628,6 +713,8 @@ const createStyles = (theme: MD3Theme) =>
     },
     requestHeader: {
       flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
       marginBottom: 15,
     },
     clientAvatar: {
@@ -662,21 +749,46 @@ const createStyles = (theme: MD3Theme) =>
       fontSize: 14,
       color: "#333",
     },
+    detailsContainer: {
+      marginBottom: 15,
+    },
+    requestDetailRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 6,
+    },
+    requestDetailText: {
+      fontSize: 14,
+      color: "#333",
+      marginLeft: 8,
+      flexShrink: 1,
+    },
     requestActions: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
+      borderTopWidth: 1,
+      borderColor: "#eee",
+    },
+    rightActionButtons: {
+      flex: 1,
+      flexDirection: 'row',
+      gap: 8,
+    },
+    decisionButton: {
+      minWidth: 100,
+      justifyContent: 'center',
     },
     profileTextButton: {
       marginRight: 8,
     },
     actionButton: {
-      flex: 0.48,
+      flex: 1,
+      justifyContent: 'center',
     },
     rejectButton: {
       borderColor: "#F44336",
     },
-
     // Styles for the Client (search) view header
     headerTopRow: {
       flexDirection: "row",
@@ -726,7 +838,7 @@ const createStyles = (theme: MD3Theme) =>
     },
     dateTimeField: {
       flex: 1,
-      minWidth: 150, 
+      minWidth: 150,
     },
     filterLabel: {
       fontSize: 16,
@@ -876,7 +988,7 @@ const createStyles = (theme: MD3Theme) =>
     checkboxItem: {
       flexDirection: "row",
       alignItems: "center",
-      width: "50%", 
+      width: "50%",
     },
     checkboxLabel: {
       marginLeft: 2,
