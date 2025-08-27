@@ -50,14 +50,12 @@ export default function HomeScreen() {
   };
 
   { /* --- CLIENT --- */ }
-  const [appointments, setAppointments] =
-    useState<Appointment[]>(userAppointments);
+  const [appointments, setAppointments] = useState<Appointment[]>(userAppointments);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("Approved");
   const [statusMenuVisible, setStatusMenuVisible] = useState(false);
   const [isReviewModalVisible, setReviewModalVisible] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] =
-    useState<Appointment | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [isCancelDialogVisible, setCancelDialogVisible] = useState(false);
 
   const { completedAppointments, upcomingAppointments } = useMemo<{
@@ -192,70 +190,73 @@ export default function HomeScreen() {
   };
 
   { /* --- INTERPRETER --- */ }
+  const [requests, setRequests] = useState<InterpreterRequest[]>(interpreterAppointments);
+  const [interpreterSearchQuery, setInterpreterSearchQuery] = useState(""); 
+  const [isClientReviewVisible, setClientReviewVisible] = useState(false);
+  const [requestToReview, setRequestToReview] = useState<InterpreterRequest | null>(null);
+
+  const handleOpenClientReview = (request: InterpreterRequest) => {
+    setRequestToReview(request);
+    setClientReviewVisible(true);
+  };
+
+  const handleCloseClientReview = () => {
+    setClientReviewVisible(false);
+    setRequestToReview(null);
+  };
+  
+  const handleSubmitClientReview = (rating: number, comment: string) => {
+    if (requestToReview) {
+      console.log(`Interpreter reviewing client: ${requestToReview.clientName}`);
+      console.log(`Rating: ${rating}, Comment: "${comment}"`);
+    }
+    handleCloseClientReview();
+  };
+
+  const { interpreterCompleted, interpreterApproved } = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const completed = requests
+      .filter((r) => r.status === "Completed")
+      .sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
+    const approved = requests
+      .filter((r) => r.status === "Approved")
+      .filter((r) => {
+        const [year, month, day] = r.date.split("-").map(Number);
+        const requestDate = new Date(year, month - 1, day);
+        return requestDate >= today;
+      })
+      .filter((r) => {
+        const formattedQuery = interpreterSearchQuery.trim().toLowerCase();
+        if (formattedQuery === "") return true;
+
+        const displayDate = new Date(r.date)
+          .toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })
+          .toLowerCase();
+        const clientName = r.clientName.toLowerCase();
+
+        return (
+          displayDate.includes(formattedQuery) ||
+          clientName.includes(formattedQuery)
+        );
+      })
+      .sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+
+    return { interpreterCompleted: completed, interpreterApproved: approved };
+  }, [requests, interpreterSearchQuery]);
+
+  { /* --- UI --- */ }
   if (!isInterpreter) {
-    const [requests, setRequests] = useState<InterpreterRequest[]>(interpreterAppointments);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [isClientReviewVisible, setClientReviewVisible] = useState(false);
-    const [requestToReview, setRequestToReview] = useState<InterpreterRequest | null>(null);
-
-    const handleOpenClientReview = (request: InterpreterRequest) => {
-      setRequestToReview(request);
-      setClientReviewVisible(true);
-    };
-    const handleCloseClientReview = () => {
-      setClientReviewVisible(false);
-      setRequestToReview(null);
-    };
-    const handleSubmitClientReview = (rating: number, comment: string) => {
-      if (requestToReview) {
-        console.log(`Interpreter reviewing client: ${requestToReview.clientName}`);
-        console.log(`Rating: ${rating}, Comment: "${comment}"`);
-      }
-      handleCloseClientReview();
-    };
-
-    const { interpreterCompleted, interpreterApproved } = useMemo(() => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const completed = requests
-        .filter((r) => r.status === "Completed")
-        .sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-
-      const approved = requests
-        .filter((r) => r.status === "Approved")
-        .filter((r) => {
-          const [year, month, day] = r.date.split("-").map(Number);
-          const requestDate = new Date(year, month - 1, day);
-          return requestDate >= today;
-        })
-        .filter((r) => {
-          const formattedQuery = searchQuery.trim().toLowerCase();
-          if (formattedQuery === "") return true;
-
-          const displayDate = new Date(r.date)
-            .toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })
-            .toLowerCase();
-          const clientName = r.clientName.toLowerCase();
-
-          return (
-            displayDate.includes(formattedQuery) ||
-            clientName.includes(formattedQuery)
-          );
-        })
-        .sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-        );
-
-      return { interpreterCompleted: completed, interpreterApproved: approved };
-    }, [requests, searchQuery]);
-
     { /* --- INTERPRETER UI --- */ }
     return (
       <ScrollView
@@ -321,8 +322,8 @@ export default function HomeScreen() {
             <TextInput
               mode="outlined"
               placeholder="Search by date or client..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+              value={interpreterSearchQuery}
+              onChangeText={setInterpreterSearchQuery}
               style={styles.searchInput}
               left={<TextInput.Icon icon="magnify" />}
             />
@@ -376,7 +377,7 @@ export default function HomeScreen() {
                 {request.location && (
                   <View style={styles.detailRow}>
                     <Text style={styles.detailText}>
-                      Location: {request.location}
+                      Hospital: {request.location}
                     </Text>
                   </View>
                 )}
@@ -390,6 +391,8 @@ export default function HomeScreen() {
             </Card>
           ))}
         </View>
+
+        {/* --- REVIEW POP UP --- */}
         {requestToReview && (
           <ReviewModal
             visible={isClientReviewVisible}
@@ -400,6 +403,7 @@ export default function HomeScreen() {
             placeholderText="Share your experience with this client..."
           />
         )}
+
       </ScrollView>
     );
   }
@@ -568,6 +572,8 @@ export default function HomeScreen() {
           </Card>
         ))}
       </View>
+
+      {/* --- REVIEW POP UP --- */}
       <ReviewModal
         visible={isReviewModalVisible}
         onDismiss={handleCloseReviewModal}
@@ -576,6 +582,8 @@ export default function HomeScreen() {
         sessionDate={selectedAppointment?.date || ''}
         placeholderText="Share your experience with this interpreter..."
       />
+
+      {/* --- CANCEL POP UP --- */}
       <Portal>
         <Dialog visible={isCancelDialogVisible} onDismiss={hideCancelDialog}>
           <Dialog.Title>Cancel Request</Dialog.Title>
@@ -592,6 +600,7 @@ export default function HomeScreen() {
           </Dialog.Actions>
         </Dialog>
       </Portal>
+
     </ScrollView>
   );
 }

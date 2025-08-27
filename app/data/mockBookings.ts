@@ -2,7 +2,6 @@ import { interpreters } from './mockData';
 
 export interface Appointment {
   id: number;
-  type: string;
   date: string;
   time: string; 
   duration?: string;
@@ -30,7 +29,6 @@ fourDaysAgo.setDate(today.getDate() - 4);
 export const appointments: Appointment[] = [
   {
     id: 1,
-    type: "Medical Consultation",
     date: formatDate(twoDaysAgo),
     time: "10:00",
     duration: "45 min",
@@ -39,7 +37,6 @@ export const appointments: Appointment[] = [
   },
   {
     id: 2,
-    type: "Legal Document Review",
     date: formatDate(fourDaysAgo),
     time: "14:00",
     duration: "1h 20min",
@@ -48,7 +45,6 @@ export const appointments: Appointment[] = [
   },
   {
     id: 3,
-    type: "Business Meeting Interpretation",
     date: formatDate(twoDaysFromNow), 
     time: "15:00",
     status: "Approved",
@@ -56,7 +52,6 @@ export const appointments: Appointment[] = [
   },
   {
     id: 4,
-    type: "Medical Consultation",
     date: formatDate(fourDaysFromNow), 
     time: "11:30",
     status: "Pending",
@@ -64,7 +59,6 @@ export const appointments: Appointment[] = [
   },
   {
     id: 5,
-    type: "Court Hearing",
     // date: "2025-08-20", // date before today
     // date: "2025-08-29", // date to show sort
     date: "2025-09-20", // date after today
