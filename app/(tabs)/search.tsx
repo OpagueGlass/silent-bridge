@@ -260,10 +260,6 @@ export default function SearchScreen() {
                         <Text style={styles.requestDetailText} selectable>{request.clientEmail}</Text>
                       </View>
                       <View style={styles.requestDetailRow}>
-                        <MaterialCommunityIcons name="hospital-building" size={18} color="#666" />
-                        <Text style={styles.requestDetailText}>Hospital: {request.location}</Text>
-                      </View>
-                      <View style={styles.requestDetailRow}>
                         <MaterialCommunityIcons name="clock-outline" size={18} color="#666" />
                         <Text style={styles.requestDetailText}>Duration: {request.duration}</Text>
                       </View>
@@ -273,6 +269,10 @@ export default function SearchScreen() {
                           <Text style={styles.requestDetailText}>Doctor's Language: {request.doctorLanguage}</Text>
                         </View>
                       )}
+                      <View style={styles.requestDetailRow}>
+                        <MaterialCommunityIcons name="hospital-building" size={18} color="#666" />
+                        <Text style={styles.requestDetailText}>Hospital: {request.location}</Text>
+                      </View>
                     </View>
 
                     <View style={styles.requestActions}>

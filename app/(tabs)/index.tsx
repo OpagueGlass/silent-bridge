@@ -1,5 +1,6 @@
 "use client";
 
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
@@ -356,17 +357,19 @@ export default function HomeScreen() {
                 </View>
 
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailText} selectable>
+                  <Text selectable>
                     Client: {request.clientName}
                   </Text>
                 </View>
                 <View style={styles.detailRow}>
+                  <MaterialCommunityIcons name="email-outline" size={18} color="#666" />
                   <Text style={styles.detailText} selectable>
                     {request.clientEmail}
                   </Text>
                 </View>
                 {request.duration && (
                   <View style={styles.detailRow}>
+                    <MaterialCommunityIcons name="clock-outline" size={18} color="#666" />
                     <Text style={styles.detailText}>
                       Duration: {request.duration}
                     </Text>
@@ -374,6 +377,7 @@ export default function HomeScreen() {
                 )}
                 {request.doctorLanguage && (
                   <View style={styles.detailRow}>
+                    <MaterialCommunityIcons name="translate" size={18} color="#666" />
                     <Text style={styles.detailText}>
                       Doctor's Language: {request.doctorLanguage}
                     </Text>
@@ -381,6 +385,7 @@ export default function HomeScreen() {
                 )}
                 {request.location && (
                   <View style={styles.detailRow}>
+                    <MaterialCommunityIcons name="hospital-building" size={18} color="#666" />
                     <Text style={styles.detailText}>
                       Hospital: {request.location}
                     </Text>
@@ -727,7 +732,9 @@ const styles = StyleSheet.create({
     color: "#6B7280",
   },
   detailText: {
-    color: "#374151",
     fontSize: 14,
+    color: "#333",
+    marginLeft: 8,
+    flexShrink: 1,
   },
 });
