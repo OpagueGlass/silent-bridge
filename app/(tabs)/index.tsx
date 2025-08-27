@@ -30,9 +30,7 @@ export default function HomeScreen() {
   const { profile, isInterpreter } = useAuth();
   const theme = useAppTheme();
   const router = useRouter();
-  const getStatusColor = (
-    status: Appointment["status"] | InterpreterRequest["status"]
-  ) => {
+  const getStatusColor = (status: Appointment["status"] | InterpreterRequest["status"]) => {
     switch (status) {
       case "Approved":
         return "limegreen";
@@ -50,12 +48,35 @@ export default function HomeScreen() {
   };
 
   { /* --- CLIENT --- */ }
-  const [appointments, setAppointments] = useState<Appointment[]>(userAppointments);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("Approved");
-  const [statusMenuVisible, setStatusMenuVisible] = useState(false);
+  const [appointments, setAppointments] = useState(userAppointments);
+
   const [isReviewModalVisible, setReviewModalVisible] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const handleOpenReviewModal = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setReviewModalVisible(true);
+  };
+  const handleCloseReviewModal = () => {
+    setReviewModalVisible(false);
+    setSelectedAppointment(null);
+  };
+  const handleSubmitReview = (rating: number, comment: string) => {
+    if (selectedAppointment) {
+      console.log(
+        `Submitting review for appointment ID: ${selectedAppointment.id}`
+      );
+      console.log(`Rating: ${rating}`);
+      console.log(`Comment: "${comment}"`);
+    }
+    handleCloseReviewModal();
+    ("Thank you for your review!");
+  };
+
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [statusFilter, setStatusFilter] = useState("Approved");
+  const [statusMenuVisible, setStatusMenuVisible] = useState(false);
+
   const [isCancelDialogVisible, setCancelDialogVisible] = useState(false);
 
   const { completedAppointments, upcomingAppointments } = useMemo<{
@@ -69,16 +90,22 @@ export default function HomeScreen() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // for results
     const upcoming = appointments
+      // only uncompleted
       .filter((a) => a.status !== "Completed")
+      // only after current time
       .filter((a) => {
         const [year, month, day] = a.date.split("-").map(Number);
         const appointmentDate = new Date(year, month - 1, day);
         return appointmentDate >= today;
       })
+      // filter based on user's filter
       .filter((a) => {
+        // filter by user coice
         const statusMatch = statusFilter === "All" || a.status === statusFilter;
 
+        // filter by search
         const formattedQuery = searchQuery.trim().toLowerCase();
         if (formattedQuery === "") {
           return statusMatch;
@@ -92,6 +119,8 @@ export default function HomeScreen() {
           })
           .toLowerCase();
         const interpreterName = a.interpreter.name.toLowerCase();
+
+        // get the list (filter check)
         const queryMatch =
           displayDate.includes(formattedQuery) ||
           interpreterName.includes(formattedQuery);
@@ -107,7 +136,6 @@ export default function HomeScreen() {
     setSelectedAppointment(appointment);
     setCancelDialogVisible(true);
   };
-
   const performCancel = () => {
     if (!selectedAppointment) return;
     setAppointments((prev) =>
@@ -120,7 +148,6 @@ export default function HomeScreen() {
     setCancelDialogVisible(false);
     setSelectedAppointment(null);
   };
-
   const hideCancelDialog = () => {
     setCancelDialogVisible(false);
     setSelectedAppointment(null);
@@ -167,44 +194,19 @@ export default function HomeScreen() {
     }
   };
 
-  const handleOpenReviewModal = (appointment: Appointment) => {
-    setSelectedAppointment(appointment);
-    setReviewModalVisible(true);
-  };
-
-  const handleCloseReviewModal = () => {
-    setReviewModalVisible(false);
-    setSelectedAppointment(null);
-  };
-
-  const handleSubmitReview = (rating: number, comment: string) => {
-    if (selectedAppointment) {
-      console.log(
-        `Submitting review for appointment ID: ${selectedAppointment.id}`
-      );
-      console.log(`Rating: ${rating}`);
-      console.log(`Comment: "${comment}"`);
-    }
-    handleCloseReviewModal();
-    ("Thank you for your review!");
-  };
-
   { /* --- INTERPRETER --- */ }
   const [requests, setRequests] = useState<InterpreterRequest[]>(interpreterAppointments);
-  const [interpreterSearchQuery, setInterpreterSearchQuery] = useState(""); 
+
   const [isClientReviewVisible, setClientReviewVisible] = useState(false);
   const [requestToReview, setRequestToReview] = useState<InterpreterRequest | null>(null);
-
   const handleOpenClientReview = (request: InterpreterRequest) => {
     setRequestToReview(request);
     setClientReviewVisible(true);
   };
-
   const handleCloseClientReview = () => {
     setClientReviewVisible(false);
     setRequestToReview(null);
   };
-  
   const handleSubmitClientReview = (rating: number, comment: string) => {
     if (requestToReview) {
       console.log(`Interpreter reviewing client: ${requestToReview.clientName}`);
@@ -213,23 +215,27 @@ export default function HomeScreen() {
     handleCloseClientReview();
   };
 
+  const [interpreterSearchQuery, setInterpreterSearchQuery] = useState(""); 
+
   const { interpreterCompleted, interpreterApproved } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const completed = requests
       .filter((r) => r.status === "Completed")
-      .sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+    // for results
     const approved = requests
+      // only approved
       .filter((r) => r.status === "Approved")
+      // only after current time
       .filter((r) => {
         const [year, month, day] = r.date.split("-").map(Number);
         const requestDate = new Date(year, month - 1, day);
         return requestDate >= today;
       })
+      // filter based on user's filter (by search)
       .filter((r) => {
         const formattedQuery = interpreterSearchQuery.trim().toLowerCase();
         if (formattedQuery === "") return true;
@@ -255,9 +261,8 @@ export default function HomeScreen() {
     return { interpreterCompleted: completed, interpreterApproved: approved };
   }, [requests, interpreterSearchQuery]);
 
-  { /* --- UI --- */ }
-  if (!isInterpreter) {
-    { /* --- INTERPRETER UI --- */ }
+  { /* --- INTERPRETER UI --- */ }
+  if (isInterpreter) {
     return (
       <ScrollView
         style={[styles.container, { backgroundColor: theme.colors.background }]}
