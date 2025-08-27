@@ -197,7 +197,7 @@ export default function SearchScreen() {
     setDisplayedInterpreters([]);
   };
 
-  if (!isInterpreter) {
+  if (isInterpreter) {
     return (
       <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
         <ScrollView>
