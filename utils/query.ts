@@ -65,6 +65,33 @@ const convertToInterpreterProfile = (data: {
   };
 };
 
+const convertToAppointment = (
+  data: {
+    start_time: string;
+    end_time: string;
+    hospital_name: string | null;
+    meeting_url: string | null;
+  },
+  profile: Tables<"profile"> | null
+) => {
+  const { start_time, end_time, hospital_name, meeting_url } = data;
+  const formattedRest = {
+    startTime: start_time,
+    endTime: end_time,
+    hospitalName: hospital_name,
+    meetingUrl: meeting_url,
+  };
+
+  if (!profile) return formattedRest;
+
+  return {
+    profile: {
+      ...convertToProfile(profile),
+    },
+    ...formattedRest,
+  };
+};
+
 /**
  * Retrieve the profile for a user.
  *
@@ -294,8 +321,20 @@ export const updateRequest = async (request_id: number, is_accepted: boolean) =>
 export const getUpcomingUserAppointments = async (user_id: string) => {
   const { data, error } = await supabase
     .from("appointment")
-    .select("*")
+    .select(
+      `
+      start_time,
+      end_time,
+      deaf_user_id,
+      hospital_name,
+      meeting_url,
+      interpreter_profile (
+        profile (*)
+      )
+      `
+    )
     .eq("deaf_user_id", user_id)
+    .neq("interpreter_profile", null)
     .gte("end_time", new Date().toISOString())
     .order("start_time", { ascending: true });
 
@@ -304,7 +343,9 @@ export const getUpcomingUserAppointments = async (user_id: string) => {
     return [];
   }
 
-  return data;
+  return data.map(({ interpreter_profile, ...rest }) =>
+    convertToAppointment(rest, interpreter_profile?.profile || null)
+  );
 };
 
 /**
@@ -316,7 +357,16 @@ export const getUpcomingUserAppointments = async (user_id: string) => {
 export const getUpcomingInterpreterAppointments = async (interpreter_id: string) => {
   const { data, error } = await supabase
     .from("appointment")
-    .select("*")
+    .select(
+      `
+      start_time,
+      end_time,
+      interpreter_id,
+      hospital_name,
+      meeting_url,
+      profile (*)
+      `
+    )
     .eq("interpreter_id", interpreter_id)
     .gte("end_time", new Date().toISOString())
     .order("start_time", { ascending: true });
@@ -326,7 +376,7 @@ export const getUpcomingInterpreterAppointments = async (interpreter_id: string)
     return [];
   }
 
-  return data;
+  return data.map(({ profile, ...rest }) => convertToAppointment(rest, profile));
 };
 
 /**
@@ -342,7 +392,18 @@ export const getReviewUserAppointments = async (user_id: string) => {
 
   const { data, error } = await supabase
     .from("appointment")
-    .select("*")
+    .select(
+      `
+      start_time,
+      end_time,
+      deaf_user_id,
+      hospital_name,
+      meeting_url,
+      interpreter_profile (
+        profile (*)
+      )
+      `
+    )
     .eq("deaf_user_id", user_id)
     .lt("end_time", new Date().toISOString())
     .gte("end_time", reviewPeriod.toISOString())
@@ -353,7 +414,9 @@ export const getReviewUserAppointments = async (user_id: string) => {
     return [];
   }
 
-  return data;
+  return data.map(({ interpreter_profile, ...rest }) =>
+    convertToAppointment(rest, interpreter_profile?.profile || null)
+  );
 };
 
 /**
@@ -369,7 +432,16 @@ export const getReviewInterpreterAppointments = async (interpreter_id: string) =
 
   const { data, error } = await supabase
     .from("appointment")
-    .select("*")
+    .select(
+      `
+      start_time,
+      end_time,
+      interpreter_id,
+      hospital_name,
+      meeting_url,
+      profile (*)
+      `
+    )
     .eq("interpreter_id", interpreter_id)
     .lt("end_time", new Date().toISOString())
     .gte("end_time", reviewPeriod.toISOString())
@@ -380,7 +452,7 @@ export const getReviewInterpreterAppointments = async (interpreter_id: string) =
     return [];
   }
 
-  return data;
+  return data.map(({ profile, ...rest }) => convertToAppointment(rest, profile));
 };
 
 /**
@@ -395,7 +467,7 @@ export const getRequests = async (interpreter_id: string) => {
     .select(
       `
       *,
-      appointment (*)
+      appointment (*, profile (*))
     `
     )
     .eq("interpreter_id", interpreter_id)
@@ -407,7 +479,10 @@ export const getRequests = async (interpreter_id: string) => {
     return [];
   }
 
-  return data;
+  return data.map(({ note, appointment }) => ({
+    note,
+    appointment: convertToAppointment(appointment, appointment.profile),
+  }));
 };
 
 /**
