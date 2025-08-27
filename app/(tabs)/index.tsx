@@ -459,7 +459,7 @@ export default function HomeScreen() {
                   variant="bodyMedium"
                   style={{ color: theme.colors.onSurfaceVariant }}
                 >
-                  {appointment.interpreter.name} • {appointment.duration}
+                  {appointment.interpreter.name} 
                 </Text>
               </View>
               <Button
