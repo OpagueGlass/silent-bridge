@@ -1,165 +1,87 @@
+/**
+ * @file HomeScreen.tsx
+ * Renders the main dashboard for both Deaf Users and Interpreters.
+ * Displays upcoming appointments fetched using the new, corrected query function.
+ */
 "use client";
 
 import { useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, View } from "react-native";
-import { ActivityIndicator, Button, Card, Chip, Text } from "react-native-paper";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Button, Card, Text } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
-
-interface Appointment {
-  id: number;
-  date: string;
-  time: string;
-  status: string;
-  interpreter: string;
-  email: string;
-}
-
-interface Contact {
-  id: number;
-  name: string;
-  email: string;
-  avatar: string;
-}
+// Import the new, corrected function
+import { Appointment, getUpcomingAppointmentsForUser } from "../../utils/query";
+import AppointmentCard from "../../components/AppointmentCard";
+import { useIsFocused } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 
 export default function HomeScreen() {
-  const { profile, isInterpreter } = useAuth();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const theme = useAppTheme();
+  const styles = createStyles(theme);
+  const { profile, isInterpreter } = useAuth();
+  const isFocused = useIsFocused();
+  const router = useRouter();
+  
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data for demonstration
   useEffect(() => {
-    setAppointments([
-      {
-        id: 1,
-        date: "15/05/2024",
-        time: "10:00 - 11:00",
-        status: "Approved",
-        interpreter: "John Smith",
-        email: "john@gmail.com",
-      },
-      {
-        id: 2,
-        date: "16/05/2024",
-        time: "14:00 - 15:00",
-        status: "Pending",
-        interpreter: "Sarah Johnson",
-        email: "sarah@gmail.com",
-      },
-    ]);
-
-  }, []);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Approved":
-        return theme.colors.secondary;
-      case "Pending":
-        return theme.colors.tertiary;
-      case "Rejected":
-        return theme.colors.error;
-      case "Completed":
-        return theme.colors.primary;
-      default:
-        return theme.colors.onSurfaceVariant;
+    if (isFocused && profile) {
+      setIsLoading(true);
+      // ** MODIFICATION: Calling the new, correct function **
+      getUpcomingAppointmentsForUser(profile.id, isInterpreter)
+        .then(setAppointments)
+        .catch(console.error)
+        .finally(() => setIsLoading(false));
     }
-  };
+  }, [isFocused, profile, isInterpreter]);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <ScrollView style={styles.container}>
       <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
-        <Text variant="headlineMedium" style={styles.greeting}>
+        <Text style={styles.greeting}>
           Welcome back, {profile?.name || "User"}!
         </Text>
-        <Text variant="bodyLarge" style={styles.subtitle}>
+        <Text style={styles.subtitle}>
           {isInterpreter ? "Manage your interpreter services" : "Find your perfect interpreter"}
         </Text>
       </View>
 
       <View style={styles.section}>
-        {/* <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-          {isInterpreter ? "Recent Requests" : "Contacts"}
-        </Text> */}
-
-        {/* {contacts.map((contact) => (
-          <Card key={contact.id} style={[styles.contactCard, { backgroundColor: theme.colors.surface }]}>
-            <Card.Content style={styles.contactContent}>
-              <Image source={{ uri: contact.avatar }} style={styles.avatar} />
-              <View style={styles.contactInfo}>
-                <Text variant="titleMedium" style={[styles.contactName, { color: theme.colors.onSurface }]}>
-                  {contact.name}
-                </Text>
-                <Text variant="bodyMedium" style={[styles.contactEmail, { color: theme.colors.onSurfaceVariant }]}>
-                  {contact.email}
-                </Text>
-              </View>
-              <Button mode="outlined" compact>
-                Contact
-              </Button>
-            </Card.Content>
-          </Card>
-        ))} */}
-      </View>
-
-      <View style={styles.section}>
-        <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-          Appointments
+        <Text style={styles.sectionTitle}>
+          Upcoming Appointments
         </Text>
-
-        {appointments.map((appointment) => (
-          <Card key={appointment.id} style={[styles.appointmentCard, { backgroundColor: theme.colors.surface }]}>
+        {isLoading ? (
+          <ActivityIndicator animating={true} size="large" style={{ marginVertical: 20 }}/>
+        ) : appointments.length > 0 ? (
+          appointments.map((appointment) => (
+            <AppointmentCard
+              key={appointment.id}
+              appointment={appointment}
+              userType={isInterpreter ? "interpreter" : "deaf"}
+            />
+          ))
+        ) : (
+          <Card style={styles.emptyStateCard}>
             <Card.Content>
-              <View style={styles.appointmentHeader}>
-                <Text variant="titleMedium" style={[styles.appointmentTitle, { color: theme.colors.onSurface }]}>
-                  Appointment {appointment.id}
-                </Text>
-                <Chip
-                  style={[styles.statusChip, { backgroundColor: getStatusColor(appointment.status) }]}
-                  textStyle={styles.statusText}
-                >
-                  {appointment.status}
-                </Chip>
-              </View>
-              <Text variant="bodyLarge" style={[styles.appointmentDate, { color: theme.colors.onSurface }]}>
-                {appointment.date} • {appointment.time}
-              </Text>
-              <Text
-                variant="bodyMedium"
-                style={[styles.appointmentInterpreter, { color: theme.colors.onSurfaceVariant }]}
-              >
-                Interpreter: {appointment.interpreter}
-              </Text>
-              <Text variant="bodyMedium" style={[styles.appointmentEmail, { color: theme.colors.onSurfaceVariant }]}>
-                Email: {appointment.email}
-              </Text>
-
-              <View style={styles.appointmentActions}>
-                <Button mode="outlined" compact style={styles.actionButton}>
-                  Add to Calendar
-                </Button>
-                <Button mode="contained" compact style={styles.actionButton}>
-                  Join Appointment
-                </Button>
-              </View>
+              <Text style={styles.emptyStateText}>You have no upcoming appointments.</Text>
             </Card.Content>
           </Card>
-        ))}
+        )}
       </View>
 
       {isInterpreter && (
         <View style={styles.section}>
-          <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-            Set Availability
-          </Text>
-          <Card style={[styles.availabilityCard, { backgroundColor: theme.colors.surfaceVariant }]}>
-            <Card.Content>
-              <Text variant="bodyLarge" style={[styles.availabilityText, { color: theme.colors.onSurface }]}>
-                Set your free times to receive appointment requests
-              </Text>
-              <Button mode="contained" style={styles.availabilityButton}>
-                Set Availability
-              </Button>
-            </Card.Content>
+          <Card style={styles.availabilityCard}>
+            <Card.Title
+              title="Set Availability"
+              subtitle="Update your schedule to receive requests"
+              titleStyle={styles.cardTitle}
+            />
+            <Card.Actions>
+              <Button onPress={() => router.push({ pathname: '/settings/availability' as any })} mode="contained">Set My Schedule</Button>
+            </Card.Actions>
           </Card>
         </View>
       )}
@@ -167,87 +89,16 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    padding: 24, // spacing.lg
-    paddingTop: 60,
-  },
-  greeting: {
-    color: "#ffffff",
-    marginBottom: 8, // spacing.sm
-  },
-  subtitle: {
-    color: "#ffffff",
-    opacity: 0.9,
-  },
-  section: {
-    padding: 24, // spacing.lg
-  },
-  sectionTitle: {
-    marginBottom: 16, // spacing.md
-  },
-  contactCard: {
-    marginBottom: 12, // spacing.sm + 4
-  },
-  contactContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 16, // spacing.md
-  },
-  contactInfo: {
-    flex: 1,
-  },
-  contactName: {
-    marginBottom: 4, // spacing.xs
-  },
-  contactEmail: {},
-  appointmentCard: {
-    marginBottom: 16, // spacing.md
-  },
-  appointmentHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12, // spacing.sm + 4
-  },
-  appointmentTitle: {},
-  statusChip: {
-    paddingHorizontal: 8, // spacing.sm
-  },
-  statusText: {
-    color: "#ffffff",
-    fontSize: 12,
-  },
-  appointmentDate: {
-    marginBottom: 8, // spacing.sm
-  },
-  appointmentInterpreter: {
-    marginBottom: 4, // spacing.xs
-  },
-  appointmentEmail: {
-    marginBottom: 16, // spacing.md
-  },
-  appointmentActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  actionButton: {
-    flex: 0.48,
-  },
-  availabilityCard: {},
-  availabilityText: {
-    marginBottom: 16, // spacing.md
-    textAlign: "center",
-  },
-  availabilityButton: {
-    marginTop: 12, // spacing.sm + 4
-  },
+const createStyles = (theme: any) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    header: { padding: 24, paddingTop: 60, paddingBottom: 48, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
+    greeting: { fontSize: 24, fontWeight: 'bold', color: theme.colors.onPrimary },
+    subtitle: { fontSize: 16, color: theme.colors.onPrimary, opacity: 0.9 },
+    section: { padding: 20 },
+    sectionTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 16, color: theme.colors.onSurface },
+    emptyStateCard: { backgroundColor: theme.colors.surfaceVariant, borderRadius: 12 },
+    emptyStateText: { textAlign: 'center', padding: 20, fontSize: 16, color: theme.colors.onSurfaceVariant },
+    availabilityCard: { backgroundColor: theme.colors.surface, borderRadius: 12 },
+    cardTitle: { fontWeight: 'bold' }
 });
+

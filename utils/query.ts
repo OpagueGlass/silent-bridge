@@ -20,6 +20,18 @@ interface InterpreterProfile extends Profile {
   interpreterLanguages: number[];
 }
 
+export interface Appointment {
+  id: number;
+  startTime: string;
+  endTime: string;
+  status: string;
+  hospitalName: string | null;
+  meetingUrl: string | null;
+  deafUserId: string;
+  interpreterId: string | null;
+  otherUserProfile: Profile | null;
+}
+
 // Convert Date to "HH:MM:SS+TZ" format for timetz
 const toTimetz = (date: Date): string => {
   return `${date.toISOString().substring(11, 16)}:00+00`;
@@ -537,4 +549,55 @@ export const setAvailability = async (interpreter_id: string, day_id: number, st
   if (error) {
     console.error("Error setting availability:", error);
   }
+};
+
+
+/**
+ * Gets the upcoming appointments for a given user, fetching the profile of the other participant correctly.
+ * This function works for both Deaf Users and Interpreters.
+ * @param userId The ID of the user.
+ * @param isInterpreter A boolean to indicate if the user is an interpreter.
+ * @returns A promise that resolves to an array of appointments.
+ */
+export const getUpcomingAppointmentsForUser = async (userId: string, isInterpreter: boolean): Promise<Appointment[]> => {
+    const now = new Date().toISOString();
+    const userRoleField = isInterpreter ? "interpreter_id" : "deaf_user_id";
+
+    // This query correctly joins the tables to get the profiles of both participants.
+    // We give aliases to the fetched profiles to distinguish them.
+    const query = supabase
+        .from("appointment")
+        .select(`
+            *,
+            deaf_user_profile:profile!appointment_deaf_user_id_fkey(*),
+            interpreter_user_profile:interpreter_profile!inner(profile!inner(*))
+        `)
+        .eq(userRoleField, userId)
+        .or(`status.eq.Pending,status.eq.Approved`)
+        .gte("end_time", now)
+        .order("start_time", { ascending: true });
+
+    const { data, error } = await query;
+
+    if (error) {
+        console.error("Error fetching upcoming appointments (new method):", error);
+        return [];
+    }
+
+    // Map the raw data to our clean `Appointment` interface
+    // @ts-ignore
+    return data.map((appt) => ({
+        id: appt.id,
+        startTime: appt.start_time,
+        endTime: appt.end_time,
+        status: appt.status,
+        hospitalName: appt.hospital_name,
+        meetingUrl: appt.meeting_url,
+        deafUserId: appt.deaf_user_id,
+        interpreterId: appt.interpreter_id,
+        // This logic correctly assigns the "other" user's profile
+        otherUserProfile: isInterpreter
+            ? convertToProfile(appt.deaf_user_profile)
+            : appt.interpreter_user_profile ? convertToProfile(appt.interpreter_user_profile.profile) : null,
+    }));
 };
