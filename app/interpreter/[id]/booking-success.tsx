@@ -1,10 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Linking,
+  Alert,
+  Pressable,
 } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { interpreters } from "../../data/mockData";
@@ -23,6 +26,27 @@ export default function BookingSuccessScreen() {
   const interpreterId = params.id as string;
   const date = params.date as string;
   const time = params.time as string;
+
+  const [isHovering, setIsHovering] = useState(false);
+  const handleEmailPress = async () => {
+    if (!interpreter?.email) return;
+
+    const subject = `Inquiry Regarding Booking Request`;
+    const url = `mailto:${interpreter.email}?subject=${encodeURIComponent(
+      subject
+    )}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert("Cannot open email", "No email app is available.");
+      }
+    } catch (error) {
+      Alert.alert("Error", "An unexpected error occurred.");
+    }
+  };
 
   const interpreter = interpreters.find(
     (item) => item.id.toString() === interpreterId
@@ -77,14 +101,48 @@ export default function BookingSuccessScreen() {
             >
               <Text style={styles.avatarText}>{initials}</Text>
             </LinearGradient>
+
             <View style={styles.interpreterInfo}>
-              <Text style={styles.interpreterName}>{interpreter.name}</Text>
+
+              <View style={styles.nameRow}>
+
+                <Text style={styles.interpreterName}>{interpreter.name}</Text>
+                <View> 
+                  <Pressable
+                    onHoverIn={() => setIsHovering(true)}
+                    onHoverOut={() => setIsHovering(false)}
+                  >
+                    <TouchableOpacity onPress={handleEmailPress}>
+                      <MaterialCommunityIcons 
+                        name="email-fast" 
+                        size={20} 
+                        color="darkblue"
+                      />
+                    </TouchableOpacity>
+                  </Pressable>
+
+                  {isHovering && (
+                    <View style={styles.customTooltip}>
+                      <Text style={styles.customTooltipText}>{interpreter.email}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
               <Text style={styles.interpreterSubtitle}>
                 {interpreter.specialisation}
               </Text>
+
             </View>
           </View>
+
           <View style={styles.divider} />
+
+          <View style={[styles.statusBadge, styles.statusBadgePending]}>
+            <MaterialCommunityIcons name="clock-outline" size={16} color="#9D5200" />
+            <Text style={styles.statusText}>Pending Approval</Text>
+          </View>
+
           <View style={styles.infoRow}>
             <MaterialCommunityIcons
               name="calendar-blank"
@@ -93,6 +151,7 @@ export default function BookingSuccessScreen() {
             />
             <Text style={styles.infoText}>{date}</Text>
           </View>
+
           <View style={styles.infoRow}>
             <MaterialCommunityIcons
               name="clock-outline"
@@ -101,6 +160,7 @@ export default function BookingSuccessScreen() {
             />
             <Text style={styles.infoText}>{time}</Text>
           </View>
+
         </View>
 
         <View style={styles.section}>
@@ -143,7 +203,7 @@ export default function BookingSuccessScreen() {
         </View>
 
         <View style={{ gap: 12 }}>
-          <TouchableOpacity style={[styles.button, styles.buttonPrimary]}>
+          {/* <TouchableOpacity style={[styles.button, styles.buttonPrimary]}>
             <MaterialCommunityIcons
               name="message-text-outline"
               size={20}
@@ -153,7 +213,7 @@ export default function BookingSuccessScreen() {
             <Text style={[styles.buttonText, styles.buttonTextPrimary]}>
               Message {interpreter.name.split(" ")[0]}
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           <TouchableOpacity
             style={[styles.button, styles.buttonSecondary]}
             onPress={() => router.replace("/(tabs)/search")}
@@ -171,7 +231,7 @@ export default function BookingSuccessScreen() {
         </View>
 
         {/* --- Mock Session Details --- */}
-        <View style={[styles.section, { paddingVertical: 30 }]}>
+        {/* <View style={[styles.section, { paddingVertical: 30 }]}>
           <Text style={styles.sectionTitle}>Session Details</Text>
           <View style={styles.sessionDetailsContainer}>
             <View style={styles.sessionDetailsRow}>
@@ -189,7 +249,7 @@ export default function BookingSuccessScreen() {
               </Text>
             </View>
           </View>
-        </View>
+        </View> */}
 
         {/* --- Changed Your Mind --- */}
         <View style={styles.changedMindContainer}>
@@ -286,10 +346,31 @@ const createStyles = (theme: MD3Theme) =>
     interpreterInfo: {
       flex: 1,
     },
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    customTooltip: {
+      position: 'absolute',
+      bottom: '100%', 
+      left: '50%',
+      transform: [{ translateX: -50 }], 
+      backgroundColor: '#616161', 
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 4,
+      marginBottom: 8, 
+    },
+    customTooltipText: {
+      color: 'white',
+      fontSize: 12,
+    },
     interpreterName: {
       fontSize: 16,
-      fontWeight: "600",
+      fontWeight: '600',
       color: theme.colors.onSurface,
+      marginRight: 8, // Adds space between the name and the separator
     },
     interpreterSubtitle: {
       color: theme.colors.onSurfaceVariant,
@@ -431,5 +512,23 @@ const createStyles = (theme: MD3Theme) =>
     },
     supportLink: {
       color: theme.colors.primary,
+    },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 999, 
+      alignSelf: 'flex-start', 
+      marginBottom: 16, 
+    },
+    statusBadgePending: {
+      backgroundColor: '#FFEFCF', 
+    },
+    statusText: {
+      marginLeft: 6,
+      color: '#9D5200', 
+      fontWeight: '600',
+      fontSize: 14,
     },
   });

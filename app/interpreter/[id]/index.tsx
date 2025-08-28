@@ -160,16 +160,16 @@ export default function InterpreterDetailScreen() {
               })
             }
           >
-            <Text style={[styles.buttonText, styles.buttonTextPrimary]}>
+          <Text style={[styles.buttonText, styles.buttonTextPrimary]}>
               Book Session
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.button, styles.buttonSecondary]}>
+          {/* <TouchableOpacity style={[styles.button, styles.buttonSecondary]}>
             <Text style={[styles.buttonText, styles.buttonTextSecondary]}>
               Start Chat
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </View>
     </ScrollView>

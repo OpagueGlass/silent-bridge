@@ -13,11 +13,12 @@ export const interpreters = [
       { date: '18/08/2025', slots: ['11:00', '15:00'] }
     ],
     languages: ["English", "Malay"],
+    email: "johnsmith@email.com"
   },
   {
     id: 2,
     name: "Sarah Johnson",
-    specialisation: "Legal Interpretation",
+    specialisation: "Accident and Emergency",
     rating: 5.0,
     pricePerHour: "RM 60",
     gender: "Female",
@@ -28,6 +29,7 @@ export const interpreters = [
       { date: '18/08/2025', slots: ['11:00', '15:00'] }
     ],
     languages: ["English", "Mandarin"],
+    email: "sarahjohnson@email.com"
   },
   {
     id: 3,
@@ -43,5 +45,6 @@ export const interpreters = [
       { date: '18/08/2025', slots: ['11:00', '15:00'] }
     ],
     languages: ["Mandarin", "Tamil"],
+    email: "mikechen@email.com"
   },
 ]

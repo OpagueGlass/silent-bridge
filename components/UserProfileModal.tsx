@@ -1,12 +1,10 @@
-// components/UserProfileModal.tsx
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity } from 'react-native';
-import { Card, MD3Theme } from 'react-native-paper';
-import { useAppTheme } from '../hooks/useAppTheme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { requests } from '../app/data/mockDataDeaf';
+import React, { useMemo } from 'react';
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Card, MD3Theme } from 'react-native-paper';
+import { interpreterAppointments } from '../app/data/mockBookingsDeaf';
+import { useAppTheme } from '../hooks/useAppTheme';
 
-// Component Props
 interface UserProfileModalProps {
   visible: boolean;
   userId: number | null;
@@ -17,12 +15,10 @@ export default function UserProfileModal({ visible, userId, onClose }: UserProfi
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  // In a real app, user data should be fetched using userId via API call
-  // For now, we get the user data from a local mock list
-  const user = requests.find(u => u.id === userId);
+  const clientRequest = interpreterAppointments.find(req => req.id === userId);
 
-  if (!user) {
-    return null; // Do not render if user not found
+  if (!clientRequest) {
+    return null;
   }
 
   return (
@@ -43,13 +39,13 @@ export default function UserProfileModal({ visible, userId, onClose }: UserProfi
           <ScrollView contentContainerStyle={styles.content}>
             <View style={styles.profileInfo}>
               <View style={styles.avatar}>
-                <MaterialCommunityIcons name="hand-wave" size={40} style={styles.avatarIcon} />
+                <MaterialCommunityIcons name="account" size={40} style={styles.avatarIcon} />
               </View>
-              <Text style={styles.name}>{user.name}</Text>
+              <Text style={styles.name}>{clientRequest.clientName}</Text>
               <Text style={styles.userType}>Deaf Community Member</Text>
               <View style={styles.ratingContainer}>
                 <MaterialCommunityIcons name="star" size={20} color="#FBBF24" />
-                <Text style={styles.ratingText}>{user.rating} (23 sessions)</Text>
+                <Text style={styles.ratingText}>5.0 (23 sessions)</Text>
               </View>
             </View>
 
@@ -63,7 +59,7 @@ export default function UserProfileModal({ visible, userId, onClose }: UserProfi
               </Card>
               <Card style={styles.sessionCard}>
                 <Card.Content>
-                  <Text style={styles.sessionTitle}>Medical Consultation</Text>
+                  <Text style={styles.sessionTitle}>Legal Consultation</Text>
                   <Text style={styles.sessionDate}>March 5, 2024</Text>
                 </Card.Content>
               </Card>
@@ -73,15 +69,15 @@ export default function UserProfileModal({ visible, userId, onClose }: UserProfi
               <Text style={styles.sectionTitle}>User Notes</Text>
               <View style={styles.notesCard}>
                 <Text style={styles.notesText}>
-                  "{user.name.split(' ')[0]} is a returning patient who previously had a successful surgery. His family is very concerned about his recovery and tends to ask many detailed questions."
+                  "{clientRequest.clientName.split(' ')[0]} is a returning user who is always punctual and clear in communication."
                 </Text>
               </View>
             </View>
 
             <View style={styles.buttonContainer}>
-              <TouchableOpacity 
-              style={[styles.button, styles.buttonSecondary]}
-              onPress={onClose} >
+              <TouchableOpacity
+                style={[styles.button, styles.buttonSecondary]}
+                onPress={onClose} >
                 <Text style={styles.buttonTextSecondary}>Close</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.button, styles.buttonPrimary]}>
