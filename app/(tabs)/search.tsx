@@ -25,10 +25,12 @@ import DatePickerInput from "../../components/DatePickerInput";
 import TimePickerInput from "../../components/TimePickerInput";
 import { interpreters } from "../data/mockData";
 import UserProfileModal from '../../components/UserProfileModal';
+import { searchInterpreters, InterpreterProfile } from "@/utils/query";
+import { LANGUAGES, SPECIALISATION } from "@/constants/data";
 
 export default function SearchScreen() {
   const router = useRouter();
-  const { isInterpreter } = useAuth();
+  const { isInterpreter, profile } = useAuth();
 
   const [isProfileModalVisible, setProfileModalVisible] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
@@ -42,7 +44,7 @@ export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
-  const [duration, setDuration] = useState("00:15");
+  const [duration, setDuration] = useState(0);
   const [durationMenuVisible, setDurationMenuVisible] = useState(false);
   const openMenu = () => setDurationMenuVisible(true);
   const closeMenu = () => setDurationMenuVisible(false);
@@ -51,60 +53,58 @@ export default function SearchScreen() {
     "01:00", "01:15", "01:30",
     "01:45", "02:00"
   ];
-  const [selectedLanguage, setSelectedLanguage] = useState("Any");
+  const ageRangeOptions = [
+                { value: "Any", label: "Any", ageStart: 0, ageEnd: 100 },
+                { value: "18-24", label: "18 - 24", ageStart: 18, ageEnd: 24 },
+                { value: "25-44", label: "25 - 44", ageStart: 25, ageEnd: 44 },
+                { value: "45-60", label: "45 - 60", ageStart: 45, ageEnd: 60 },
+              ];
+  const [selectedLanguage, setSelectedLanguage] = useState(0);
   const [languageMenuVisible, setLanguageMenuVisible] = useState(false);
   const openLanguageMenu = () => setLanguageMenuVisible(true);
   const closeLanguageMenu = () => setLanguageMenuVisible(false);
-  const languageOptions = ["Any", "English", "Malay", "Mandarin", "Tamil"];
+  const [specialisationMenuVisible, setSpecialisationMenuVisible] = useState(false);
+  const openSpecialisationMenu = () => setSpecialisationMenuVisible(true);
+  const closeSpecialisationMenu = () => setSpecialisationMenuVisible(false);
+
   const [selectedGender, setSelectedGender] = useState("Any");
-  const [ageRange, setAgeRange] = useState("Any");
+  const [ageRange, setAgeRange] = useState(0);
   const [minRating, setMinRating] = useState(3);
+  const [selectedSpecialisation, setSelectedSpecialisation] = useState(7);
 
   const [hasSearched, setHasSearched] = useState(false);
-  const [displayedInterpreters, setDisplayedInterpreters] = useState<
-    typeof interpreters
-  >([]);
-  const handleSearch = () => {
-    let results = [];
-    if (searchMode === "name") {
-      if (!searchQuery) {
-        alert("Please enter a name to search.");
-        return;
-      }
-      results = interpreters.filter((interpreter) => {
-        const cleanedQuery = searchQuery.trim().toLowerCase();
-        const nameWords = interpreter.name.toLowerCase().split(" ");
-        const queryWords = cleanedQuery.split(" ");
-        return queryWords.every((queryWord) =>
-          nameWords.some((nameWord) => nameWord.startsWith(queryWord))
-        );
-      });
-    } else {
-      if (!appointmentDate || !appointmentTime) {
-        alert("Please select a date and time.");
-        return;
-      }
-      results = interpreters.filter((interpreter) => {
-        const dateAndTimeMatch =
-          interpreter.availability
-            ?.find((day) => day.date === appointmentDate)
-            ?.slots.includes(appointmentTime) ?? false;
-        const languageMatch =
-        selectedLanguage === "Any" || interpreter.languages.includes(selectedLanguage);
-        const genderMatch =
-          selectedGender === "Any" || interpreter.gender === selectedGender;
-        const ageMatch =
-          ageRange === "Any"
-            ? true
-            : interpreter.age >= parseInt(ageRange.split("-")[0]) &&
-              interpreter.age <= parseInt(ageRange.split("-")[1]);
-        const ratingMatch = interpreter.rating >= minRating;
+  const [displayedInterpreters, setDisplayedInterpreters] = useState<InterpreterProfile[]>([]);
 
-        return dateAndTimeMatch && languageMatch && genderMatch && ageMatch && ratingMatch ;
-      });
-    }
-    setDisplayedInterpreters(results);
+  const handleSearch = () => {
+    const parseDate = (dateString: string) => {
+      const [day, month, year] = dateString.split("/").map((num) => parseInt(num, 10));
+      return new Date(year, month - 1, day);
+    };
+    const startTime = parseDate(appointmentDate);
+    const [startHour, startMinute] = appointmentTime.split(":").map((num) => parseInt(num, 10));
+    startTime.setHours(startHour, startMinute);
+    const endTime = new Date(startTime.getTime() + (duration + 1) * 15 * 60000);
+
+    const selectedAgeRange = ageRangeOptions[ageRange];
+    const ageStart = selectedAgeRange.ageStart;
+    const ageEnd = selectedAgeRange.ageEnd;
+
+
     setHasSearched(true);
+
+    searchInterpreters(
+      selectedSpecialisation + 1,
+      selectedLanguage + 1,
+      profile!.location,
+      ageStart,
+      ageEnd,
+      startTime,
+      endTime,
+      minRating,
+      selectedGender === "Any" ? null : selectedGender,
+    ).then((results) => {
+      setDisplayedInterpreters(results);
+    });
   };
 
   const theme = useAppTheme();
@@ -270,16 +270,16 @@ export default function SearchScreen() {
                   onDismiss={closeMenu}
                   anchor={
                     <TouchableOpacity onPress={openMenu} style={styles.dropdownAnchor}>
-                      <Text style={styles.dropdownText}>{duration}</Text>
+                      <Text style={styles.dropdownText}>{durationOptions[duration]}</Text>
                       <MaterialCommunityIcons name="chevron-down" size={20} />
                     </TouchableOpacity>
                   }
                 >
-                  {durationOptions.map((option) => (
+                  {durationOptions.map((option, index) => (
                     <Menu.Item
                       key={option}
                       onPress={() => {
-                        setDuration(option);
+                        setDuration(index);
                         closeMenu();
                       }}
                       title={option}
@@ -296,16 +296,16 @@ export default function SearchScreen() {
                   onDismiss={closeLanguageMenu}
                   anchor={
                     <TouchableOpacity onPress={openLanguageMenu} style={styles.dropdownAnchor}>
-                      <Text style={styles.dropdownText}>{selectedLanguage}</Text>
+                      <Text style={styles.dropdownText}>{[LANGUAGES[selectedLanguage]]}</Text>
                       <MaterialCommunityIcons name="chevron-down" size={20} />
                     </TouchableOpacity>
                   }
                 >
-                  {languageOptions.map((option) => (
+                  {LANGUAGES.map((option, index) => (
                     <Menu.Item
                       key={option}
                       onPress={() => {
-                        setSelectedLanguage(option);
+                        setSelectedLanguage(index);
                         closeLanguageMenu();
                       }}
                       title={option}
@@ -314,6 +314,39 @@ export default function SearchScreen() {
                 </Menu>
               </View>
             </View>
+              <View style={styles.durationLanguageRow}>
+              
+
+              {/* --- SPECIALISATION --- */}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.filterLabel}>Specialisation</Text>
+                <Menu
+                  visible={specialisationMenuVisible}
+                  onDismiss={closeSpecialisationMenu}
+                  anchor={
+                    <TouchableOpacity onPress={openSpecialisationMenu} style={styles.dropdownAnchor}>
+                      <Text style={styles.dropdownText}>{SPECIALISATION[selectedSpecialisation]}</Text>
+                      <MaterialCommunityIcons name="chevron-down" size={20} />
+                    </TouchableOpacity>
+                  }
+                >
+                  {SPECIALISATION.map((option, index) => (
+                    <Menu.Item
+                      key={index}
+                      onPress={() => {
+                        setSelectedSpecialisation(index);
+                        closeSpecialisationMenu();
+                      }}
+                      title={option}
+                    />
+                  ))}
+                </Menu>
+              </View>
+
+
+            </View>
+            
+          
 
             {/* --- GENDER --- */}
             <Text style={styles.filterLabel}>Gender</Text>
@@ -365,13 +398,8 @@ export default function SearchScreen() {
             {/* --- AGE --- */}
             <Text style={styles.filterLabel}>Age</Text>
             <View style={styles.genderRow}>
-              {[
-                { value: "Any", label: "Any" },
-                { value: "18-24", label: "18 - 24" },
-                { value: "25-44", label: "25 - 44" },
-                { value: "45-60", label: "45 - 60" },
-              ].map((option) => {
-                const isSelected = ageRange === option.value;
+              {ageRangeOptions.map((option, index) => {
+                const isSelected = ageRange === index;
                 return (
                   <TouchableOpacity
                     key={option.value}
@@ -379,7 +407,7 @@ export default function SearchScreen() {
                       styles.genderOption,
                       isSelected && styles.genderOptionSelected,
                     ]}
-                    onPress={() => setAgeRange(option.value)}
+                    onPress={() => setAgeRange(index)}
                     activeOpacity={0.9}
                   >
                     <Text
@@ -443,7 +471,7 @@ export default function SearchScreen() {
                   <Card.Content>
                     <View style={styles.interpreterHeader}>
                       <Image
-                        source={{ uri: interpreter.avatar }}
+                        source={{ uri: interpreter.photo }}
                         style={styles.interpreterAvatar}
                       />
                       <View style={styles.interpreterInfo}>
@@ -451,11 +479,11 @@ export default function SearchScreen() {
                           {interpreter.name}
                         </Text>
                         <Text style={styles.interpreterSpecialisation}>
-                          {interpreter.specialisation}
+                          {interpreter.interpreterSpecialisations.map((spec) => SPECIALISATION[spec]).join(", ")}
                         </Text>
                         <View style={styles.interpreterMeta}>
                           <Text style={styles.interpreterRating}>
-                            ⭐ {interpreter.rating}
+                            ⭐ {interpreter.avgRating}
                           </Text>
                         </View>
                         <View style={styles.interpreterTags}>
@@ -463,7 +491,7 @@ export default function SearchScreen() {
                             {interpreter.gender}
                           </Chip>
                           <Chip style={styles.tag} textStyle={styles.tagText}>
-                            {interpreter.age}
+                            {interpreter.ageRange}
                           </Chip>
                         </View>
                       </View>

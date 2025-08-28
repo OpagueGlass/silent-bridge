@@ -173,6 +173,7 @@ export const searchInterpreters = async (
   ageEnd: number,
   startTime: Date,
   endTime: Date,
+  minRating: number = 0,
   gender: string | null = null
 ) => {
   const { minDOB, maxDOB } = getMinMaxDOB(ageStart, ageEnd);
@@ -188,7 +189,7 @@ export const searchInterpreters = async (
       profile (*),
       interpreter_specialisation (specialisation_id),
       interpreter_language (language_id),
-      availability (day_id, start_time, end_time)
+      availability (*)
     `
     )
     .eq("interpreter_specialisation.specialisation_id", spec)
@@ -196,9 +197,10 @@ export const searchInterpreters = async (
     .eq("profile.location", state)
     .gt("profile.date_of_birth", minDOB.toISOString())
     .lt("profile.date_of_birth", maxDOB.toISOString())
+    .or(`avg_rating.gt.${minRating},avg_rating.is.null`, { referencedTable: "profile" })
     .eq("availability.day_id", day)
-    .gte("availability.start_time", start_time)
-    .lte("availability.end_time", end_time)
+    .lte("availability.start_time", start_time)
+    .gte("availability.end_time", end_time)
     .not("profile", "is", null) // Exclude profiles that only meet some of the criteria
     .not("interpreter_specialisation", "is", null)
     .not("interpreter_language", "is", null)
