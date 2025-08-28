@@ -5,15 +5,13 @@ import { Image, ScrollView, StyleSheet, View } from "react-native";
 import { ActivityIndicator, Button, Card, Chip, Text } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
-
-interface Appointment {
-  id: number;
-  date: string;
-  time: string;
-  status: string;
-  interpreter: string;
-  email: string;
-}
+import {
+  getUpcomingInterpreterAppointments,
+  getReviewInterpreterAppointments,
+  getUpcomingUserAppointments,
+  getReviewUserAppointments,
+  Appointment,
+} from "@/utils/query";
 
 interface Contact {
   id: number;
@@ -24,31 +22,33 @@ interface Contact {
 
 export default function HomeScreen() {
   const { profile, isInterpreter } = useAuth();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
+  const [reviewAppointments, setReviewAppointments] = useState<Appointment[]>([]);
   const theme = useAppTheme();
 
-  // Mock data for demonstration
   useEffect(() => {
-    setAppointments([
-      {
-        id: 1,
-        date: "15/05/2024",
-        time: "10:00 - 11:00",
-        status: "Approved",
-        interpreter: "John Smith",
-        email: "john@gmail.com",
-      },
-      {
-        id: 2,
-        date: "16/05/2024",
-        time: "14:00 - 15:00",
-        status: "Pending",
-        interpreter: "Sarah Johnson",
-        email: "sarah@gmail.com",
-      },
-    ]);
+    const fetchAppointments = async () => {
+      if (profile) {
+        try {
+          const id = profile.id;
+          const upcomingAppointments = isInterpreter
+            ? await getUpcomingInterpreterAppointments(id)
+            : await getUpcomingUserAppointments(id);
 
-  }, []);
+          const reviewAppointments = isInterpreter
+            ? await getReviewInterpreterAppointments(id)
+            : await getReviewUserAppointments(id);
+
+          setUpcomingAppointments(upcomingAppointments);
+          setReviewAppointments(reviewAppointments);
+        } catch (error) {
+          console.error("Error fetching appointments:", error);
+        }
+      }
+    };
+
+    fetchAppointments();
+  }, [profile]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -103,34 +103,34 @@ export default function HomeScreen() {
 
       <View style={styles.section}>
         <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-          Appointments
+          Upcoming Appointments
         </Text>
 
-        {appointments.map((appointment) => (
-          <Card key={appointment.id} style={[styles.appointmentCard, { backgroundColor: theme.colors.surface }]}>
+        {upcomingAppointments.map((appointment, index) => (
+          <Card key={index} style={[styles.appointmentCard, { backgroundColor: theme.colors.surface }]}>
             <Card.Content>
               <View style={styles.appointmentHeader}>
                 <Text variant="titleMedium" style={[styles.appointmentTitle, { color: theme.colors.onSurface }]}>
-                  Appointment {appointment.id}
+                  Appointment with {appointment.profile?.name}
                 </Text>
-                <Chip
+                {/* <Chip
                   style={[styles.statusChip, { backgroundColor: getStatusColor(appointment.status) }]}
                   textStyle={styles.statusText}
                 >
                   {appointment.status}
-                </Chip>
+                </Chip> */}
               </View>
               <Text variant="bodyLarge" style={[styles.appointmentDate, { color: theme.colors.onSurface }]}>
-                {appointment.date} • {appointment.time}
+                {appointment.startTime} • {appointment.endTime}
               </Text>
               <Text
                 variant="bodyMedium"
                 style={[styles.appointmentInterpreter, { color: theme.colors.onSurfaceVariant }]}
               >
-                Interpreter: {appointment.interpreter}
+                Interpreter: {appointment.profile?.name}
               </Text>
               <Text variant="bodyMedium" style={[styles.appointmentEmail, { color: theme.colors.onSurfaceVariant }]}>
-                Email: {appointment.email}
+                Email: {appointment.profile?.email}
               </Text>
 
               <View style={styles.appointmentActions}>

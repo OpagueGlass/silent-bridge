@@ -15,9 +15,17 @@ export interface Profile {
   photo: string;
 }
 
-interface InterpreterProfile extends Profile {
+export interface InterpreterProfile extends Profile {
   interpreterSpecialisations: number[];
   interpreterLanguages: number[];
+}
+
+export interface Appointment {
+  startTime: string;
+  endTime: string;
+  hospitalName: string | null;
+  meetingUrl: string | null;
+  profile: Profile | null;
 }
 
 // Convert Date to "HH:MM:SS+TZ" format for timetz
@@ -73,7 +81,7 @@ const convertToAppointment = (
     meeting_url: string | null;
   },
   profile: Tables<"profile"> | null
-) => {
+): Appointment => {
   const { start_time, end_time, hospital_name, meeting_url } = data;
   const formattedRest = {
     startTime: start_time,
@@ -82,7 +90,7 @@ const convertToAppointment = (
     meetingUrl: meeting_url,
   };
 
-  if (!profile) return formattedRest;
+  if (!profile) return { ...formattedRest, profile: null };
 
   return {
     profile: {
@@ -334,7 +342,7 @@ export const getUpcomingUserAppointments = async (user_id: string) => {
       `
     )
     .eq("deaf_user_id", user_id)
-    .neq("interpreter_profile", null)
+    .not("interpreter_id", "is", null)
     .gte("end_time", new Date().toISOString())
     .order("start_time", { ascending: true });
 
@@ -342,7 +350,6 @@ export const getUpcomingUserAppointments = async (user_id: string) => {
     console.error("Error fetching upcoming user appointments:", error);
     return [];
   }
-
   return data.map(({ interpreter_profile, ...rest }) =>
     convertToAppointment(rest, interpreter_profile?.profile || null)
   );
@@ -405,6 +412,7 @@ export const getReviewUserAppointments = async (user_id: string) => {
       `
     )
     .eq("deaf_user_id", user_id)
+    .not("interpreter_id", "is", null)
     .lt("end_time", new Date().toISOString())
     .gte("end_time", reviewPeriod.toISOString())
     .order("start_time", { ascending: true });
