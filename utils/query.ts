@@ -30,7 +30,7 @@ export interface Appointment {
 
 // Convert Date to "HH:MM:SS+TZ" format for timetz
 const toTimetz = (date: Date): string => {
-  return `${date.toISOString().substring(11, 16)}:00+00`;
+  return `${date.toISOString().substring(11, 19)}`;
 };
 
 // Convert specialisation and language IDs from id to respective index in constants
@@ -179,6 +179,7 @@ export const searchInterpreters = async (
   const { minDOB, maxDOB } = getMinMaxDOB(ageStart, ageEnd);
   const day = startTime.getDay() === 0 ? 7 : startTime.getDay();
   const start_time = toTimetz(startTime);
+  endTime.setSeconds(endTime.getSeconds() - 1); // Make end time exclusive
   const end_time = toTimetz(endTime);
 
   // Build the query with necessary filters and order by rating in descending order
@@ -186,6 +187,7 @@ export const searchInterpreters = async (
     .from("interpreter_profile")
     .select(
       `
+      id,
       profile (*),
       interpreter_specialisation (specialisation_id),
       interpreter_language (language_id),
@@ -200,7 +202,7 @@ export const searchInterpreters = async (
     .or(`avg_rating.gt.${minRating},avg_rating.is.null`, { referencedTable: "profile" })
     .eq("availability.day_id", day)
     .lte("availability.start_time", start_time)
-    .gte("availability.end_time", end_time)
+    .gt("availability.end_time", end_time)
     .not("profile", "is", null) // Exclude profiles that only meet some of the criteria
     .not("interpreter_specialisation", "is", null)
     .not("interpreter_language", "is", null)
@@ -220,7 +222,7 @@ export const searchInterpreters = async (
     return [];
   }
 
-  return data.map(convertToInterpreterProfile);
+  return await Promise.all(data.map(({ id }) => getInterpreterProfile(id)));
 };
 
 /**
