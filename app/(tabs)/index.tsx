@@ -1,19 +1,20 @@
 "use client";
 
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import {
   Button,
-  Card,
-  Chip,
   Dialog,
   Menu,
   Portal,
   Text,
-  TextInput,
+  TextInput
 } from "react-native-paper";
+import ClientAppointmentsCard from "../../components/ClientAppointmentsCard";
+import ClientReviewCard from "../../components/ClientReviewCard";
+import InterpreterApprovedCard from "../../components/InterpreterApprovedCard";
+import InterpreterReviewCard from "../../components/InterpreterReviewCard";
 import ReviewModal from "../../components/ReviewModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
@@ -291,29 +292,11 @@ export default function HomeScreen() {
             </Button>
           </View>
           {interpreterCompleted.map((request) => (
-            <Card key={request.id} style={styles.reviewCard}>
-              <Card.Content style={styles.reviewContent}>
-                <View style={styles.reviewInfo}>
-                  <Text variant="titleMedium" style={styles.appointmentDate}>
-                    {new Date(request.date).toLocaleDateString("en-US", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })}{" "}
-                    Session
-                  </Text>
-                  <Text
-                    variant="bodyMedium"
-                    style={{ color: theme.colors.onSurfaceVariant }}
-                  >
-                    {request.clientName} • {request.duration}
-                  </Text>
-                </View>
-                <Button mode="contained" onPress={() => handleOpenClientReview(request)}>
-                  Review Client
-                </Button>
-              </Card.Content>
-            </Card>
+            <InterpreterReviewCard
+              key={request.id}
+              session={request}
+              onReview={handleOpenClientReview}
+            />
           ))}
         </View>
 
@@ -337,68 +320,7 @@ export default function HomeScreen() {
 
           {/* --- RESULTS --- */}
           {interpreterApproved.map((request) => (
-            <Card key={request.id} style={styles.appointmentCard}>
-              <Card.Content>
-                <View style={styles.appointmentHeader}>
-                  <Text variant="titleMedium" style={styles.appointmentDate}>
-                    {new Date(request.date).toLocaleDateString("en-US", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })}{" "}
-                    at {request.time}
-                  </Text>
-                  <Chip
-                    style={{ backgroundColor: "limegreen" }}
-                    textStyle={styles.statusText}
-                  >
-                    Approved
-                  </Chip>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <Text selectable>
-                    Client: {request.clientName}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <MaterialCommunityIcons name="email-outline" size={18} color="#666" />
-                  <Text style={styles.detailText} selectable>
-                    {request.clientEmail}
-                  </Text>
-                </View>
-                {request.duration && (
-                  <View style={styles.detailRow}>
-                    <MaterialCommunityIcons name="clock-outline" size={18} color="#666" />
-                    <Text style={styles.detailText}>
-                      Duration: {request.duration}
-                    </Text>
-                  </View>
-                )}
-                {request.doctorLanguage && (
-                  <View style={styles.detailRow}>
-                    <MaterialCommunityIcons name="translate" size={18} color="#666" />
-                    <Text style={styles.detailText}>
-                      Doctor's Language: {request.doctorLanguage}
-                    </Text>
-                  </View>
-                )}
-                {request.location && (
-                  <View style={styles.detailRow}>
-                    <MaterialCommunityIcons name="hospital-building" size={18} color="#666" />
-                    <Text style={styles.detailText}>
-                      Hospital: {request.location}
-                    </Text>
-                  </View>
-                )}
-
-                <View style={[styles.appointmentActions, { marginTop: 16 }]}>
-                  <Button mode="contained" style={{ flex: 1 }}>
-                    Join Appointment
-                  </Button>
-                </View>
-              </Card.Content>
-            </Card>
+            <InterpreterApprovedCard key={request.id} appointment={request} />
           ))}
         </View>
 
@@ -444,32 +366,11 @@ export default function HomeScreen() {
           </Button>
         </View>
         {completedAppointments.map((appointment) => (
-          <Card key={appointment.id} style={styles.reviewCard}>
-            <Card.Content style={styles.reviewContent}>
-              <View style={styles.reviewInfo}>
-                <Text variant="titleMedium" style={styles.appointmentDate}>
-                  {new Date(appointment.date).toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}{" "}
-                  Session
-                </Text>
-                <Text
-                  variant="bodyMedium"
-                  style={{ color: theme.colors.onSurfaceVariant }}
-                >
-                  {appointment.interpreter.name} 
-                </Text>
-              </View>
-              <Button
-                mode="contained"
-                onPress={() => handleOpenReviewModal(appointment)}
-              >
-                Review
-              </Button>
-            </Card.Content>
-          </Card>
+          <ClientReviewCard
+            key={appointment.id}
+            appointment={appointment}
+            onReview={handleOpenReviewModal}
+          />
         ))}
       </View>
 
@@ -522,64 +423,15 @@ export default function HomeScreen() {
         </View>
 
         {upcomingAppointments.map((appointment) => (
-          <Card
+          <ClientAppointmentsCard
             key={appointment.id}
-            style={[
-              styles.appointmentCard,
-              appointment.status === "Rejected" && styles.rejectedCard,
-            ]}
-          >
-            <Card.Content>
-              <View style={styles.appointmentHeader}>
-                <Text variant="titleMedium" style={styles.appointmentDate}>
-                  {new Date(appointment.date).toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}{" "}
-                  at {appointment.time}
-                </Text>
-                <Chip
-                  style={[
-                    styles.statusChip,
-                    { backgroundColor: getStatusColor(appointment.status) },
-                  ]}
-                  textStyle={styles.statusText}
-                >
-                  {appointment.status}
-                </Chip>
-              </View>
-              <Text
-                variant="bodyMedium"
-                style={{ color: theme.colors.onSurfaceVariant }}
-              >
-                Interpreter: {appointment.interpreter.name}
-              </Text>
-              <Text
-                variant="bodyMedium"
-                style={{
-                  color: theme.colors.onSurfaceVariant,
-                  marginBottom: 16,
-                }}
-              >
-                {appointment.interpreter.email}
-              </Text>
-              {appointment.status === "Rejected" ? (
-                <View style={styles.rejectedMessageContainer}>
-                  <Text style={styles.rejectedMessageText}>
-                    the interpreter is unable to accept this request
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.appointmentActions}>
-                  {renderUserAppointmentActions(
-                    appointment.status,
-                    appointment
-                  )}
-                </View>
-              )}
-            </Card.Content>
-          </Card>
+            appointment={appointment}
+            getStatusColor={getStatusColor}
+            actions={renderUserAppointmentActions(
+              appointment.status,
+              appointment
+            )}
+          />
         ))}
       </View>
 
