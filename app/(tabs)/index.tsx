@@ -81,55 +81,39 @@ export default function HomeScreen() {
 
   const [isCancelDialogVisible, setCancelDialogVisible] = useState(false);
 
-  const { completedAppointments, upcomingAppointments } = useMemo<{
-    completedAppointments: Appointment[];
-    upcomingAppointments: Appointment[];
-  }>(() => {
+  const { completedAppointments, upcomingAppointments } = useMemo(() => {
     const completed = appointments
       .filter((a) => a.status === "Completed")
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // for results
     const upcoming = appointments
-      // only uncompleted
       .filter((a) => a.status !== "Completed")
-      // only after current time
+      .filter((a) => new Date(a.startTime) >= today)
       .filter((a) => {
-        const [year, month, day] = a.date.split("-").map(Number);
-        const appointmentDate = new Date(year, month - 1, day);
-        return appointmentDate >= today;
-      })
-      // filter based on user's filter
-      .filter((a) => {
-        // filter by user coice
         const statusMatch = statusFilter === "All" || a.status === statusFilter;
-
-        // filter by search
         const formattedQuery = searchQuery.trim().toLowerCase();
         if (formattedQuery === "") {
           return statusMatch;
         }
 
-        const displayDate = new Date(a.date)
+        const displayDate = new Date(a.startTime)
           .toLocaleDateString("en-US", {
             month: "long",
             day: "numeric",
             year: "numeric",
           })
           .toLowerCase();
-        const interpreterName = a.interpreter.name.toLowerCase();
-
-        // get the list (filter check)
+        const interpreterName = a.profile.name.toLowerCase();
         const queryMatch =
           displayDate.includes(formattedQuery) ||
           interpreterName.includes(formattedQuery);
 
         return statusMatch && queryMatch;
       })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
     return { completedAppointments: completed, upcomingAppointments: upcoming };
   }, [appointments, searchQuery, statusFilter]);
@@ -440,8 +424,8 @@ export default function HomeScreen() {
         visible={isReviewModalVisible}
         onDismiss={handleCloseReviewModal}
         onSubmit={handleSubmitReview}
-        targetName={selectedAppointment?.interpreter.name || ''}
-        sessionDate={selectedAppointment?.date || ''}
+        targetName={selectedAppointment?.profile.name || ''}
+        sessionDate={selectedAppointment?.startTime || ''}
         placeholderText="Share your experience with this interpreter..."
       />
 

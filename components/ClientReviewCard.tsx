@@ -23,7 +23,7 @@ export default function ClientReviewCard({
       <Card.Content style={styles.reviewContent}>
         <View style={styles.reviewInfo}>
           <Text variant="titleMedium" style={styles.appointmentDate}>
-            {new Date(appointment.date).toLocaleDateString("en-US", {
+            {new Date(appointment.startTime).toLocaleDateString("en-US", {
               month: "long",
               day: "numeric",
               year: "numeric",
@@ -34,7 +34,7 @@ export default function ClientReviewCard({
             variant="bodyMedium"
             style={{ color: theme.colors.onSurfaceVariant }}
           >
-            {appointment.interpreter.name}
+            {appointment.profile.name}
           </Text>
         </View>
         <Button mode="contained" onPress={() => onReview(appointment)}>

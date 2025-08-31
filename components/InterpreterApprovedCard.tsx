@@ -37,7 +37,12 @@ export default function InterpreterApprovedCard({
           </Chip>
         </View>
         <View style={styles.detailRow}>
-          <Text>Client: {appointment.clientName}</Text>
+            <Text
+                variant="bodyMedium"
+                style={{ color: theme.colors.onSurfaceVariant }}
+            >
+              Client: {appointment.clientName}
+            </Text>
         </View>
         <View style={styles.detailRow}>
           <MaterialCommunityIcons name="email-outline" size={18} color="#666" />
@@ -119,7 +124,7 @@ const createStyles = (theme: MD3Theme) =>
     },
     detailText: {
       fontSize: 14,
-      color: "#333",
+      color: theme.colors.onSurfaceVariant, 
       marginLeft: 8,
       flexShrink: 1,
     },
