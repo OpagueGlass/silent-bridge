@@ -1,23 +1,22 @@
 /**
- * @file HomeScreen.tsx
- * Renders the main dashboard for both Deaf Users and Interpreters.
- * Displays upcoming appointments fetched using the new, corrected query function.
+ * @file index.tsx
+ * @description The main home screen (or dashboard) of the application.
+ * It dynamically displays a welcome message and a list of upcoming appointments
+ * fetched from the database, tailored to whether the user is a deaf user or an interpreter.
  */
 "use client";
 
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
-import { ActivityIndicator, Button, Card, Text } from "react-native-paper";
+import { ActivityIndicator, Button, Card, Text, useTheme } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
-import { useAppTheme } from "../../hooks/useAppTheme";
-// Import the new, corrected function
 import { Appointment, getUpcomingAppointmentsForUser } from "../../utils/query";
 import AppointmentCard from "../../components/AppointmentCard";
 import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 
 export default function HomeScreen() {
-  const theme = useAppTheme();
+  const theme = useTheme();
   const styles = createStyles(theme);
   const { profile, isInterpreter } = useAuth();
   const isFocused = useIsFocused();
@@ -26,10 +25,10 @@ export default function HomeScreen() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Fetch appointments whenever the screen is focused and a user profile is available
   useEffect(() => {
     if (isFocused && profile) {
       setIsLoading(true);
-      // ** MODIFICATION: Calling the new, correct function **
       getUpcomingAppointmentsForUser(profile.id, isInterpreter)
         .then(setAppointments)
         .catch(console.error)
@@ -80,7 +79,7 @@ export default function HomeScreen() {
               titleStyle={styles.cardTitle}
             />
             <Card.Actions>
-              <Button onPress={() => router.push({ pathname: '/settings/availability' as any })} mode="contained">Set My Schedule</Button>
+              <Button onPress={() => router.push('/settings/availability' as any)} mode="contained">Set My Schedule</Button>
             </Card.Actions>
           </Card>
         </View>
@@ -101,4 +100,3 @@ const createStyles = (theme: any) => StyleSheet.create({
     availabilityCard: { backgroundColor: theme.colors.surface, borderRadius: 12 },
     cardTitle: { fontWeight: 'bold' }
 });
-

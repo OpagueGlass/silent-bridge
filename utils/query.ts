@@ -15,8 +15,8 @@ export interface Profile {
   photo: string;
 }
 
-interface InterpreterProfile extends Profile {
-  interpreterSpecialisations: number[];
+export interface InterpreterProfile extends Profile {
+  interpreterSpecialisations: number[]; 
   interpreterLanguages: number[];
 }
 
@@ -32,10 +32,20 @@ export interface Appointment {
   otherUserProfile: Profile | null;
 }
 
+export interface PendingRequest {
+    id: number;
+    appointment: {
+        id: number;
+        startTime: string;
+        endTime: string;
+        hospitalName: string | null;
+        clientProfile: Profile | null;
+    };
+    note: string | null;
+}
+
 // Convert Date to "HH:MM:SS+TZ" format for timetz
-const toTimetz = (date: Date): string => {
-  return `${date.toISOString().substring(11, 16)}:00+00`;
-};
+const toTimetz = (date: Date): string => date.toTimeString().split(' ')[0];
 
 // Convert specialisation and language IDs from id to respective index in constants
 const convertToSpec = (specialisations: { specialisation_id: number }[]): number[] => {
@@ -52,10 +62,10 @@ const convertToLang = (languages: { language_id: number }[]): number[] => {
  * @param profile The profile from the database
  * @returns The converted profile
  */
-const convertToProfile = (profile: Tables<"profile">): Profile => {
+const convertToProfile = (profile: Tables<"profile"> | null): Profile | null => {
+  if (!profile) return null;
   const { date_of_birth, avg_rating, ...rest } = profile;
-  const ageRange = getAgeRangeFromDOB(date_of_birth);
-  return { ...rest, ageRange, avgRating: avg_rating };
+  return { ...rest, ageRange: getAgeRangeFromDOB(date_of_birth), avgRating: avg_rating };
 };
 
 /**
@@ -70,8 +80,12 @@ const convertToInterpreterProfile = (data: {
   interpreter_language: { language_id: number }[];
 }): InterpreterProfile => {
   const { profile, interpreter_specialisation, interpreter_language } = data;
+  const baseProfile = convertToProfile(profile);
+  if (!baseProfile) {
+    throw new Error("Profile could not be converted.");
+  }
   return {
-    ...convertToProfile(profile),
+    ...baseProfile,
     interpreterLanguages: convertToLang(interpreter_language),
     interpreterSpecialisations: convertToSpec(interpreter_specialisation),
   };
@@ -170,59 +184,46 @@ export const getInterpreterProfile = async (id: string): Promise<InterpreterProf
  * @returns The top 5 interpreters matching the criteria, sorted by average rating and gender if specified
  */
 export const searchInterpreters = async (
-  spec: number,
-  language: number,
-  state: string,
-  ageStart: number,
-  ageEnd: number,
-  startTime: Date,
-  endTime: Date,
-  gender: string | null = null
-) => {
+  spec: number | null, language: number | null, state: string | null,
+  ageStart: number, ageEnd: number, startTime: Date, endTime: Date,
+  minRating: number = 0, gender: string | null = null
+): Promise<InterpreterProfile[]> => {
   const { minDOB, maxDOB } = getMinMaxDOB(ageStart, ageEnd);
-  const day = startTime.getDay() === 0 ? 7 : startTime.getDay();
+  const day = startTime.getDay() === 0 ? 7 : startTime.getDay(); // JS Sunday is 0, DB is 7
   const start_time = toTimetz(startTime);
-  const end_time = toTimetz(endTime);
+  const end_time = toTimetz(new Date(endTime.getTime() - 1000)); // Make end time exclusive for correct range check
 
-  // Build the query with necessary filters and order by rating in descending order
   let query = supabase
     .from("interpreter_profile")
-    .select(
-      `
-      profile (*),
-      interpreter_specialisation (specialisation_id),
-      interpreter_language (language_id),
-      availability (day_id, start_time, end_time)
-    `
-    )
-    .eq("interpreter_specialisation.specialisation_id", spec)
-    .eq("interpreter_language.language_id", language)
-    .eq("profile.location", state)
+    .select(`
+        profile!inner(*),
+        interpreter_specialisation!inner(specialisation_id),
+        interpreter_language!inner(language_id),
+        availability!inner(day_id, start_time, end_time)
+    `)
     .gt("profile.date_of_birth", minDOB.toISOString())
     .lt("profile.date_of_birth", maxDOB.toISOString())
+    .or(`avg_rating.gt.${minRating},avg_rating.is.null`, { referencedTable: "profile" })
     .eq("availability.day_id", day)
-    .gte("availability.start_time", start_time)
-    .lte("availability.end_time", end_time)
-    .not("profile", "is", null) // Exclude profiles that only meet some of the criteria
-    .not("interpreter_specialisation", "is", null)
-    .not("interpreter_language", "is", null)
-    .not("availability", "is", null)
-    .order("profile(avg_rating)", { ascending: false, nullsFirst: false }); // requires brackets for workaround
+    .lte("availability.start_time", start_time)
+    .gte("availability.end_time", end_time)
+    .order("avg_rating", { referencedTable: 'profile', ascending: false, nullsFirst: false });
 
-  // Sort by gender if specified
-  if (gender) {
-    query.order("profile(gender)", { ascending: true });
-  }
+  // Dynamically apply optional filters
+  if (spec) query = query.eq("interpreter_specialisation.specialisation_id", spec);
+  if (language) query = query.eq("interpreter_language.language_id", language);
+  if (state) query = query.eq("profile.location", state);
+  if (gender) query = query.order("gender", { referencedTable: "profile", ascending: gender === "Male" });
 
-  // Limit to top 5 results
-  const { data, error } = await query.limit(5);
+  const { data, error } = await query.limit(10);
 
   if (error) {
     console.error("Error fetching interpreters:", error);
     return [];
   }
-
-  return data.map(convertToInterpreterProfile);
+  
+  // Optimization: Process the rich data directly instead of making N+1 subsequent calls.
+  return data.map(convertToInterpreterProfile).filter(p => p !== null) as InterpreterProfile[];
 };
 
 /**
@@ -563,41 +564,85 @@ export const getUpcomingAppointmentsForUser = async (userId: string, isInterpret
     const now = new Date().toISOString();
     const userRoleField = isInterpreter ? "interpreter_id" : "deaf_user_id";
 
-    // This query correctly joins the tables to get the profiles of both participants.
-    // We give aliases to the fetched profiles to distinguish them.
     const query = supabase
         .from("appointment")
-        .select(`
-            *,
-            deaf_user_profile:profile!appointment_deaf_user_id_fkey(*),
-            interpreter_user_profile:interpreter_profile!inner(profile!inner(*))
-        `)
+        .select(`*, deaf_user_profile:profile!appointment_deaf_user_id_fkey(*), interpreter_user_profile:interpreter_profile!inner(profile!inner(*))`)
         .eq(userRoleField, userId)
         .or(`status.eq.Pending,status.eq.Approved`)
         .gte("end_time", now)
         .order("start_time", { ascending: true });
 
     const { data, error } = await query;
-
     if (error) {
-        console.error("Error fetching upcoming appointments (new method):", error);
+        console.error("Error fetching upcoming appointments:", error);
         return [];
     }
 
-    // Map the raw data to our clean `Appointment` interface
-    // @ts-ignore
-    return data.map((appt) => ({
-        id: appt.id,
-        startTime: appt.start_time,
-        endTime: appt.end_time,
-        status: appt.status,
-        hospitalName: appt.hospital_name,
-        meetingUrl: appt.meeting_url,
-        deafUserId: appt.deaf_user_id,
+    return (data || []).map((appt: any) => ({
+        id: appt.id, startTime: appt.start_time, endTime: appt.end_time, status: appt.status,
+        hospitalName: appt.hospital_name, meetingUrl: appt.meeting_url, deafUserId: appt.deaf_user_id,
         interpreterId: appt.interpreter_id,
-        // This logic correctly assigns the "other" user's profile
-        otherUserProfile: isInterpreter
-            ? convertToProfile(appt.deaf_user_profile)
-            : appt.interpreter_user_profile ? convertToProfile(appt.interpreter_user_profile.profile) : null,
+        otherUserProfile: isInterpreter ? convertToProfile(appt.deaf_user_profile) : (appt.interpreter_user_profile ? convertToProfile(appt.interpreter_user_profile.profile) : null),
     }));
+};
+
+/**
+ * Fetches all pending appointment requests for a specific interpreter.
+ */
+export const getPendingRequests = async (interpreter_id: string): Promise<PendingRequest[]> => {
+  const { data, error } = await supabase.from("request")
+    .select(`id, note, appointment:appointment!inner(*, clientProfile:profile!appointment_deaf_user_id_fkey(*))`)
+    .eq("interpreter_id", interpreter_id)
+    .is("is_accepted", null) // Correctly filter for unhandled requests
+    .eq("is_expired", false);
+
+  if (error) { console.error("Error fetching requests:", error); return []; }
+
+  return (data || []).map(item => ({
+    id: item.id,
+    note: item.note,
+    appointment: {
+      id: item.appointment.id,
+      startTime: item.appointment.start_time,
+      endTime: item.appointment.end_time,
+      hospitalName: item.appointment.hospital_name,
+      clientProfile: convertToProfile(item.appointment.clientProfile)
+    }
+  }));
+};
+
+/**
+ * Allows an interpreter to accept a request.
+ * This function atomically updates the request status to 'accepted' and updates the
+ * corresponding appointment with the interpreter's ID and a generated meeting URL.
+ */
+export const acceptRequest = async (requestId: number, appointmentId: number, interpreterId: string): Promise<boolean> => {
+    // Step 1: Update the request and confirm the change
+    const { data: updatedRequest, error: requestError } = await supabase.from("request")
+        .update({ is_accepted: true })
+        .eq("id", requestId)
+        .select() // Ask the database to return the updated row
+        .single(); // Expect a single row to be returned
+
+    if (requestError || !updatedRequest) {
+        console.error("Error updating request status, or no row was updated:", requestError);
+        return false;
+    }
+
+    // Step 2: Generate a meeting URL and update the corresponding appointment, confirming the change
+    const meetingUrl = `https://meet.google.com/new-meeting-for-${appointmentId}`;
+    const { data: updatedAppointment, error: appointmentError } = await supabase.from("appointment")
+        .update({ meeting_url: meetingUrl, interpreter_id: interpreterId, status: 'Approved' })
+        .eq("id", appointmentId)
+        .select() // Ask the database to return the updated row
+        .single();
+
+    if (appointmentError || !updatedAppointment) {
+        console.error("Error updating appointment, or no row was updated:", appointmentError);
+        // Optional: Implement rollback logic here to revert the request status.
+        return false;
+    }
+
+    console.log("Successfully accepted request and updated appointment:", updatedAppointment);
+    return true;
 };
