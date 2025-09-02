@@ -5,23 +5,20 @@ import { Card, MD3Theme } from 'react-native-paper';
 import { useAppTheme } from '../hooks/useAppTheme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { requests } from '../app/data/mockDataDeaf';
+import { Profile } from '@/utils/query';
 
 // Component Props
 interface UserProfileModalProps {
   visible: boolean;
-  userId: number | null;
+  profile: Profile | null;
   onClose: () => void;
 }
 
-export default function UserProfileModal({ visible, userId, onClose }: UserProfileModalProps) {
+export default function UserProfileModal({ visible, profile, onClose }: UserProfileModalProps) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  // In a real app, user data should be fetched using userId via API call
-  // For now, we get the user data from a local mock list
-  const user = requests.find(u => u.id === userId);
-
-  if (!user) {
+  if (!profile) {
     return null; // Do not render if user not found
   }
 
@@ -45,11 +42,11 @@ export default function UserProfileModal({ visible, userId, onClose }: UserProfi
               <View style={styles.avatar}>
                 <MaterialCommunityIcons name="hand-wave" size={40} style={styles.avatarIcon} />
               </View>
-              <Text style={styles.name}>{user.name}</Text>
+              <Text style={styles.name}>{profile.name}</Text>
               <Text style={styles.userType}>Deaf Community Member</Text>
               <View style={styles.ratingContainer}>
                 <MaterialCommunityIcons name="star" size={20} color="#FBBF24" />
-                <Text style={styles.ratingText}>{user.rating} (23 sessions)</Text>
+                <Text style={styles.ratingText}>{profile.avgRating}</Text>
               </View>
             </View>
 
@@ -73,7 +70,7 @@ export default function UserProfileModal({ visible, userId, onClose }: UserProfi
               <Text style={styles.sectionTitle}>User Notes</Text>
               <View style={styles.notesCard}>
                 <Text style={styles.notesText}>
-                  "{user.name.split(' ')[0]} is a returning patient who previously had a successful surgery. His family is very concerned about his recovery and tends to ask many detailed questions."
+                  "{profile.name.split(' ')[0]} is a returning patient who previously had a successful surgery. His family is very concerned about his recovery and tends to ask many detailed questions."
                 </Text>
               </View>
             </View>
