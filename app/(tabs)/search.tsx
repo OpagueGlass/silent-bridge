@@ -126,7 +126,7 @@ export default function SearchScreen() {
     });
   };
 
-  const handleUpdateRequest = async (isAccepted: boolean, request: Request, index: number) => {
+  const handleUpdateRequest = (isAccepted: boolean) => async (request: Request, index: number) => {
     try {
       const appointmentId = await updateRequest(request.id, isAccepted);
       setRequests((prev) => prev.filter((_, i) => i !== index));
@@ -145,8 +145,8 @@ export default function SearchScreen() {
     }
   };
 
-  const handleAcceptRequest = async (request: Request, index: number) => handleUpdateRequest(true, request, index);
-  const handleRejectRequest = async (request: Request, index: number) => handleUpdateRequest(false, request, index);
+  const handleAcceptRequest = handleUpdateRequest(true);
+  const handleRejectRequest = handleUpdateRequest(false);
 
   useEffect(() => {
     const fetchRequests = async () => {
