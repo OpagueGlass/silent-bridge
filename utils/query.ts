@@ -28,6 +28,12 @@ export interface Appointment {
   profile: Profile | null;
 }
 
+export interface Request {
+  id: number;
+  note: string | null;
+  appointment: Appointment;
+}
+
 // Convert Date to "HH:MM:SS+TZ" format for timetz
 const toTimetz = (date: Date): string => {
   return `${date.toISOString().substring(11, 19)}`;
@@ -222,7 +228,9 @@ export const searchInterpreters = async (
     return [];
   }
 
-  return await Promise.all(data.map(({ id }) => getInterpreterProfile(id)));
+  const interpreterProfiles = await Promise.all(data.map(({ id }) => getInterpreterProfile(id)));
+
+  return interpreterProfiles.filter((profile) => profile !== null);
 };
 
 /**
@@ -491,7 +499,8 @@ export const getRequests = async (interpreter_id: string) => {
     return [];
   }
 
-  return data.map(({ note, appointment }) => ({
+  return data.map(({ id, note, appointment }) => ({
+    id,
     note,
     appointment: convertToAppointment(appointment, appointment.profile),
   }));
