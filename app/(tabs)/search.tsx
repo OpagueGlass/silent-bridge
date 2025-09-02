@@ -9,7 +9,7 @@
 import { useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
 import React, { useState, useEffect } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View, Alert } from "react-native";
 import { ActivityIndicator, Button, Card, Avatar, Text, useTheme, MD3Theme } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
 import { getPendingRequests, acceptRequest, PendingRequest } from "../../utils/query";
