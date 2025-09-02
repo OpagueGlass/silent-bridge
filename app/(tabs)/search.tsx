@@ -1,97 +1,116 @@
 "use client";
 
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useState } from "react";
-import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import {
-  Button,
-  Card,
-  Chip,
-  Text,
-  TextInput,
-  MD3Theme,
-  Menu
-} from "react-native-paper";
+import { useState, useEffect } from "react";
+import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Button, Card, Chip, Text, TextInput, MD3Theme, Menu } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
 import { useRouter } from "expo-router";
 import DatePickerInput from "../../components/DatePickerInput";
 import TimePickerInput from "../../components/TimePickerInput";
-import { interpreters } from "../data/mockData";
-import UserProfileModal from '../../components/UserProfileModal';
-import { searchInterpreters, InterpreterProfile } from "@/utils/query";
+import UserProfileModal from "../../components/UserProfileModal";
+import {
+  searchInterpreters,
+  InterpreterProfile,
+  getRequests,
+  Request,
+  Profile,
+  updateRequest,
+  addAppointmentMeetingURL,
+} from "@/utils/query";
 import { LANGUAGES, SPECIALISATION } from "@/constants/data";
+import { parseDate, getMeetLink } from "@/utils/helper";
+
+const durationOptions = ["00:15", "00:30", "00:45", "01:00", "01:15", "01:30", "01:45", "02:00"];
+const ageRangeOptions = [
+  { value: "Any", label: "Any", ageStart: 0, ageEnd: 100 },
+  { value: "18-24", label: "18 - 24", ageStart: 18, ageEnd: 24 },
+  { value: "25-44", label: "25 - 44", ageStart: 25, ageEnd: 44 },
+  { value: "45-60", label: "45 - 60", ageStart: 45, ageEnd: 60 },
+];
+
+// Mock requests for interpreters
+// const requests = [
+//   {
+//     id: 1,
+//     clientName: "Alice Wong",
+//     date: "20/05/2024",
+//     time: "10:00 - 11:00",
+//     type: "Medical Appointment",
+//     location: "Sunway Medical Centre",
+//     status: "Pending",
+//   },
+//   {
+//     id: 2,
+//     clientName: "David Lee",
+//     date: "22/05/2024",
+//     time: "14:00 - 15:30",
+//     type: "Legal Consultation",
+//     location: "Lee Hishammuddin Allen & Gledhill",
+//     status: "Pending",
+//   },
+// ];
+
+const defaultParams = {
+  duration: 0,
+  selectedLanguage: 0,
+  selectedSpecialisation: 7,
+  selectedGender: "Any",
+  ageRange: 0,
+  minRating: 3,
+};
 
 export default function SearchScreen() {
+  const { isInterpreter, profile, getValidProviderToken } = useAuth();
   const router = useRouter();
-  const { isInterpreter, profile } = useAuth();
+  const theme = useAppTheme();
+  const styles = createStyles(theme);
 
   const [isProfileModalVisible, setProfileModalVisible] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const openProfileModal = (userId: number) => {
-    setSelectedUserId(userId);
+  const [selectedUserProfile, setSelectedUserProfile] = useState<Profile | null>(null);
+  const [searchMode, setSearchMode] = useState<"filter" | "name">("filter");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Search filters
+  const [appointmentDate, setAppointmentDate] = useState("");
+  const [appointmentTime, setAppointmentTime] = useState("");
+  const [duration, setDuration] = useState(defaultParams.duration);
+  const [selectedLanguage, setSelectedLanguage] = useState(defaultParams.selectedLanguage);
+  const [selectedSpecialisation, setSelectedSpecialisation] = useState(defaultParams.selectedSpecialisation);
+  const [selectedGender, setSelectedGender] = useState(defaultParams.selectedGender);
+  const [ageRange, setAgeRange] = useState(defaultParams.ageRange);
+  const [minRating, setMinRating] = useState(defaultParams.minRating);
+
+  // Dropdown menu visibility
+  const [durationMenuVisible, setDurationMenuVisible] = useState(false);
+  const [languageMenuVisible, setLanguageMenuVisible] = useState(false);
+  const [specialisationMenuVisible, setSpecialisationMenuVisible] = useState(false);
+
+  // Results
+  const [hasSearched, setHasSearched] = useState(false);
+  const [displayedInterpreters, setDisplayedInterpreters] = useState<InterpreterProfile[]>([]);
+  const [requests, setRequests] = useState<Request[]>([]);
+
+  const openMenu = () => setDurationMenuVisible(true);
+  const closeMenu = () => setDurationMenuVisible(false);
+  const openLanguageMenu = () => setLanguageMenuVisible(true);
+  const closeLanguageMenu = () => setLanguageMenuVisible(false);
+  const openSpecialisationMenu = () => setSpecialisationMenuVisible(true);
+  const closeSpecialisationMenu = () => setSpecialisationMenuVisible(false);
+  const openProfileModal = (profile: Profile | null) => {
+    setSelectedUserProfile(profile);
     setProfileModalVisible(true);
   };
 
-  const [searchMode, setSearchMode] = useState<"filter" | "name">("filter");
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [appointmentDate, setAppointmentDate] = useState("");
-  const [appointmentTime, setAppointmentTime] = useState("");
-  const [duration, setDuration] = useState(0);
-  const [durationMenuVisible, setDurationMenuVisible] = useState(false);
-  const openMenu = () => setDurationMenuVisible(true);
-  const closeMenu = () => setDurationMenuVisible(false);
-  const durationOptions = [
-    "00:15", "00:30", "00:45",
-    "01:00", "01:15", "01:30",
-    "01:45", "02:00"
-  ];
-  const ageRangeOptions = [
-                { value: "Any", label: "Any", ageStart: 0, ageEnd: 100 },
-                { value: "18-24", label: "18 - 24", ageStart: 18, ageEnd: 24 },
-                { value: "25-44", label: "25 - 44", ageStart: 25, ageEnd: 44 },
-                { value: "45-60", label: "45 - 60", ageStart: 45, ageEnd: 60 },
-              ];
-  const [selectedLanguage, setSelectedLanguage] = useState(0);
-  const [languageMenuVisible, setLanguageMenuVisible] = useState(false);
-  const openLanguageMenu = () => setLanguageMenuVisible(true);
-  const closeLanguageMenu = () => setLanguageMenuVisible(false);
-  const [specialisationMenuVisible, setSpecialisationMenuVisible] = useState(false);
-  const openSpecialisationMenu = () => setSpecialisationMenuVisible(true);
-  const closeSpecialisationMenu = () => setSpecialisationMenuVisible(false);
-
-  const [selectedGender, setSelectedGender] = useState("Any");
-  const [ageRange, setAgeRange] = useState(0);
-  const [minRating, setMinRating] = useState(3);
-  const [selectedSpecialisation, setSelectedSpecialisation] = useState(7);
-
-  const [hasSearched, setHasSearched] = useState(false);
-  const [displayedInterpreters, setDisplayedInterpreters] = useState<InterpreterProfile[]>([]);
-
   const handleSearch = () => {
-    const parseDate = (dateString: string) => {
-      const [day, month, year] = dateString.split("/").map((num) => parseInt(num, 10));
-      return new Date(year, month - 1, day);
-    };
     const startTime = parseDate(appointmentDate);
     const [startHour, startMinute] = appointmentTime.split(":").map((num) => parseInt(num, 10));
     startTime.setHours(startHour, startMinute);
     const endTime = new Date(startTime.getTime() + (duration + 1) * 15 * 60000);
-
-    const selectedAgeRange = ageRangeOptions[ageRange];
-    const ageStart = selectedAgeRange.ageStart;
-    const ageEnd = selectedAgeRange.ageEnd;
-
+    const { ageStart, ageEnd } = ageRangeOptions[ageRange];
 
     setHasSearched(true);
-
     searchInterpreters(
       selectedSpecialisation + 1,
       selectedLanguage + 1,
@@ -101,102 +120,121 @@ export default function SearchScreen() {
       startTime,
       endTime,
       minRating,
-      selectedGender === "Any" ? null : selectedGender,
+      selectedGender === "Any" ? null : selectedGender
     ).then((results) => {
       setDisplayedInterpreters(results);
     });
   };
 
-  const theme = useAppTheme();
-  const styles = createStyles(theme);
+  const handleUpdateRequest = async (isAccepted: boolean, request: Request, index: number) => {
+    try {
+      const appointmentId = await updateRequest(request.id, isAccepted);
+      setRequests((prev) => prev.filter((_, i) => i !== index));
+      if (isAccepted) {
+        const providerToken = await getValidProviderToken();
+        const meetingLink = await getMeetLink(
+          providerToken!,
+          request.appointment.startTime,
+          request.appointment.endTime
+        );
+        const meetingURL = meetingLink.split("/")[3];
+        await addAppointmentMeetingURL(appointmentId, meetingURL);
+      }
+    } catch (error) {
+      console.error("Error updating request:", error);
+    }
+  };
 
-  // const isInterpreter = userProfile?.userType === "interpreter";
+  const handleAcceptRequest = async (request: Request, index: number) => handleUpdateRequest(true, request, index);
+  const handleRejectRequest = async (request: Request, index: number) => handleUpdateRequest(false, request, index);
 
-  // Mock requests for interpreters
-  const requests = [
-    {
-      id: 1,
-      clientName: "Alice Wong",
-      date: "20/05/2024",
-      time: "10:00 - 11:00",
-      type: "Medical Appointment",
-      location: "Sunway Medical Centre", 
-      status: "Pending",
-    },
-    {
-      id: 2,
-      clientName: "David Lee",
-      date: "22/05/2024",
-      time: "14:00 - 15:30",
-      type: "Legal Consultation",
-      location: "Lee Hishammuddin Allen & Gledhill",
-      status: "Pending",
-    },
-  ];
+  useEffect(() => {
+    const fetchRequests = async () => {
+      if (profile && isInterpreter) {
+        try {
+          const id = profile.id;
+          const requests = await getRequests(id);
+          setRequests(requests);
+        } catch (error) {
+          console.error("Error fetching requests:", error);
+        }
+      }
+    };
+
+    fetchRequests();
+  }, [profile]);
 
   if (isInterpreter) {
     return (
       <View>
-      <ScrollView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Appointment Requests</Text>
-        </View>
+        <ScrollView style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Appointment Requests</Text>
+          </View>
 
-        <View style={styles.section}>
-          {requests.map((request) => (
-            <Card key={request.id} style={styles.requestCard}>
-              <Card.Content>
-                <View style={styles.requestHeader}>
-                  <Image
-                    source={{ uri: "/placeholder.svg?height=50&width=50" }}
-                    style={styles.clientAvatar}
-                  />
-                  <View style={styles.requestInfo}>
-                    <Text style={styles.clientName}>{request.clientName}</Text>
-                    <Text style={styles.requestType}>{request.type}</Text>
+          <View style={styles.section}>
+            {requests.map((request, index) => {
+              const startDate = new Date(request.appointment.startTime);
+              const startTime = startDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-                    <View style={styles.requestLocationRow}>
-                      <MaterialCommunityIcons name="map-marker-outline" size={16} color="#666" />
-                      <Text style={styles.requestLocationText}>{request.location}</Text>
+              return (
+                <Card key={index} style={styles.requestCard}>
+                  <Card.Content>
+                    <View style={styles.requestHeader}>
+                      <Image source={{ uri: "/placeholder.svg?height=50&width=50" }} style={styles.clientAvatar} />
+                      <View style={styles.requestInfo}>
+                        <Text style={styles.clientName}>{request.appointment.profile?.name}</Text>
+                        {/* <Text style={styles.requestType}>{request.type}</Text> */}
+
+                        <View style={styles.requestLocationRow}>
+                          <MaterialCommunityIcons name="map-marker-outline" size={16} color="#666" />
+                          {request.appointment.hospitalName ? (
+                            <Text style={styles.requestLocationText}>{request.appointment.hospitalName}</Text>
+                          ) : null}
+                        </View>
+
+                        <Text style={styles.requestDateTime}>
+                          {startTime} • {startTime}
+                        </Text>
+                      </View>
                     </View>
 
-                    <Text style={styles.requestDateTime}>
-                      {request.date} • {request.time}
-                    </Text>
-                  </View>
-                </View>
+                    <View style={styles.requestActions}>
+                      <Button
+                        mode="text"
+                        onPress={() => openProfileModal(request.appointment.profile)}
+                        style={styles.profileTextButton}
+                      >
+                        Profile
+                      </Button>
+                      <Button
+                        mode="outlined"
+                        style={[styles.actionButton, styles.rejectButton]}
+                        textColor="#F44336"
+                        onPress={() => handleRejectRequest(request, index)}
+                      >
+                        Reject
+                      </Button>
+                      <Button
+                        mode="contained"
+                        style={styles.actionButton}
+                        onPress={() => handleAcceptRequest(request, index)}
+                      >
+                        Accept
+                      </Button>
+                    </View>
+                  </Card.Content>
+                </Card>
+              );
+            })}
+          </View>
+        </ScrollView>
 
-                <View style={styles.requestActions}>
-                  <Button 
-                    mode="text" 
-                    onPress={() => openProfileModal(request.id)}
-                    style={styles.profileTextButton}
-                  >
-                    Profile
-                  </Button>
-                  <Button
-                    mode="outlined"
-                    style={[styles.actionButton, styles.rejectButton]}
-                    textColor="#F44336"
-                  >
-                    Reject
-                  </Button>
-                  <Button mode="contained" style={styles.actionButton}>
-                    Accept
-                  </Button>
-                </View>
-              </Card.Content>
-            </Card>
-          ))}
-        </View>
-      </ScrollView>
-
-      <UserProfileModal
-        visible={isProfileModalVisible}
-        userId={selectedUserId}
-        onClose={() => setProfileModalVisible(false)} 
-      />
-
+        <UserProfileModal
+          visible={isProfileModalVisible}
+          profile={selectedUserProfile}
+          onClose={() => setProfileModalVisible(false)}
+        />
       </View>
     );
   }
@@ -208,18 +246,14 @@ export default function SearchScreen() {
           <Text style={styles.title}>Interpreter Discovery</Text>
           <TouchableOpacity
             style={styles.toggleButton}
-            onPress={() =>
-              setSearchMode(searchMode === "filter" ? "name" : "filter")
-            }
+            onPress={() => setSearchMode(searchMode === "filter" ? "name" : "filter")}
           >
             <MaterialCommunityIcons
               name={searchMode === "filter" ? "account-search" : "tune"}
               size={18}
               color="white"
             />
-            <Text style={styles.toggleButtonText}>
-              {searchMode === "filter" ? "Search by Name" : "Filter Search"}
-            </Text>
+            <Text style={styles.toggleButtonText}>{searchMode === "filter" ? "Search by Name" : "Filter Search"}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -247,7 +281,6 @@ export default function SearchScreen() {
                   value={appointmentDate}
                   onChange={setAppointmentDate}
                   style={styles.dateTimeInput}
-                  
                 />
               </View>
               <View style={styles.dateTimeField}>
@@ -260,7 +293,7 @@ export default function SearchScreen() {
                 />
               </View>
             </View>
-            
+
             <View style={styles.durationLanguageRow}>
               {/* --- DURATION --- */}
               <View style={{ flex: 1 }}>
@@ -314,9 +347,7 @@ export default function SearchScreen() {
                 </Menu>
               </View>
             </View>
-              <View style={styles.durationLanguageRow}>
-              
-
+            <View style={styles.durationLanguageRow}>
               {/* --- SPECIALISATION --- */}
               <View style={{ flex: 1 }}>
                 <Text style={styles.filterLabel}>Specialisation</Text>
@@ -342,11 +373,7 @@ export default function SearchScreen() {
                   ))}
                 </Menu>
               </View>
-
-
             </View>
-            
-          
 
             {/* --- GENDER --- */}
             <Text style={styles.filterLabel}>Gender</Text>
@@ -354,9 +381,7 @@ export default function SearchScreen() {
               {[
                 {
                   value: "Any",
-                  icon: (
-                    <MaterialCommunityIcons name="account-group" size={22} />
-                  ),
+                  icon: <MaterialCommunityIcons name="account-group" size={22} />,
                   label: "Any",
                 },
                 {
@@ -374,22 +399,12 @@ export default function SearchScreen() {
                 return (
                   <TouchableOpacity
                     key={option.value}
-                    style={[
-                      styles.genderOption,
-                      isSelected && styles.genderOptionSelected,
-                    ]}
+                    style={[styles.genderOption, isSelected && styles.genderOptionSelected]}
                     onPress={() => setSelectedGender(option.value)}
                     activeOpacity={0.9}
                   >
                     <Text style={styles.genderIcon}>{option.icon}</Text>
-                    <Text
-                      style={[
-                        styles.genderLabel,
-                        isSelected && styles.genderLabelSelected,
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
+                    <Text style={[styles.genderLabel, isSelected && styles.genderLabelSelected]}>{option.label}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -403,21 +418,11 @@ export default function SearchScreen() {
                 return (
                   <TouchableOpacity
                     key={option.value}
-                    style={[
-                      styles.genderOption,
-                      isSelected && styles.genderOptionSelected,
-                    ]}
+                    style={[styles.genderOption, isSelected && styles.genderOptionSelected]}
                     onPress={() => setAgeRange(index)}
                     activeOpacity={0.9}
                   >
-                    <Text
-                      style={[
-                        styles.genderLabel,
-                        isSelected && styles.genderLabelSelected,
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
+                    <Text style={[styles.genderLabel, isSelected && styles.genderLabelSelected]}>{option.label}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -439,12 +444,7 @@ export default function SearchScreen() {
               </View>
             </View>
 
-            <TextInput
-              style={styles.dateTimeRow}
-              label="Enter hospital's name... (Optional)"
-              mode="outlined"
-            />
-            
+            <TextInput style={styles.dateTimeRow} label="Enter hospital's name... (Optional)" mode="outlined" />
           </>
         )}
 
@@ -466,25 +466,18 @@ export default function SearchScreen() {
             <>
               <Text style={styles.sectionTitle}>Top Matches</Text>
 
-              {displayedInterpreters.slice(0, 5).map((interpreter) => (
+              {displayedInterpreters.map((interpreter) => (
                 <Card key={interpreter.id} style={styles.interpreterCard}>
                   <Card.Content>
                     <View style={styles.interpreterHeader}>
-                      <Image
-                        source={{ uri: interpreter.photo }}
-                        style={styles.interpreterAvatar}
-                      />
+                      <Image source={{ uri: interpreter.photo }} style={styles.interpreterAvatar} />
                       <View style={styles.interpreterInfo}>
-                        <Text style={styles.interpreterName}>
-                          {interpreter.name}
-                        </Text>
+                        <Text style={styles.interpreterName}>{interpreter.name}</Text>
                         <Text style={styles.interpreterSpecialisation}>
                           {interpreter.interpreterSpecialisations.map((spec) => SPECIALISATION[spec]).join(", ")}
                         </Text>
                         <View style={styles.interpreterMeta}>
-                          <Text style={styles.interpreterRating}>
-                            ⭐ {interpreter.avgRating}
-                          </Text>
+                          <Text style={styles.interpreterRating}>⭐ {interpreter.avgRating}</Text>
                         </View>
                         <View style={styles.interpreterTags}>
                           <Chip style={styles.tag} textStyle={styles.tagText}>
@@ -534,7 +527,6 @@ export default function SearchScreen() {
   );
 }
 
-                  
 const createStyles = (theme: MD3Theme) =>
   StyleSheet.create({
     // Styles for the main container and the Interpreter view
@@ -574,12 +566,12 @@ const createStyles = (theme: MD3Theme) =>
       flex: 1,
     },
     requestLocationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
     },
     requestLocationText: {
       fontSize: 14,
-      color: '#666',
+      color: "#666",
       marginLeft: 4,
     },
     clientName: {
@@ -599,10 +591,10 @@ const createStyles = (theme: MD3Theme) =>
     requestActions: {
       flexDirection: "row",
       justifyContent: "space-between",
-      alignItems: 'center', 
+      alignItems: "center",
     },
     profileTextButton: {
-    marginRight: 8,
+      marginRight: 8,
     },
     actionButton: {
       flex: 0.48,
@@ -660,7 +652,7 @@ const createStyles = (theme: MD3Theme) =>
     },
     dateTimeField: {
       flex: 1,
-      minWidth: 150, 
+      minWidth: 150,
     },
     filterLabel: {
       fontSize: 16,
