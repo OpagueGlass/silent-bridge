@@ -84,26 +84,14 @@ export default function InterpreterFormScreen() {
       };
 
       const interpreterLanguageData = formData.languages
-      .reduce((acc, langSelected, index) => {
-        if (langSelected) {
-          return [...acc, {
-            interpreter_id: session!.user.id,
-            language_id: index + 1,
-          }];
-        }
-        return acc;
-      }, [] as { interpreter_id: string; language_id: number }[]);
+        .flatMap((langSelected, index) => 
+          langSelected ? [{ interpreter_id: session!.user.id, language_id: index + 1 }] : []
+        );
 
       const interpreterSpecialisationData = formData.specialisations
-        .reduce((acc, specSelected, index) => {
-          if (specSelected) {
-            return [...acc, {
-              interpreter_id: session!.user.id,
-              specialisation_id: index + 1,
-            }];
-          }
-          return acc;
-        }, [] as { interpreter_id: string; specialisation_id: number }[]);
+        .flatMap((specSelected, index) => 
+          specSelected ? [{ interpreter_id: session!.user.id, specialisation_id: index + 1 }] : []
+        );
 
       const { error } = await supabase.from("profile").insert(profileData);
       if (error) throw error;
