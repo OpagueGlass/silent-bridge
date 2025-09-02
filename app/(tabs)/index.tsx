@@ -19,18 +19,45 @@ import ReviewModal from "../../components/ReviewModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
 import {
+  getUpcomingInterpreterAppointments,
+  getReviewInterpreterAppointments,
+  getUpcomingUserAppointments,
+  getReviewUserAppointments,
   Appointment,
-  appointments as userAppointments,
-} from "../data/mockBookings";
-import {
-  InterpreterRequest,
-  interpreterAppointments,
-} from "../data/mockBookingsDeaf";
+} from "@/utils/query";
 
 export default function HomeScreen() {
   { /* --- INTERPRETER & CLIENT --- */ }
   const { profile, isInterpreter } = useAuth();
+  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
+  const [reviewAppointments, setReviewAppointments] = useState<Appointment[]>([]);
   const theme = useAppTheme();
+
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      if (profile) {
+        try {
+          const id = profile.id;
+          const upcomingAppointments = isInterpreter
+            ? await getUpcomingInterpreterAppointments(id)
+            : await getUpcomingUserAppointments(id);
+
+          const reviewAppointments = isInterpreter
+            ? await getReviewInterpreterAppointments(id)
+            : await getReviewUserAppointments(id);
+
+          setUpcomingAppointments(upcomingAppointments);
+          setReviewAppointments(reviewAppointments);
+        } catch (error) {
+          console.error("Error fetching appointments:", error);
+        }
+      }
+    };
+
+    fetchAppointments();
+  }, [profile]);
+
+  const getStatusColor = (status: string) => {
   const router = useRouter();
   const getStatusColor = (status: Appointment["status"] | InterpreterRequest["status"]) => {
     switch (status) {
@@ -376,6 +403,8 @@ export default function HomeScreen() {
 
       {/* --- APPOINTMENTS --- */}
       <View style={styles.section}>
+        <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+          Upcoming Appointments
         <Text variant="titleLarge" style={styles.sectionTitle}>
           Appointments
         </Text>

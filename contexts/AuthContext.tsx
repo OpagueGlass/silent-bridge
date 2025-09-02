@@ -12,11 +12,11 @@ interface AuthContextType {
   session: Session | null;
   authState: AuthState;
   profile: Profile | null;
-  providerToken: string | null;
+  isInterpreter: boolean;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
   loadProfile: (user: User | null) => Promise<boolean>;
-  isInterpreter: boolean;
+  getValidProviderToken: () => Promise<string | null>;
 }
 
 // Create the AuthContext with default undefined value
@@ -73,6 +73,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       provider: "google",
       options: {
         scopes: "https://www.googleapis.com/auth/calendar.events",
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent"
+        },
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
@@ -84,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    setProviderToken(null);
     setIsInterpreter(false);
   };
 
@@ -118,15 +123,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
+  /**
+   * Refreshes the Google provider token when it expires
+   */
+  const refreshProviderToken = async (): Promise<string | null> => {
+    if (!session?.provider_refresh_token) {
+      console.error("No refresh token available");
+      return null;
+    }
+
+    try {
+      const response = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          client_id: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
+          client_secret: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET!,
+          refresh_token: session.provider_refresh_token,
+          grant_type: "refresh_token",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Token refresh failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const newToken = data.access_token;
+
+      if (newToken) {
+        setProviderToken(newToken);
+        return newToken;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Failed to refresh provider token:", error);
+      return null;
+    }
+  };
+
+  /**
+   * Gets a valid provider token and refreshing if necessary
+   */
+  const getValidProviderToken = async (): Promise<string | null> => {
+    if (!session?.provider_token || !providerToken) return await refreshProviderToken();
+
+    try {
+      // Test if current token is valid by making a simple Google API call
+      const response = await fetch("https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=" + providerToken);
+      if (response.ok) {
+        return providerToken;
+      }
+    } catch (error) {
+      return await refreshProviderToken();
+    }
+
+    return await refreshProviderToken();
+  };
+
   const value = {
     authState,
     session,
     profile,
-    providerToken,
+    isInterpreter,
     signIn,
     signOut,
     loadProfile,
-    isInterpreter,
+    getValidProviderToken,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

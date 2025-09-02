@@ -4,21 +4,20 @@ import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { Card, MD3Theme } from 'react-native-paper';
 import { interpreterAppointments } from '../app/data/mockBookingsDeaf';
 import { useAppTheme } from '../hooks/useAppTheme';
+import { Profile } from '@/utils/query';
 
 interface UserProfileModalProps {
   visible: boolean;
-  userId: number | null;
+  profile: Profile | null;
   onClose: () => void;
 }
 
-export default function UserProfileModal({ visible, userId, onClose }: UserProfileModalProps) {
+export default function UserProfileModal({ visible, profile, onClose }: UserProfileModalProps) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const clientRequest = interpreterAppointments.find(req => req.id === userId);
-
-  if (!clientRequest) {
-    return null;
+  if (!profile) {
+    return null; // Do not render if user not found
   }
 
   return (
@@ -41,11 +40,11 @@ export default function UserProfileModal({ visible, userId, onClose }: UserProfi
               <View style={styles.avatar}>
                 <MaterialCommunityIcons name="account" size={40} style={styles.avatarIcon} />
               </View>
-              <Text style={styles.name}>{clientRequest.clientName}</Text>
+              <Text style={styles.name}>{profile.name}</Text>
               <Text style={styles.userType}>Deaf Community Member</Text>
               <View style={styles.ratingContainer}>
                 <MaterialCommunityIcons name="star" size={20} color="#FBBF24" />
-                <Text style={styles.ratingText}>5.0 (23 sessions)</Text>
+                <Text style={styles.ratingText}>{profile.avgRating}</Text>
               </View>
             </View>
 
@@ -69,7 +68,7 @@ export default function UserProfileModal({ visible, userId, onClose }: UserProfi
               <Text style={styles.sectionTitle}>User Notes</Text>
               <View style={styles.notesCard}>
                 <Text style={styles.notesText}>
-                  "{clientRequest.clientName.split(' ')[0]} is a returning user who is always punctual and clear in communication."
+                  "{profile.name.split(' ')[0]} is a returning patient who previously had a successful surgery. His family is very concerned about his recovery and tends to ask many detailed questions."
                 </Text>
               </View>
             </View>
