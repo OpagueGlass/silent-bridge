@@ -10,6 +10,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
 import { showError, showSuccess, showValidationError } from "../../utils/alert";
 import { supabase } from "@/utils/supabase";
+import { parseDate } from "@/utils/helper";
 
 export default function InterpreterFormScreen() {
   const { session } = useAuth();
@@ -60,11 +61,6 @@ export default function InterpreterFormScreen() {
       return true;
     };
 
-    const parseDate = (dateString: string) => {
-      const [day, month, year] = dateString.split("/").map((num) => parseInt(num, 10));
-      return new Date(year, month - 1, day);
-    };
-
     try {
       setIsSubmitting(true);
 
@@ -76,7 +72,7 @@ export default function InterpreterFormScreen() {
       const profileData = {
         id: session!.user.id,
         name: formData.name,
-        email: session!.user.email,
+        email: session!.user.email!,
         date_of_birth: parseDate(formData.dateOfBirth).toISOString(),
         gender: formData.gender,
         location: formData.location,
@@ -88,26 +84,26 @@ export default function InterpreterFormScreen() {
       };
 
       const interpreterLanguageData = formData.languages
-        .map((lang, index) => {
-          if (lang) {
-            return {
-              interpreter_id: session!.user.id,
-              language_id: index + 1,
-            };
-          }
-        })
-        .filter(Boolean);
+      .reduce((acc, langSelected, index) => {
+        if (langSelected) {
+          return [...acc, {
+            interpreter_id: session!.user.id,
+            language_id: index + 1,
+          }];
+        }
+        return acc;
+      }, [] as { interpreter_id: string; language_id: number }[]);
 
       const interpreterSpecialisationData = formData.specialisations
-        .map((spec, index) => {
-          if (spec) {
-            return {
+        .reduce((acc, specSelected, index) => {
+          if (specSelected) {
+            return [...acc, {
               interpreter_id: session!.user.id,
               specialisation_id: index + 1,
-            };
+            }];
           }
-        })
-        .filter(Boolean);
+          return acc;
+        }, [] as { interpreter_id: string; specialisation_id: number }[]);
 
       const { error } = await supabase.from("profile").insert(profileData);
       if (error) throw error;

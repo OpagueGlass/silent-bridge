@@ -10,6 +10,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { showError, showSuccess, showValidationError } from '../../utils/alert';
 import { supabase } from '@/utils/supabase';
+import { parseDate } from '@/utils/helper';
 
 export default function DeafUserFormScreen() {
   const [formData, setFormData] = useState({
@@ -47,11 +48,6 @@ export default function DeafUserFormScreen() {
       return true;
     };
 
-    const parseDate = (dateString: string) => {
-      const [day, month, year] = dateString.split('/').map((num) => parseInt(num, 10));
-      return new Date(year, month - 1, day);
-    };
-
     try {
       setIsSubmitting(true);
       
@@ -63,7 +59,7 @@ export default function DeafUserFormScreen() {
       const profileData = {
         id: session!.user.id,
         name: formData.name,
-        email: session!.user.email,
+        email: session!.user.email!,
         date_of_birth: parseDate(formData.dateOfBirth).toISOString(),
         gender: formData.gender,
         location: formData.location,
