@@ -1,4 +1,5 @@
 import { AgeRange, AGE_RANGE, Spec, Language, State } from "@/constants/data";
+import { Appointment } from "./query";
 
 export const getAgeRangeFromDOB = (dateOfBirth: string): AgeRange => {
   const age = Math.floor((Date.now() - new Date(dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365));
@@ -21,6 +22,24 @@ export const getMinMaxDOB = (ageStart: number, ageEnd: number) => {
 export const parseDate = (dateString: string) => {
   const [day, month, year] = dateString.split("/").map((num) => parseInt(num, 10));
   return new Date(year, month - 1, day);
+};
+
+export const getDuration = (appointment: Appointment) => {
+  const diffMs = new Date(appointment.endTime).getTime() - new Date(appointment.startTime).getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const hours = Math.floor(diffMins / 60);
+  const minutes = diffMins % 60;
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+};
+
+export const getStartTime = (appointment: Appointment) => {
+  const startTime = new Date(appointment.startTime);
+  return startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+export const getTimeRange = (appointment: Appointment) => {
+  const endTime = new Date(appointment.endTime);
+  return `${getStartTime(appointment)} - ${endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 };
 
 export const getMeetLink = async (providerToken: string, startTime: string, endTime: string) => {

@@ -24,6 +24,7 @@ export interface Appointment {
   startTime: string;
   endTime: string;
   hospitalName: string | null;
+  status: string;
   meetingUrl: string | null;
   profile: Profile | null;
 }
@@ -84,15 +85,17 @@ const convertToAppointment = (
     start_time: string;
     end_time: string;
     hospital_name: string | null;
+    status: string;
     meeting_url: string | null;
   },
   profile: Tables<"profile"> | null
 ): Appointment => {
-  const { start_time, end_time, hospital_name, meeting_url } = data;
+  const { start_time, end_time, hospital_name, status, meeting_url } = data;
   const formattedRest = {
     startTime: start_time,
     endTime: end_time,
     hospitalName: hospital_name,
+    status: status,
     meetingUrl: meeting_url,
   };
 
@@ -347,6 +350,7 @@ export const getUpcomingUserAppointments = async (user_id: string) => {
       end_time,
       deaf_user_id,
       hospital_name,
+      status,
       meeting_url,
       interpreter_profile (
         profile (*)
@@ -383,6 +387,7 @@ export const getUpcomingInterpreterAppointments = async (interpreter_id: string)
       interpreter_id,
       hospital_name,
       meeting_url,
+      status,
       profile (*)
       `
     )
@@ -418,6 +423,7 @@ export const getReviewUserAppointments = async (user_id: string) => {
       deaf_user_id,
       hospital_name,
       meeting_url,
+      status,
       interpreter_profile (
         profile (*)
       )
@@ -459,6 +465,7 @@ export const getReviewInterpreterAppointments = async (interpreter_id: string) =
       interpreter_id,
       hospital_name,
       meeting_url,
+      status,
       profile (*)
       `
     )

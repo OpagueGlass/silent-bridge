@@ -1,6 +1,6 @@
 import { interpreters } from './mockData';
 
-export interface Appointment {
+interface Appointment {
   id: number;
   date: string;
   time: string; 

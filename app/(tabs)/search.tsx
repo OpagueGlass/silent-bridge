@@ -2,24 +2,9 @@
 
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import {
-  Button,
-  Card,
-  Checkbox,
-  Chip,
-  MD3Theme,
-  Menu,
-  Text,
-  TextInput,
-} from "react-native-paper";
+import { useMemo, useState, useEffect } from "react";
+import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Button, Card, Checkbox, Chip, MD3Theme, Menu, Text, TextInput } from "react-native-paper";
 import DatePickerInput from "../../components/DatePickerInput";
 import TimePickerInput from "../../components/TimePickerInput";
 import UserProfileModal from "../../components/UserProfileModal";
@@ -33,7 +18,9 @@ import {
   addAppointmentMeetingURL,
 } from "@/utils/query";
 import { LANGUAGES, SPECIALISATION } from "@/constants/data";
-import { parseDate, getMeetLink } from "@/utils/helper";
+import { parseDate, getMeetLink, getDuration, getStartTime } from "@/utils/helper";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAppTheme } from "@/hooks/useAppTheme";
 
 const durationOptions = ["00:15", "00:30", "00:45", "01:00", "01:15", "01:30", "01:45", "02:00"];
 const ageRangeOptions = [
@@ -81,43 +68,43 @@ export default function SearchScreen() {
   const styles = createStyles(theme);
 
   const [isProfileModalVisible, setProfileModalVisible] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const openProfileModal = (userId: number) => {
-    setSelectedUserId(userId);
-    setProfileModalVisible(true);
-  };
+  const [selectedUserProfile, setSelectedUserProfile] = useState<Profile | null>(null);
+  // const openProfileModal = (userId: number) => {
+  //   setSelectedUserId(userId);
+  //   setProfileModalVisible(true);
+  // };
 
-  const [requests, setRequests] = useState(interpreterAppointments);
+  // const [requests, setRequests] = useState(interpreterAppointments);
   const [statusFilter, setStatusFilter] = useState("Pending");
   const [statusMenuVisible, setStatusMenuVisible] = useState(false);
 
-  const handleUpdateRequestStatus = (
-    requestId: number,
-    newStatus: "Approved" | "Rejected"
-  ) => {
-    setRequests((currentRequests) =>
-      currentRequests.map((req) =>
-        req.id === requestId ? { ...req, status: newStatus } : req
-      )
-    );
-  };
+  // const handleUpdateRequestStatus = (
+  //   requestId: number,
+  //   newStatus: "Approved" | "Rejected"
+  // ) => {
+  //   setRequests((currentRequests) =>
+  //     currentRequests.map((req) =>
+  //       req.id === requestId ? { ...req, status: newStatus } : req
+  //     )
+  //   );
+  // };
 
-  const processedRequests = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  // const processedRequests = useMemo(() => {
+  //   const today = new Date();
+  //   today.setHours(0, 0, 0, 0);
 
-    return requests
-      .filter((r) => r.status !== "Completed")
-      .filter((r) => {
-        const [year, month, day] = r.date.split("-").map(Number);
-        const requestDate = new Date(year, month - 1, day);
-        return requestDate >= today;
-      })
-      .filter((r) => {
-        return statusFilter === "All" || r.status === statusFilter;
-      })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [requests, statusFilter]);
+  //   return requests
+  //     .filter((r) => r.status !== "Completed")
+  //     .filter((r) => {
+  //       const [year, month, day] = r.date.split("-").map(Number);
+  //       const requestDate = new Date(year, month - 1, day);
+  //       return requestDate >= today;
+  //     })
+  //     .filter((r) => {
+  //       return statusFilter === "All" || r.status === statusFilter;
+  //     })
+  //     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  // }, [requests, statusFilter]);
 
   const getStatusChipColor = (status: string) => {
     switch (status) {
@@ -161,6 +148,10 @@ export default function SearchScreen() {
   const closeMenu = () => setDurationMenuVisible(false);
   const openLanguageMenu = () => setLanguageMenuVisible(true);
   const closeLanguageMenu = () => setLanguageMenuVisible(false);
+
+  const handleToggleSearchMode = () => {
+    setSearchMode(searchMode === "filter" ? "name" : "filter");
+  };
   const openSpecialisationMenu = () => setSpecialisationMenuVisible(true);
   const closeSpecialisationMenu = () => setSpecialisationMenuVisible(false);
   const openProfileModal = (profile: Profile | null) => {
@@ -253,7 +244,7 @@ export default function SearchScreen() {
                 </Button>
               }
             >
-              {["All", "Pending", "Approved", "Rejected", "Cancelled"].map(status => (
+              {["All", "Pending", "Approved", "Rejected", "Cancelled"].map((status) => (
                 <Menu.Item
                   key={status}
                   onPress={() => {
@@ -265,77 +256,80 @@ export default function SearchScreen() {
               ))}
             </Menu>
 
-            {processedRequests.length > 0 ? (
-              processedRequests.map((request) => (
-                <Card key={request.id} style={styles.requestCard}>
-                  <Card.Content>
-                    <View style={styles.requestHeader}>
-                      <View style={styles.requestInfo}>
-                        <Text style={styles.clientName}>
-                          {request.clientName}
-                        </Text>
-                        <Text style={styles.requestDateTime}>
-                          {new Date(request.date).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' })} • {request.time}
-                        </Text>
-                      </View>
-                      <Chip
+            {requests.map((request, index) => (
+              <Card key={request.id} style={styles.requestCard}>
+                <Card.Content>
+                  <View style={styles.requestHeader}>
+                    <View style={styles.requestInfo}>
+                      <Text style={styles.clientName}>{request.appointment.profile?.name}</Text>
+                      <Text style={styles.requestDateTime}>
+                        {new Date(request.appointment.startTime).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}{" "}
+                        • {getStartTime(request.appointment)}
+                      </Text>
+                    </View>
+                    {/* <Chip
                         style={{ backgroundColor: getStatusChipColor(request.status) }}
                         textStyle={{ color: 'white', fontSize: 12 }}
                       >
                         {request.status}
-                      </Chip>
-                    </View>
+                      </Chip> */}
+                  </View>
 
-                    <View style={styles.detailsContainer}>
-                      <View style={styles.requestDetailRow}>
-                        <MaterialCommunityIcons name="email-outline" size={18} color="#666" />
-                        <Text style={styles.requestDetailText} selectable>{request.clientEmail}</Text>
-                      </View>
-                      <View style={styles.requestDetailRow}>
-                        <MaterialCommunityIcons name="clock-outline" size={18} color="#666" />
-                        <Text style={styles.requestDetailText}>Duration: {request.duration}</Text>
-                      </View>
-                      {request.doctorLanguage && (
+                  <View style={styles.detailsContainer}>
+                    <View style={styles.requestDetailRow}>
+                      <MaterialCommunityIcons name="email-outline" size={18} color="#666" />
+                      <Text style={styles.requestDetailText} selectable>
+                        {request.appointment.profile?.email}
+                      </Text>
+                    </View>
+                    <View style={styles.requestDetailRow}>
+                      <MaterialCommunityIcons name="clock-outline" size={18} color="#666" />
+                      <Text style={styles.requestDetailText}>Duration: {getDuration(request.appointment)}</Text>
+                    </View>
+                    {/* {request.doctorLanguage && (
                         <View style={styles.requestDetailRow}>
                           <MaterialCommunityIcons name="translate" size={18} color="#666" />
                           <Text style={styles.requestDetailText}>Doctor's Language: {request.doctorLanguage}</Text>
                         </View>
-                      )}
-                      <View style={styles.requestDetailRow}>
-                        <MaterialCommunityIcons name="hospital-building" size={18} color="#666" />
-                        <Text style={styles.requestDetailText}>Hospital: {request.location}</Text>
-                      </View>
+                      )} */}
+                    <View style={styles.requestDetailRow}>
+                      <MaterialCommunityIcons name="hospital-building" size={18} color="#666" />
+                      <Text style={styles.requestDetailText}>Hospital: {request.appointment.hospitalName}</Text>
                     </View>
+                  </View>
 
-                    <View style={styles.requestActions}>
-                      <Button
-                        mode="text"
-                        onPress={() => openProfileModal(request.appointment.profile)}
-                        disabled={request.status === 'Rejected' || request.status === 'Cancelled'}
-                        style={styles.profileTextButton}
-                      >
-                        Profile
-                      </Button>
-                      <Button
-                        mode="outlined"
-                        style={[styles.actionButton, styles.rejectButton]}
-                        textColor="#F44336"
-                        onPress={() => handleRejectRequest(request, index)}
-                      >
-                        Reject
-                      </Button>
-                      <Button
-                        mode="contained"
-                        style={styles.actionButton}
-                        onPress={() => handleAcceptRequest(request, index)}
-                      >
-                        Accept
-                      </Button>
-                    </View>
-                  </Card.Content>
-                </Card>
-              );
-            })}
+                  <View style={styles.requestActions}>
+                    <Button
+                      mode="text"
+                      onPress={() => openProfileModal(request.appointment.profile)}
+                      // disabled={request.status === 'Rejected' || request.status === 'Cancelled'}
+                      style={styles.profileTextButton}
+                    >
+                      Profile
+                    </Button>
+                    <Button
+                      mode="outlined"
+                      style={[styles.actionButton, styles.rejectButton]}
+                      textColor="#F44336"
+                      onPress={() => handleRejectRequest(request, index)}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      mode="contained"
+                      style={styles.actionButton}
+                      onPress={() => handleAcceptRequest(request, index)}
+                    >
+                      Accept
+                    </Button>
+                  </View>
+                </Card.Content>
+              </Card>
+            ))}
           </View>
         </ScrollView>
 
@@ -353,10 +347,7 @@ export default function SearchScreen() {
       <View style={styles.header}>
         <View style={styles.headerTopRow}>
           <Text style={styles.title}>Interpreter Discovery</Text>
-          <TouchableOpacity
-            style={styles.toggleButton}
-            onPress={handleToggleSearchMode}
-          >
+          <TouchableOpacity style={styles.toggleButton} onPress={handleToggleSearchMode}>
             <MaterialCommunityIcons
               name={searchMode === "filter" ? "account-search" : "tune"}
               size={18}
@@ -402,7 +393,6 @@ export default function SearchScreen() {
                 />
               </View>
             </View>
-
 
             <View style={styles.durationLanguageRow}>
               {/* --- DURATION --- */}
@@ -554,11 +544,7 @@ export default function SearchScreen() {
               </View>
             </View>
 
-            <TextInput
-              style={styles.dateTimeRow}
-              label="Enter hospital's name... (Optional)"
-              mode="outlined"
-            />
+            <TextInput style={styles.dateTimeRow} label="Enter hospital's name... (Optional)" mode="outlined" />
           </>
         )}
 
@@ -663,7 +649,6 @@ export default function SearchScreen() {
   );
 }
 
-
 const createStyles = (theme: MD3Theme) =>
   StyleSheet.create({
     // Styles for the main container and the Interpreter view
@@ -707,12 +692,9 @@ const createStyles = (theme: MD3Theme) =>
     requestLocationRow: {
       flexDirection: "row",
       alignItems: "center",
-      flexDirection: "row",
-      alignItems: "center",
     },
     requestLocationText: {
       fontSize: 14,
-      color: "#666",
       color: "#666",
       marginLeft: 4,
     },
@@ -753,19 +735,19 @@ const createStyles = (theme: MD3Theme) =>
     },
     rightActionButtons: {
       flex: 1,
-      flexDirection: 'row',
+      flexDirection: "row",
       gap: 8,
     },
     decisionButton: {
       minWidth: 100,
-      justifyContent: 'center',
+      justifyContent: "center",
     },
     profileTextButton: {
-        marginRight: 8,
+      marginRight: 8,
     },
     actionButton: {
       flex: 1,
-      justifyContent: 'center',
+      justifyContent: "center",
     },
     rejectButton: {
       borderColor: "#F44336",
@@ -819,7 +801,6 @@ const createStyles = (theme: MD3Theme) =>
     },
     dateTimeField: {
       flex: 1,
-      minWidth: 150,
       minWidth: 150,
     },
     filterLabel: {
