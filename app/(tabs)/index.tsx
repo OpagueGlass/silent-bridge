@@ -22,15 +22,18 @@ import { useAppTheme } from "../../hooks/useAppTheme";
 //   Appointment,
 //   appointments as userAppointments,
 // } from "../data/mockBookings";
+// import {
+//   PopulatedRequest,
+//   requests as interpreterRequests,
+// } from "../data/mockBookingsDeaf";
 import {
   Appointment,
   getReviewUserAppointments,
   getUpcomingUserAppointments,
+  getReviewInterpreterAppointments,
+  getUpcomingInterpreterAppointments
 } from "../../utils/query";
-import {
-  PopulatedRequest,
-  requests as interpreterRequests,
-} from "../data/mockBookingsDeaf";
+
 
 export default function HomeScreen() {
   { /* --- INTERPRETER & CLIENT --- */ }
@@ -207,22 +210,58 @@ export default function HomeScreen() {
   };
 
   { /* --- INTERPRETER --- */ }
-  const [requests, setRequests] = useState<PopulatedRequest[]>(interpreterRequests);
+  const [approvedInterpreterAppointments, setApprovedInterpreterAppointments] = useState<Appointment[]>([]);
+  const [completedInterpreterAppointments, setCompletedInterpreterAppointments] = useState<Appointment[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!profile?.id) {
+        setIsLoading(false);
+        return;
+      }
+      setIsLoading(true);
+      try {
+        if (isInterpreter) {
+          const [completedData, approvedData] = await Promise.all([
+            getReviewInterpreterAppointments(profile.id),
+            getUpcomingInterpreterAppointments(profile.id),
+          ]);
+          setCompletedInterpreterAppointments(completedData);
+          setApprovedInterpreterAppointments(approvedData);
+        }       
+      else {
+        const [completedData, upcomingData] = await Promise.all([
+          getReviewUserAppointments(profile.id),
+          getUpcomingUserAppointments(profile.id),
+        ]);
+        setCompletedAppointments(completedData);
+        setUpcomingAppointments(upcomingData);
+      }
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [profile?.id, isInterpreter]);
 
   const [isClientReviewVisible, setClientReviewVisible] = useState(false);
-  const [requestToReview, setRequestToReview] = useState<PopulatedRequest | null>(null);
-  const handleOpenClientReview = (request: PopulatedRequest) => {
-    setRequestToReview(request);
+  const [appointmentToReview, setAppointmentToReview] = useState<Appointment | null>(null);
+
+  const handleOpenClientReview = (appointment: Appointment) => {
+    setAppointmentToReview(appointment);
     setClientReviewVisible(true);
   };
   const handleCloseClientReview = () => {
     setClientReviewVisible(false);
-    setRequestToReview(null);
+    setAppointmentToReview(null);
   };
   const handleSubmitClientReview = (rating: number, comment: string) => {
-    if (requestToReview) {
+    if (appointmentToReview) {
       console.log(
-        `Interpreter reviewing client: ${requestToReview.appointment.clientProfile.name}`
+        `Interpreter reviewing client: ${appointmentToReview.profile?.name}`
       );
       console.log(`Rating: ${rating}, Comment: "${comment}"`);
     }
@@ -231,48 +270,27 @@ export default function HomeScreen() {
 
   const [interpreterSearchQuery, setInterpreterSearchQuery] = useState(""); 
 
-  const { interpreterCompleted, interpreterApproved } = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // filter for completed sessions
-    const completed = requests
-      .filter((r) => r.appointment.status === "Completed")
-      .sort(
-        (a, b) =>
-          new Date(b.appointment.startTime).getTime() -
-          new Date(a.appointment.startTime).getTime()
-      );
-
-    // filter for upcoming, approved sessions
-    const approved = requests
-      .filter((r) => r.appointment.status === "Approved")
-      .filter((r) => new Date(r.appointment.startTime) >= today)
-      .filter((r) => {
+  const filteredInterpreterApproved = useMemo(() => {
+    return approvedInterpreterAppointments
+      .filter((a) => a.status === "Approved")
+      .filter((a) => {
         const formattedQuery = interpreterSearchQuery.trim().toLowerCase();
         if (formattedQuery === "") return true;
 
-        const displayDate = new Date(r.appointment.startTime)
+        const displayDate = new Date(a.startTime)
           .toLocaleDateString("en-US", {
             month: "long",
             day: "numeric",
             year: "numeric",
           })
           .toLowerCase();
-        const clientName = r.appointment.clientProfile.name.toLowerCase();
+        const clientName = a.profile?.name.toLowerCase() || '';
 
         return (
           displayDate.includes(formattedQuery) || clientName.includes(formattedQuery)
         );
-      })
-      .sort(
-        (a, b) =>
-          new Date(a.appointment.startTime).getTime() -
-          new Date(b.appointment.startTime).getTime()
-      );
-
-    return { interpreterCompleted: completed, interpreterApproved: approved };
-  }, [requests, interpreterSearchQuery]);
+      });
+  }, [approvedInterpreterAppointments, interpreterSearchQuery]);
 
   { /* --- INTERPRETER UI --- */ }
   if (isInterpreter) {
@@ -292,64 +310,75 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* --- REVIEW COMPLETED SESSION --- */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text variant="titleLarge" style={styles.sectionTitle}>
-              Review Completed Sessions
-            </Text>
-            <Button mode="text" compact>
-              View All
-            </Button>
-          </View>
-          {interpreterCompleted.map((request) => (
-            <InterpreterReviewCard
-              key={request.requestId}
-              request={request}
-              onReview={handleOpenClientReview}
-            />
-          ))}
-        </View>
+        {isLoading ? (
+          <ActivityIndicator animating={true} style={{ marginTop: 20 }} />
+        ) : (
+          <>
+            {/* --- REVIEW COMPLETED SESSION --- */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text variant="titleLarge" style={styles.sectionTitle}>
+                  Review Completed Sessions
+                </Text>
+                <Button mode="text" compact>
+                  View All
+                </Button>
+              </View>
+              {completedInterpreterAppointments.length > 0 ? (
+                completedInterpreterAppointments.map((appointment) => (
+                  <InterpreterReviewCard
+                    key={appointment.id}
+                    appointment={appointment}
+                    onReview={handleOpenClientReview}
+                  />
+                ))
+              ) : (
+                <Text>No recent sessions to review.</Text>
+              )}
+            </View>
 
-        {/* --- APPROVED APPOINTMENTS --- */}
-        <View style={styles.section}>
-          <Text variant="titleLarge" style={styles.sectionTitle}>
-            Approved Appointments
-          </Text>
+            {/* --- APPROVED APPOINTMENTS --- */}
+            <View style={styles.section}>
+              <Text variant="titleLarge" style={styles.sectionTitle}>
+                Approved Appointments
+              </Text>
 
-          {/* --- SEARCH INPUT --- */}
-          <View style={styles.filterContainer}>
-            <TextInput
-              mode="outlined"
-              placeholder="Search by date or client..."
-              value={interpreterSearchQuery}
-              onChangeText={setInterpreterSearchQuery}
-              style={styles.searchInput}
-              left={<TextInput.Icon icon="magnify" />}
-            />
-          </View>
+              <View style={styles.filterContainer}>
+                <TextInput
+                  mode="outlined"
+                  placeholder="Search by date or client..."
+                  value={interpreterSearchQuery}
+                  onChangeText={setInterpreterSearchQuery}
+                  style={styles.searchInput}
+                  left={<TextInput.Icon icon="magnify" />}
+                />
+              </View>
 
-          {/* --- RESULTS --- */}
-          {interpreterApproved.map((request) => (
-            <InterpreterApprovedCard
-              key={request.requestId}
-              request={request}
-            />
-          ))}
-        </View>
+              {filteredInterpreterApproved.length > 0 ? (
+                filteredInterpreterApproved.map((appointment) => (
+                  <InterpreterApprovedCard
+                    key={appointment.id}
+                    appointment={appointment}
+                  />
+                ))
+              ) : (
+                <Text>No approved appointments found.</Text>
+              )}
+            </View>
+          </>
+        )}
 
         {/* --- REVIEW POP UP --- */}
-        {requestToReview && (
+        {appointmentToReview && (
           <ReviewModal
             visible={isClientReviewVisible}
             onDismiss={handleCloseClientReview}
             onSubmit={handleSubmitClientReview}
-            targetName={requestToReview.appointment.clientProfile.name}
-            sessionDate={requestToReview.appointment.startTime}
+            targetName={appointmentToReview.profile?.name || ""}
+            sessionDate={appointmentToReview.startTime}
             placeholderText="Share your experience with this client..."
           />
         )}
-
       </ScrollView>
     );
   }

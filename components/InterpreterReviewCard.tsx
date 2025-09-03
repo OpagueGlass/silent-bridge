@@ -3,7 +3,8 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Card, MD3Theme, Text } from "react-native-paper";
-import { PopulatedRequest } from "../app/data/mockBookingsDeaf";
+// import { PopulatedRequest } from "../app/data/mockBookingsDeaf";
+import { Appointment } from "../utils/query";
 import { useAppTheme } from "../hooks/useAppTheme";
 
 const calculateDuration = (startTime: string, endTime: string): string => {
@@ -18,25 +19,24 @@ const calculateDuration = (startTime: string, endTime: string): string => {
 };
 
 interface InterpreterReviewCardProps {
-  request: PopulatedRequest;
-  onReview: (request: PopulatedRequest) => void;
+  appointment: Appointment;
+  onReview: (appointment: Appointment) => void;
 }
 
 export default function InterpreterReviewCard({
-  request,
+  appointment,
   onReview,
 }: InterpreterReviewCardProps) {
   const theme = useAppTheme();
   const styles = createStyles(theme);
-  
-  const duration = calculateDuration(request.appointment.startTime, request.appointment.endTime);
+  const duration = calculateDuration(appointment.startTime, appointment.endTime);
 
   return (
     <Card style={styles.reviewCard}>
       <Card.Content style={styles.reviewContent}>
         <View style={styles.reviewInfo}>
           <Text variant="titleMedium" style={styles.appointmentDate}>
-            {new Date(request.appointment.startTime).toLocaleDateString("en-US", {
+            {new Date(appointment.startTime).toLocaleDateString("en-US", {
               month: "long",
               day: "numeric",
               year: "numeric",
@@ -47,10 +47,10 @@ export default function InterpreterReviewCard({
             variant="bodyMedium"
             style={{ color: theme.colors.onSurfaceVariant }}
           >
-            {request.appointment.clientProfile.name} • {duration}
+            {appointment.profile?.name} 
           </Text>
         </View>
-        <Button mode="contained" onPress={() => onReview(request)}>
+        <Button mode="contained" onPress={() => onReview(appointment)}>
           Review Client
         </Button>
       </Card.Content>

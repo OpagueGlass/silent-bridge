@@ -4,7 +4,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Card, Chip, MD3Theme, Text } from "react-native-paper";
-import { PopulatedRequest } from "../app/data/mockBookingsDeaf";
+// import { PopulatedRequest } from "../app/data/mockBookingsDeaf";
+import { Appointment } from "../utils/query";
 import { useAppTheme } from "../hooks/useAppTheme";
 
 const calculateDuration = (startTime: string, endTime: string): string => {
@@ -19,17 +20,17 @@ const calculateDuration = (startTime: string, endTime: string): string => {
 };
 
 interface InterpreterApprovedCardProps {
-  request: PopulatedRequest;
+  appointment: Appointment;
 }
 
 export default function InterpreterApprovedCard({
-  request,
+  appointment,
 }: InterpreterApprovedCardProps) {
   const theme = useAppTheme();
   const styles = createStyles(theme);
 
-  const appointmentDate = new Date(request.appointment.startTime);
-  const duration = calculateDuration(request.appointment.startTime, request.appointment.endTime);
+  const appointmentDate = new Date(appointment.startTime);
+  const duration = calculateDuration(appointment.startTime, appointment.endTime);
 
   return (
     <Card style={styles.appointmentCard}>
@@ -60,13 +61,13 @@ export default function InterpreterApprovedCard({
             variant="bodyMedium"
             style={{ color: theme.colors.onSurfaceVariant }}
           >
-            Client: {request.appointment.clientProfile.name}
+            Client: {appointment.profile?.name}
           </Text>
         </View>
         <View style={styles.detailRow}>
           <MaterialCommunityIcons name="email-outline" size={18} color="#666" />
           <Text style={styles.detailText} selectable>
-            {request.appointment.clientProfile.email}
+            {appointment.profile?.email}
           </Text>
         </View>
         <View style={styles.detailRow}>
@@ -79,7 +80,7 @@ export default function InterpreterApprovedCard({
             Duration: {duration}
           </Text>
         </View>
-        {request.appointment.hospitalName && (
+        {appointment.hospitalName && (
           <View style={styles.detailRow}>
             <MaterialCommunityIcons
               name="hospital-building"
@@ -87,7 +88,7 @@ export default function InterpreterApprovedCard({
               color="#666"
             />
             <Text style={styles.detailText}>
-              Hospital: {request.appointment.hospitalName}
+              Hospital: {appointment.hospitalName}
             </Text>
           </View>
         )}
