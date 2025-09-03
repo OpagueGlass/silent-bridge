@@ -1,15 +1,15 @@
 "use client";
 
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import {
   Button,
   Dialog,
   Menu,
   Portal,
   Text,
-  TextInput
+  TextInput,
 } from "react-native-paper";
 import ClientAppointmentsCard from "../../components/ClientAppointmentsCard";
 import ClientReviewCard from "../../components/ClientReviewCard";
@@ -18,10 +18,15 @@ import InterpreterReviewCard from "../../components/InterpreterReviewCard";
 import ReviewModal from "../../components/ReviewModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
+// import {
+//   Appointment,
+//   appointments as userAppointments,
+// } from "../data/mockBookings";
 import {
   Appointment,
-  appointments as userAppointments,
-} from "../data/mockBookings";
+  getReviewUserAppointments,
+  getUpcomingUserAppointments,
+} from "../../utils/query";
 import {
   PopulatedRequest,
   requests as interpreterRequests,
@@ -50,7 +55,34 @@ export default function HomeScreen() {
   };
 
   { /* --- CLIENT --- */ }
-  const [appointments, setAppointments] = useState(userAppointments);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
+  const [completedAppointments, setCompletedAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isInterpreter && profile?.id) {
+      const fetchClientData = async () => {
+        setIsLoading(true);
+        try {
+          const [completedData, upcomingData] = await Promise.all([
+            getReviewUserAppointments(profile.id),
+            getUpcomingUserAppointments(profile.id),
+          ]);
+
+          setCompletedAppointments(completedData);
+          setUpcomingAppointments(upcomingData);
+        } catch (error) {
+          console.error("Failed to fetch client data:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchClientData();
+    } else if (!isInterpreter) {
+      setIsLoading(false);
+    }
+  }, [profile?.id, isInterpreter]);
 
   const [isReviewModalVisible, setReviewModalVisible] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
@@ -81,42 +113,36 @@ export default function HomeScreen() {
 
   const [isCancelDialogVisible, setCancelDialogVisible] = useState(false);
 
-  const { completedAppointments, upcomingAppointments } = useMemo(() => {
-    const completed = appointments
-      .filter((a) => a.status === "Completed")
-      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const upcoming = appointments
-      .filter((a) => a.status !== "Completed")
-      .filter((a) => new Date(a.startTime) >= today)
-      .filter((a) => {
-        const statusMatch = statusFilter === "All" || a.status === statusFilter;
-        const formattedQuery = searchQuery.trim().toLowerCase();
-        if (formattedQuery === "") {
-          return statusMatch;
-        }
-
-        const displayDate = new Date(a.startTime)
-          .toLocaleDateString("en-US", {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          })
-          .toLowerCase();
-        const interpreterName = a.profile.name.toLowerCase();
-        const queryMatch =
-          displayDate.includes(formattedQuery) ||
-          interpreterName.includes(formattedQuery);
-
-        return statusMatch && queryMatch;
-      })
-      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-
-    return { completedAppointments: completed, upcomingAppointments: upcoming };
-  }, [appointments, searchQuery, statusFilter]);
+  const filteredUpcomingAppointments = useMemo(() => {
+    const now = new Date(); 
+    const timeFilteredAppointments = upcomingAppointments.filter((appointment) => {
+      const startTime = new Date(appointment.startTime);
+      const endTime = new Date(appointment.endTime);
+      if (appointment.status === "Approved") {
+        return endTime > now;
+      }
+      return startTime > now;
+    });
+    return timeFilteredAppointments.filter((a) => {
+      const statusMatch = statusFilter === "All" || a.status === statusFilter;
+      const formattedQuery = searchQuery.trim().toLowerCase();
+      if (formattedQuery === "") {
+        return statusMatch;
+      }
+      const displayDate = new Date(a.startTime)
+        .toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })
+        .toLowerCase();
+      const interpreterName = a.profile?.name.toLowerCase() || "";
+      const queryMatch =
+        displayDate.includes(formattedQuery) ||
+        interpreterName.includes(formattedQuery);
+      return statusMatch && queryMatch;
+    });
+  }, [upcomingAppointments, searchQuery, statusFilter]);
 
   const handleCancelAppointment = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
@@ -124,7 +150,7 @@ export default function HomeScreen() {
   };
   const performCancel = () => {
     if (!selectedAppointment) return;
-    setAppointments((prev) =>
+    setUpcomingAppointments((prev) =>
       prev.map((app) =>
         app.id === selectedAppointment.id
           ? { ...app, status: "Cancelled" }
@@ -343,93 +369,100 @@ export default function HomeScreen() {
         </Text>
       </View>
 
-      {/* --- REVIEW COMPLETED SESSION --- */}  
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text variant="titleLarge" style={styles.sectionTitle}>
-            Review Completed Sessions
-          </Text>
-          <Button mode="text" compact>
-            View All
-          </Button>
-        </View>
-        {completedAppointments.map((appointment) => (
-          <ClientReviewCard
-            key={appointment.id}
-            appointment={appointment}
-            onReview={handleOpenReviewModal}
-          />
-        ))}
-      </View>
-
-      {/* --- APPOINTMENTS --- */}
-      <View style={styles.section}>
-        <Text variant="titleLarge" style={styles.sectionTitle}>
-          Appointments
-        </Text>
-
-        {/* --- SEARCH INPUT --- */}
-        <View style={styles.filterContainer}>
-          <TextInput
-            mode="outlined"
-            placeholder="Search by date or interpreter..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={styles.searchInput}
-            left={<TextInput.Icon icon="magnify" />}
-          />
-
-          {/* --- RESULTS --- */}
-          <Menu
-            visible={statusMenuVisible}
-            onDismiss={() => setStatusMenuVisible(false)}
-            anchor={
-              <Button
-                mode="outlined"
-                onPress={() => setStatusMenuVisible(true)}
-                style={styles.filterButton}
-                icon="chevron-down"
-                contentStyle={{ flexDirection: "row-reverse" }}
-              >
-                {statusFilter}
+      {isLoading ? (
+        <ActivityIndicator animating={true} style={{ marginTop: 20 }} />
+      ) : (
+        <>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text variant="titleLarge" style={styles.sectionTitle}>
+                Review Completed Sessions
+              </Text>
+              <Button mode="text" compact>
+                View All
               </Button>
-            }
-          >
-            {["All", "Approved", "Pending", "Rejected", "Cancelled"].map(
-              (status) => (
-                <Menu.Item
-                  key={status}
-                  onPress={() => {
-                    setStatusFilter(status);
-                    setStatusMenuVisible(false);
-                  }}
-                  title={status}
+            </View>
+            {completedAppointments.length > 0 ? (
+              completedAppointments.map((appointment) => (
+                <ClientReviewCard
+                  key={appointment.id}
+                  appointment={appointment}
+                  onReview={handleOpenReviewModal}
                 />
-              )
+              ))
+            ) : (
+              <Text>No recent sessions to review.</Text>
             )}
-          </Menu>
-        </View>
+          </View>
 
-        {upcomingAppointments.map((appointment) => (
-          <ClientAppointmentsCard
-            key={appointment.id}
-            appointment={appointment}
-            getStatusColor={getStatusColor}
-            actions={renderUserAppointmentActions(
-              appointment.status,
-              appointment
+          <View style={styles.section}>
+            <Text variant="titleLarge" style={styles.sectionTitle}>
+              Appointments
+            </Text>
+            <View style={styles.filterContainer}>
+              <TextInput
+                mode="outlined"
+                placeholder="Search by date or interpreter..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                style={styles.searchInput}
+                left={<TextInput.Icon icon="magnify" />}
+              />
+              <Menu
+                visible={statusMenuVisible}
+                onDismiss={() => setStatusMenuVisible(false)}
+                anchor={
+                  <Button
+                    mode="outlined"
+                    onPress={() => setStatusMenuVisible(true)}
+                    style={styles.filterButton}
+                    icon="chevron-down"
+                    contentStyle={{ flexDirection: "row-reverse" }}
+                  >
+                    {statusFilter}
+                  </Button>
+                }
+              >
+                {["All", "Approved", "Pending", "Rejected", "Cancelled"].map(
+                  (status) => (
+                    <Menu.Item
+                      key={status}
+                      onPress={() => {
+                        setStatusFilter(status);
+                        setStatusMenuVisible(false);
+                      }}
+                      title={status}
+                    />
+                  )
+                )}
+              </Menu>
+            </View>
+            {filteredUpcomingAppointments.length > 0 ? (
+              filteredUpcomingAppointments.map((appointment) => (
+                <ClientAppointmentsCard
+                  key={appointment.id}
+                  appointment={appointment}
+                  getStatusColor={getStatusColor}
+                  actions={renderUserAppointmentActions(
+                    appointment.status,
+                    appointment
+                  )}
+                />
+              ))
+            ) : (
+              <Text>No upcoming appointments found.</Text>
             )}
-          />
-        ))}
-      </View>
+          </View>
+        </>
+      )}
 
       {/* --- REVIEW POP UP --- */}
       <ReviewModal
         visible={isReviewModalVisible}
         onDismiss={handleCloseReviewModal}
         onSubmit={handleSubmitReview}
-        targetName={selectedAppointment?.profile.name || ''}
-        sessionDate={selectedAppointment?.startTime || ''}
+        targetName={selectedAppointment?.profile?.name || ""}
+        sessionDate={selectedAppointment?.startTime || ""}
         placeholderText="Share your experience with this interpreter..."
       />
 

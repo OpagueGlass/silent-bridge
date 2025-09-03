@@ -4,7 +4,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Card, Chip, MD3Theme, Text } from "react-native-paper";
-import { Appointment } from "../app/data/mockBookings";
+// import { Appointment } from "../app/data/mockBookings";
+import { Appointment } from "../utils/query";
 import { useAppTheme } from "../hooks/useAppTheme";
 
 interface ClientAppointmentsCardProps {
@@ -72,13 +73,13 @@ export default function ClientAppointmentsCard({
             variant="bodyMedium"
             style={{ color: theme.colors.onSurfaceVariant }}
           >
-            Interpreter: {appointment.profile.name}
+            Interpreter: {appointment.profile?.name}
           </Text>
         </View>
         <View style={styles.detailRow}>
           <MaterialCommunityIcons name="email-outline" size={18} color="#666" />
           <Text style={styles.detailText}>
-            {appointment.profile.email}
+            {appointment.profile?.email}
           </Text>
         </View>
 

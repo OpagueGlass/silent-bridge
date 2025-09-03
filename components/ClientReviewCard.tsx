@@ -3,7 +3,8 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Card, MD3Theme, Text } from "react-native-paper";
-import { Appointment } from "../app/data/mockBookings";
+// import { Appointment } from "../app/data/mockBookings";
+import { Appointment } from "../utils/query";
 import { useAppTheme } from "../hooks/useAppTheme";
 
 interface ClientReviewCardProps {
@@ -34,7 +35,7 @@ export default function ClientReviewCard({
             variant="bodyMedium"
             style={{ color: theme.colors.onSurfaceVariant }}
           >
-            {appointment.profile.name}
+            {appointment.profile?.name}
           </Text>
         </View>
         <Button mode="contained" onPress={() => onReview(appointment)}>
