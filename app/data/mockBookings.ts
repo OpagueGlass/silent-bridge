@@ -1,112 +1,178 @@
-// mockBookings.ts
+// app/data/mockBookings.ts
 
-import { interpreters } from './mockData';
+import { Tables } from '../../utils/database-types';
+import { AGE_RANGE, AgeRange } from '@/constants/data';
 
+const mockProfiles: Tables<'profile'>[] = [
+  {
+    id: '8f5a5c6e-c9aa-4461-821a-2ba5313f8c9a', // Interpreter 1
+    name: 'John Smith',
+    email: 'johnsmith@email.com',
+    date_of_birth: '1995-05-20T00:00:00Z', // age: 30
+    gender: 'Male',
+    avg_rating: 4.8,
+    location: 'Kuala Lumpur',
+    photo: '/placeholder.svg?height=80&width=80',
+  },
+  {
+    id: 'f3d8a2d1-b3e1-4b8a-8b8e-3d9a1c2b3d4e', // Interpreter 2
+    name: 'Sarah Johnson',
+    email: 'sarahjohnson@email.com',
+    date_of_birth: '2000-11-15T00:00:00Z', // age: 25
+    gender: 'Female',
+    avg_rating: 4.9,
+    location: 'Penang',
+    photo: '/placeholder.svg?height=80&width=80',
+  },
+  {
+    id: 'c1b2a3d4-e5f6-7890-1234-567890abcdef', // Interpreter 3
+    name: 'Mike Chen',
+    email: 'mikechen@email.com',
+    date_of_birth: '1990-02-10T00:00:00Z', // age: 35
+    gender: 'Male',
+    avg_rating: 4.7,
+    location: 'Johor',
+    photo: '/placeholder.svg?height=80&width=80',
+  },
+  {
+    id: 'a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6', // A Deaf User
+    name: 'Alice Wong',
+    email: 'alice@email.com',
+    date_of_birth: '1998-07-22T00:00:00Z',
+    gender: 'Female',
+    avg_rating: null,
+    location: 'Kuala Lumpur',
+    photo: '/placeholder.svg?height=80&width=80',
+  },
+];
+
+// Helper function to get age range from date of birth string.
+// This logic is similar to what's in `helper.ts`.
+const getAgeRangeFromDOB = (dateOfBirth: string): AgeRange => {
+    const age = Math.floor((Date.now() - new Date(dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365));
+    if (age < 18) return AGE_RANGE[0];
+    if (age < 30) return AGE_RANGE[1];
+    if (age < 40) return AGE_RANGE[2];
+    if (age < 50) return AGE_RANGE[3];
+    if (age < 70) return AGE_RANGE[4];
+    return AGE_RANGE[5];
+};
+
+// This is the frontend-friendly Profile interface. It includes 'ageRange'.
+// The raw database profile type is in `Tables<'profile'>`.
 export interface Profile {
   id: string;
   name: string;
   email: string;
-  ageRange: "18-29" | "30-39" | "40-49" | "50-69" | "70+";
+  ageRange: AgeRange;
   gender: string;
   avgRating: number | null;
   location: string;
   photo: string;
 }
 
+// This is the frontend-friendly Appointment interface.
+// It embeds the full interpreter Profile object, which is what the UI needs.
 export interface Appointment {
   id: number;
   startTime: string;
   endTime: string;
-  status: string;
+  status: 'Approved' | 'Pending' | 'Rejected' | 'Completed' | 'Cancelled';
   hospitalName: string | null;
   meetingUrl: string | null;
-  profile: Profile;
+  profile: Profile; // The interpreter's profile
 }
 
-const createProfileFromInterpreter = (interpreter: typeof interpreters[0]): Profile => {
-  let ageRange: Profile['ageRange'] = "30-39";
-  if (interpreter.age >= 18 && interpreter.age <= 29) ageRange = "18-29";
-  if (interpreter.age >= 40 && interpreter.age <= 49) ageRange = "40-49";
-  if (interpreter.age >= 50 && interpreter.age <= 69) ageRange = "50-69";
-  if (interpreter.age >= 70) ageRange = "70+";
+// --- Data Assembly Logic ---
+// This section simulates the database "joining" data together.
 
-  return {
-    id: interpreter.id.toString(),
-    name: interpreter.name,
-    email: interpreter.email,
-    ageRange: ageRange,
-    gender: interpreter.gender,
-    avgRating: interpreter.rating,
-    location: "Kuala Lumpur",
-    photo: interpreter.avatar,
-  };
-};
-
-const createDate = (daysToAdd: number, hour: number, minute: number): Date => {
-  const newDate = new Date();
-  newDate.setDate(newDate.getDate() + daysToAdd);
-  newDate.setHours(hour, minute, 0, 0);
-  return newDate;
-};
-
-const createAppointmentTimestamps = (startDate: Date, durationMinutes: number): { startTime: string; endTime: string } => {
-  const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
-  return {
-    startTime: startDate.toISOString(),
-    endTime: endDate.toISOString(),
-  };
-};
-
-const pastAppointment1 = createAppointmentTimestamps(createDate(-2, 10, 0), 45);
-const pastAppointment2 = createAppointmentTimestamps(createDate(-4, 14, 0), 80);
-const futureAppointment1 = createAppointmentTimestamps(createDate(2, 15, 0), 60);
-const futureAppointment2 = createAppointmentTimestamps(createDate(4, 11, 30), 90);
-const futureAppointment3 = createAppointmentTimestamps(new Date("2025-09-20T09:00:00"), 120);
-
-export const appointments: Appointment[] = [
+// 1. Raw appointment data, mimicking the 'appointment' table
+const mockAppointmentsRaw: (Omit<Tables<'appointment'>, 'deaf_user_id' | 'status'> & { deaf_user_id: string, status: Appointment['status'] })[] = [
   {
     id: 1,
-    startTime: pastAppointment1.startTime,
-    endTime: pastAppointment1.endTime,
-    status: "Completed",
-    hospitalName: "Pantai Hospital Kuala Lumpur",
-    meetingUrl: null,
-    profile: createProfileFromInterpreter(interpreters[1]),
+    deaf_user_id: 'a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6', // Alice Wong
+    interpreter_id: 'f3d8a2d1-b3e1-4b8a-8b8e-3d9a1c2b3d4e', // Sarah Johnson
+    start_time: new Date('2025-08-30T10:00:00Z').toISOString(),
+    end_time: new Date('2025-08-30T11:00:00Z').toISOString(),
+    status: 'Completed',
+    hospital_name: 'Pantai Hospital Kuala Lumpur',
+    meeting_url: null,
   },
   {
     id: 2,
-    startTime: pastAppointment2.startTime,
-    endTime: pastAppointment2.endTime,
-    status: "Completed",
-    hospitalName: "Sunway Medical Centre",
-    meetingUrl: null,
-    profile: createProfileFromInterpreter(interpreters[2]),
+    deaf_user_id: 'a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6', // Alice Wong
+    interpreter_id: 'c1b2a3d4-e5f6-7890-1234-567890abcdef', // Mike Chen
+    start_time: new Date('2025-08-28T14:00:00Z').toISOString(),
+    end_time: new Date('2025-08-28T15:30:00Z').toISOString(),
+    status: 'Completed',
+    hospital_name: 'Sunway Medical Centre',
+    meeting_url: null,
   },
   {
     id: 3,
-    startTime: futureAppointment1.startTime,
-    endTime: futureAppointment1.endTime,
-    status: "Approved",
-    hospitalName: "Gleneagles Hospital Kuala Lumpur",
-    meetingUrl: null,
-    profile: createProfileFromInterpreter(interpreters[0]),
+    deaf_user_id: 'a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6', // Alice Wong
+    interpreter_id: '8f5a5c6e-c9aa-4461-821a-2ba5313f8c9a', // John Smith
+    start_time: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(),
+    end_time: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(),
+    status: 'Approved',
+    hospital_name: 'Gleneagles Hospital Kuala Lumpur',
+    meeting_url: null,
   },
   {
     id: 4,
-    startTime: futureAppointment2.startTime,
-    endTime: futureAppointment2.endTime,
-    status: "Pending",
-    hospitalName: "Prince Court Medical Centre",
-    meetingUrl: null,
-    profile: createProfileFromInterpreter(interpreters[1]),
+    deaf_user_id: 'a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6', // Alice Wong
+    interpreter_id: 'f3d8a2d1-b3e1-4b8a-8b8e-3d9a1c2b3d4e', // Sarah Johnson
+    start_time: new Date(new Date().setDate(new Date().getDate() + 4)).toISOString(),
+    end_time: new Date(new Date().setDate(new Date().getDate() + 4)).toISOString(),
+    status: 'Pending',
+    hospital_name: 'Prince Court Medical Centre',
+    meeting_url: null,
   },
   {
     id: 5,
-    startTime: futureAppointment3.startTime,
-    endTime: futureAppointment3.endTime,
-    status: "Rejected",
-    hospitalName: "Hospital Kuala Lumpur (HKL)",
-    meetingUrl: null,
-    profile: createProfileFromInterpreter(interpreters[2]),
+    deaf_user_id: 'a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6', // Alice Wong
+    interpreter_id: 'c1b2a3d4-e5f6-7890-1234-567890abcdef', // Mike Chen
+    start_time: new Date('2025-09-20T09:00:00Z').toISOString(),
+    end_time: new Date('2025-09-20T11:00:00Z').toISOString(),
+    status: 'Rejected',
+    hospital_name: 'Hospital Kuala Lumpur (HKL)',
+    meeting_url: null,
   },
 ];
+
+// 2. Assemble the final `appointments` array for the UI
+export const appointments: Appointment[] = mockAppointmentsRaw.map(app => {
+  const interpreterProfileRaw = mockProfiles.find(p => p.id === app.interpreter_id);
+
+  if (!interpreterProfileRaw) {
+    // In a real app, you'd handle this error case.
+    // Here, we'll throw an error if the mock data is inconsistent.
+    throw new Error(`Interpreter profile not found for ID: ${app.interpreter_id}`);
+  }
+
+  // Convert the raw profile from the "database" into the frontend-friendly format
+  const interpreterProfile: Profile = {
+    id: interpreterProfileRaw.id,
+    name: interpreterProfileRaw.name,
+    email: interpreterProfileRaw.email,
+    gender: interpreterProfileRaw.gender,
+    location: interpreterProfileRaw.location,
+    photo: interpreterProfileRaw.photo,
+    
+    // Explicitly map snake_case from raw data to camelCase for the frontend interface.
+    avgRating: interpreterProfileRaw.avg_rating,
+    
+    // Calculate the derived 'ageRange' property.
+    ageRange: getAgeRangeFromDOB(interpreterProfileRaw.date_of_birth),
+  };
+
+  return {
+    id: app.id,
+    startTime: app.start_time,
+    endTime: app.end_time,
+    status: app.status,
+    hospitalName: app.hospital_name,
+    meetingUrl: app.meeting_url,
+    profile: interpreterProfile,
+  };
+});

@@ -23,8 +23,8 @@ import {
   appointments as userAppointments,
 } from "../data/mockBookings";
 import {
-  InterpreterRequest,
-  interpreterAppointments,
+  PopulatedRequest,
+  requests as interpreterRequests,
 } from "../data/mockBookingsDeaf";
 
 export default function HomeScreen() {
@@ -32,7 +32,7 @@ export default function HomeScreen() {
   const { profile, isInterpreter } = useAuth();
   const theme = useAppTheme();
   const router = useRouter();
-  const getStatusColor = (status: Appointment["status"] | InterpreterRequest["status"]) => {
+  const getStatusColor = (status: Appointment["status"]) => {
     switch (status) {
       case "Approved":
         return "limegreen";
@@ -181,11 +181,11 @@ export default function HomeScreen() {
   };
 
   { /* --- INTERPRETER --- */ }
-  const [requests, setRequests] = useState<InterpreterRequest[]>(interpreterAppointments);
+  const [requests, setRequests] = useState<PopulatedRequest[]>(interpreterRequests);
 
   const [isClientReviewVisible, setClientReviewVisible] = useState(false);
-  const [requestToReview, setRequestToReview] = useState<InterpreterRequest | null>(null);
-  const handleOpenClientReview = (request: InterpreterRequest) => {
+  const [requestToReview, setRequestToReview] = useState<PopulatedRequest | null>(null);
+  const handleOpenClientReview = (request: PopulatedRequest) => {
     setRequestToReview(request);
     setClientReviewVisible(true);
   };
@@ -195,7 +195,9 @@ export default function HomeScreen() {
   };
   const handleSubmitClientReview = (rating: number, comment: string) => {
     if (requestToReview) {
-      console.log(`Interpreter reviewing client: ${requestToReview.clientName}`);
+      console.log(
+        `Interpreter reviewing client: ${requestToReview.appointment.clientProfile.name}`
+      );
       console.log(`Rating: ${rating}, Comment: "${comment}"`);
     }
     handleCloseClientReview();
@@ -207,41 +209,40 @@ export default function HomeScreen() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // filter for completed sessions
     const completed = requests
-      .filter((r) => r.status === "Completed")
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .filter((r) => r.appointment.status === "Completed")
+      .sort(
+        (a, b) =>
+          new Date(b.appointment.startTime).getTime() -
+          new Date(a.appointment.startTime).getTime()
+      );
 
-    // for results
+    // filter for upcoming, approved sessions
     const approved = requests
-      // only approved
-      .filter((r) => r.status === "Approved")
-      // only after current time
-      .filter((r) => {
-        const [year, month, day] = r.date.split("-").map(Number);
-        const requestDate = new Date(year, month - 1, day);
-        return requestDate >= today;
-      })
-      // filter based on user's filter (by search)
+      .filter((r) => r.appointment.status === "Approved")
+      .filter((r) => new Date(r.appointment.startTime) >= today)
       .filter((r) => {
         const formattedQuery = interpreterSearchQuery.trim().toLowerCase();
         if (formattedQuery === "") return true;
 
-        const displayDate = new Date(r.date)
+        const displayDate = new Date(r.appointment.startTime)
           .toLocaleDateString("en-US", {
             month: "long",
             day: "numeric",
             year: "numeric",
           })
           .toLowerCase();
-        const clientName = r.clientName.toLowerCase();
+        const clientName = r.appointment.clientProfile.name.toLowerCase();
 
         return (
-          displayDate.includes(formattedQuery) ||
-          clientName.includes(formattedQuery)
+          displayDate.includes(formattedQuery) || clientName.includes(formattedQuery)
         );
       })
       .sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        (a, b) =>
+          new Date(a.appointment.startTime).getTime() -
+          new Date(b.appointment.startTime).getTime()
       );
 
     return { interpreterCompleted: completed, interpreterApproved: approved };
@@ -277,8 +278,8 @@ export default function HomeScreen() {
           </View>
           {interpreterCompleted.map((request) => (
             <InterpreterReviewCard
-              key={request.id}
-              session={request}
+              key={request.requestId}
+              request={request}
               onReview={handleOpenClientReview}
             />
           ))}
@@ -304,7 +305,10 @@ export default function HomeScreen() {
 
           {/* --- RESULTS --- */}
           {interpreterApproved.map((request) => (
-            <InterpreterApprovedCard key={request.id} appointment={request} />
+            <InterpreterApprovedCard
+              key={request.requestId}
+              request={request}
+            />
           ))}
         </View>
 
@@ -314,8 +318,8 @@ export default function HomeScreen() {
             visible={isClientReviewVisible}
             onDismiss={handleCloseClientReview}
             onSubmit={handleSubmitClientReview}
-            targetName={requestToReview.clientName}
-            sessionDate={requestToReview.date}
+            targetName={requestToReview.appointment.clientProfile.name}
+            sessionDate={requestToReview.appointment.startTime}
             placeholderText="Share your experience with this client..."
           />
         )}

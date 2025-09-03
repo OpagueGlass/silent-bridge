@@ -68,8 +68,10 @@ export default function ClientAppointmentsCard({
         </View>
 
         <View style={styles.detailRow}>
-          <MaterialCommunityIcons name="account-tie" size={18} color="#666" />
-          <Text style={styles.detailText}>
+          <Text
+            variant="bodyMedium"
+            style={{ color: theme.colors.onSurfaceVariant }}
+          >
             Interpreter: {appointment.profile.name}
           </Text>
         </View>
@@ -120,7 +122,7 @@ const createStyles = (theme: MD3Theme) =>
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: 12,
+      marginBottom: 4,
     },
     appointmentDate: {
       fontWeight: "bold",
