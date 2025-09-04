@@ -1,7 +1,7 @@
-import { supabase } from "./supabase";
-import { getAgeRangeFromDOB, getMinMaxDOB } from "./helper";
 import { AgeRange } from "@/constants/data";
 import { Tables } from "./database-types";
+import { getAgeRangeFromDOB, getMinMaxDOB } from "./helper";
+import { supabase } from "./supabase";
 
 // Profile and InterpreterProfile interfaces
 export interface Profile {
@@ -15,14 +15,30 @@ export interface Profile {
   photo: string;
 }
 
-interface InterpreterProfile extends Profile {
+export interface InterpreterProfile extends Profile {
   interpreterSpecialisations: number[];
   interpreterLanguages: number[];
 }
 
+export interface Appointment {
+  id: number; 
+  status: "Approved" | "Pending" | "Completed" | "Rejected" | "Cancelled";
+  startTime: string;
+  endTime: string;
+  hospitalName: string | null;
+  meetingUrl: string | null;
+  profile: Profile | null;
+}
+
+export interface Request {
+  id: number;
+  note: string | null;
+  appointment: Appointment;
+}
+
 // Convert Date to "HH:MM:SS+TZ" format for timetz
 const toTimetz = (date: Date): string => {
-  return `${date.toISOString().substring(11, 16)}:00+00`;
+  return `${date.toISOString().substring(11, 19)}`;
 };
 
 // Convert specialisation and language IDs from id to respective index in constants
@@ -67,22 +83,26 @@ const convertToInterpreterProfile = (data: {
 
 const convertToAppointment = (
   data: {
+    id: number;
+    status: string;
     start_time: string;
     end_time: string;
     hospital_name: string | null;
     meeting_url: string | null;
   },
   profile: Tables<"profile"> | null
-) => {
-  const { start_time, end_time, hospital_name, meeting_url } = data;
+): Appointment => {
+  const { id, status, start_time, end_time, hospital_name, meeting_url } = data;
   const formattedRest = {
+    id,
+    status: status as Appointment["status"],
     startTime: start_time,
     endTime: end_time,
     hospitalName: hospital_name,
     meetingUrl: meeting_url,
   };
 
-  if (!profile) return formattedRest;
+  if (!profile) return { ...formattedRest, profile: null };
 
   return {
     profile: {
@@ -165,11 +185,13 @@ export const searchInterpreters = async (
   ageEnd: number,
   startTime: Date,
   endTime: Date,
+  minRating: number = 0,
   gender: string | null = null
 ) => {
   const { minDOB, maxDOB } = getMinMaxDOB(ageStart, ageEnd);
   const day = startTime.getDay() === 0 ? 7 : startTime.getDay();
   const start_time = toTimetz(startTime);
+  endTime.setSeconds(endTime.getSeconds() - 1); // Make end time exclusive
   const end_time = toTimetz(endTime);
 
   // Build the query with necessary filters and order by rating in descending order
@@ -177,10 +199,11 @@ export const searchInterpreters = async (
     .from("interpreter_profile")
     .select(
       `
+      id,
       profile (*),
       interpreter_specialisation (specialisation_id),
       interpreter_language (language_id),
-      availability (day_id, start_time, end_time)
+      availability (*)
     `
     )
     .eq("interpreter_specialisation.specialisation_id", spec)
@@ -188,9 +211,10 @@ export const searchInterpreters = async (
     .eq("profile.location", state)
     .gt("profile.date_of_birth", minDOB.toISOString())
     .lt("profile.date_of_birth", maxDOB.toISOString())
+    .or(`avg_rating.gt.${minRating},avg_rating.is.null`, { referencedTable: "profile" })
     .eq("availability.day_id", day)
-    .gte("availability.start_time", start_time)
-    .lte("availability.end_time", end_time)
+    .lte("availability.start_time", start_time)
+    .gt("availability.end_time", end_time)
     .not("profile", "is", null) // Exclude profiles that only meet some of the criteria
     .not("interpreter_specialisation", "is", null)
     .not("interpreter_language", "is", null)
@@ -210,7 +234,9 @@ export const searchInterpreters = async (
     return [];
   }
 
-  return data.map(convertToInterpreterProfile);
+  const interpreterProfiles = await Promise.all(data.map(({ id }) => getInterpreterProfile(id)));
+
+  return interpreterProfiles.filter((profile) => profile !== null);
 };
 
 /**
@@ -323,6 +349,8 @@ export const getUpcomingUserAppointments = async (user_id: string) => {
     .from("appointment")
     .select(
       `
+      id, 
+      status,
       start_time,
       end_time,
       deaf_user_id,
@@ -334,7 +362,7 @@ export const getUpcomingUserAppointments = async (user_id: string) => {
       `
     )
     .eq("deaf_user_id", user_id)
-    .neq("interpreter_profile", null)
+    .not("interpreter_id", "is", null)
     .gte("end_time", new Date().toISOString())
     .order("start_time", { ascending: true });
 
@@ -342,7 +370,6 @@ export const getUpcomingUserAppointments = async (user_id: string) => {
     console.error("Error fetching upcoming user appointments:", error);
     return [];
   }
-
   return data.map(({ interpreter_profile, ...rest }) =>
     convertToAppointment(rest, interpreter_profile?.profile || null)
   );
@@ -359,6 +386,8 @@ export const getUpcomingInterpreterAppointments = async (interpreter_id: string)
     .from("appointment")
     .select(
       `
+      id,
+      status,
       start_time,
       end_time,
       interpreter_id,
@@ -394,6 +423,8 @@ export const getReviewUserAppointments = async (user_id: string) => {
     .from("appointment")
     .select(
       `
+      id,
+      status,
       start_time,
       end_time,
       deaf_user_id,
@@ -405,6 +436,7 @@ export const getReviewUserAppointments = async (user_id: string) => {
       `
     )
     .eq("deaf_user_id", user_id)
+    .not("interpreter_id", "is", null)
     .lt("end_time", new Date().toISOString())
     .gte("end_time", reviewPeriod.toISOString())
     .order("start_time", { ascending: true });
@@ -434,6 +466,8 @@ export const getReviewInterpreterAppointments = async (interpreter_id: string) =
     .from("appointment")
     .select(
       `
+      id,
+      status,
       start_time,
       end_time,
       interpreter_id,
@@ -479,7 +513,8 @@ export const getRequests = async (interpreter_id: string) => {
     return [];
   }
 
-  return data.map(({ note, appointment }) => ({
+  return data.map(({ id, note, appointment }) => ({
+    id,
     note,
     appointment: convertToAppointment(appointment, appointment.profile),
   }));

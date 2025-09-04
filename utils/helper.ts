@@ -1,4 +1,4 @@
-import { AgeRange, AGE_RANGE, Spec, Language, State } from "@/constants/data";
+import { AGE_RANGE, AgeRange } from "@/constants/data";
 
 export const getAgeRangeFromDOB = (dateOfBirth: string): AgeRange => {
   const age = Math.floor((Date.now() - new Date(dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365));
@@ -18,12 +18,17 @@ export const getMinMaxDOB = (ageStart: number, ageEnd: number) => {
   return { minDOB, maxDOB };
 };
 
-export const getMeetLink = async (providerToken: string) => {
+export const parseDate = (dateString: string) => {
+  const [day, month, year] = dateString.split("/").map((num) => parseInt(num, 10));
+  return new Date(year, month - 1, day);
+};
+
+export const getMeetLink = async (providerToken: string, startTime: string, endTime: string) => {
   // Use providerToken to create a Google Meet link via Google Calendar API
   const event = {
     summary: "Meeting Title",
-    start: { dateTime: "2025-08-19T10:00:00+08:00" },
-    end: { dateTime: "2025-08-19T11:00:00+08:00" },
+    start: { dateTime: startTime },
+    end: { dateTime: endTime },
     conferenceData: {
       createRequest: { requestId: "unique-request-id" },
     },
@@ -43,5 +48,5 @@ export const getMeetLink = async (providerToken: string) => {
 
   const result = await response.json();
   const meetLink = result.conferenceData?.entryPoints?.find((ep: any) => ep.entryPointType === "video")?.uri;
-  console.log("Google Meet Link:", meetLink);
+  return meetLink;
 };
