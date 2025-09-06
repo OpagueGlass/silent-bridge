@@ -1,54 +1,80 @@
-import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { useLocalSearchParams, Stack, useRouter } from "expo-router";
 import { interpreters } from "../../data/mockData";
-import { TextInput, MD3Theme } from "react-native-paper";
+import { TextInput, MD3Theme, ActivityIndicator } from "react-native-paper";
 import { useAppTheme } from "../../../hooks/useAppTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import DatePickerInput from "../../../components/DatePickerInput";
 import TimePickerInput from "../../../components/TimePickerInput";
+import { getInterpreterProfile, InterpreterProfile, createAppointment, createRequest } from "@/utils/query";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SPECIALISATION } from "@/constants/data";
+import { showConfirmAlert } from "@/utils/alert";
+import { getDate, getStartTime } from "@/utils/helper";
 
 export default function BookingScreen() {
   const router = useRouter();
 
-  const { id, date, time } = useLocalSearchParams();
-  const interpreter = interpreters.find((item) => item.id.toString() === id);
+  const { id } = useLocalSearchParams();
+  // const interpreter = interpreters.find((item) => item.id.toString() === id);
 
-  const [bookingDate, setBookingDate] = React.useState((date as string) || "");
-  const [bookingTime, setBookingTime] = React.useState((time as string) || "");
-  const handleBooking = () => {
-    // Defensive programming
-    if (!interpreter) {
-      return <Text>Interpreter not found.</Text>;
-    }
+  // const [bookingDate, setBookingDate] = React.useState((date as string) || "");
+  // const [bookingTime, setBookingTime] = React.useState((time as string) || "");
+  const [isLoading, setIsLoading] = useState(true);
+  const [profile, setProfile] = useState<InterpreterProfile | null>(null);
+  const [appointmentDetails, setAppointmentDetails] = useState<{
+    startTime: string;
+    endTime: string;
+    id: number | null;
+    deaf_user_id: string;
+    hospital_name: string | null;
+  } | null>(null);
 
-    if (!bookingDate || !bookingTime) {
-      alert("Incomplete. Please select both a date and a time.");
-      return;
-    }
-    const dayAvailability = interpreter?.availability.find(
-      (day) => day.date === bookingDate
-    );
-    if (dayAvailability && dayAvailability.slots.includes(bookingTime)) {
-      router.push({
-        pathname: `/interpreter/[id]/booking-success`,
-        params: {
-          id: interpreter.id,
-          date: bookingDate,
-          time: bookingTime,
-        },
-      });
-    } else {
-      alert(
-        "Booking Failed. The interpreter is not available at the selected time."
-      );
+  useEffect(() => {
+    const fetchInterpreterProfile = async () => {
+      const interpreterProfile = await getInterpreterProfile(id.toString());
+      setProfile(interpreterProfile);
+      const storedDetails = await AsyncStorage.getItem("appointmentDetails");
+      setAppointmentDetails(storedDetails ? JSON.parse(storedDetails) : null);
+      setIsLoading(false);
+    };
+
+    fetchInterpreterProfile();
+  }, [id, profile, appointmentDetails]);
+
+  const handleBooking = async () => {
+    const confirmed = await showConfirmAlert("Create Booking", "Are you sure you want to create this booking?");
+    if (!confirmed) return;
+
+    try {
+      if (appointmentDetails) {
+        const { startTime, endTime, id: appointment_id, deaf_user_id, hospital_name } = appointmentDetails;
+        if (appointment_id) {
+          await createRequest(appointment_id, profile!.id, notes);
+        } else {
+          const appointment_id = await createAppointment(
+            deaf_user_id,
+            new Date(startTime),
+            new Date(endTime),
+            hospital_name
+          );
+          if (appointment_id >= 0) {
+            AsyncStorage.setItem(
+              "appointmentDetails",
+              JSON.stringify({
+                ...appointmentDetails,
+                id: appointment_id,
+              })
+            );
+          }
+          await createRequest(appointment_id, profile!.id, notes);
+          router.push({ pathname: "/interpreter/[id]/booking-success", params: { id: id.toString() } });
+        }
+      }
+    } catch (error) {
+      alert(`Error during booking: ${error}`);
     }
   };
 
@@ -57,91 +83,103 @@ export default function BookingScreen() {
 
   const [notes, setNotes] = React.useState("");
 
-  // Defensive programming
-  if (!interpreter) {
-    return <Text>Interpreter not found.</Text>;
+
+  if (isLoading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: theme.colors.background,
+        }}
+      >
+        <Stack.Screen options={{ headerShown: false }} />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text
+          style={{
+            marginTop: 16,
+            color: theme.colors.onBackground,
+          }}
+        >
+          Loading...
+        </Text>
+      </View>
+    );
   }
 
-  const initials = interpreter.name
+  // Defensive programming
+  else if (!profile) {
+    return (
+      <View>
+        <Text>Interpreter not found.</Text>
+      </View>
+    );
+  }
+
+  const initials = profile!.name
     .split(" ")
     .map((word) => word[0])
     .slice(0, 2)
     .join("");
-  const fullStars = Math.floor(interpreter.rating);
+  const fullStars = Math.floor(profile!.avgRating ?? 0);
 
   return (
     <ScrollView style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Confirm Booking</Text>
       </View>
 
       <View style={styles.contentContainer}>
-        {date && time ? (
-          <View style={styles.sessionCard}>
-            <Text style={styles.sectionTitle}>Session Details</Text>
-            <View style={styles.interpreterRow}>
-              <LinearGradient
-                colors={[theme.colors.primary, theme.colors.secondary]}
-                style={styles.avatarContainer}
-              >
-                <Text style={styles.avatarText}>{initials}</Text>
-              </LinearGradient>
-              <View style={styles.interpreterInfo}>
-                <Text style={styles.interpreterName}>{interpreter.name}</Text>
+        <View style={styles.sessionCard}>
+          <Text style={styles.sectionTitle}>Session Details</Text>
+          <View style={styles.interpreterRow}>
+            <LinearGradient colors={[theme.colors.primary, theme.colors.secondary]} style={styles.avatarContainer}>
+              <Text style={styles.avatarText}>{initials}</Text>
+            </LinearGradient>
+            <View style={styles.interpreterInfo}>
+              <Text style={styles.interpreterName}>{profile.name}</Text>
+              {
                 <Text style={styles.interpreterSubtitle}>
-                  {interpreter.specialisation}
+                  {profile.interpreterSpecialisations.map((spec) => SPECIALISATION[spec]).join(", ")}
                 </Text>
-                <View style={styles.starsContainer}>
-                  {[...Array(5)].map((_, i) => (
-                    <MaterialCommunityIcons
-                      key={i}
-                      name={i < fullStars ? "star" : "star-outline"}
-                      size={16}
-                      color="#FBBF24"
-                    />
-                  ))}
-                </View>
+              }
+              <View style={styles.starsContainer}>
+                {[...Array(5)].map((_, i) => (
+                  <MaterialCommunityIcons
+                    key={i}
+                    name={i < fullStars ? "star" : "star-outline"}
+                    size={16}
+                    color="#FBBF24"
+                  />
+                ))}
               </View>
             </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.infoRow}>
-              <MaterialCommunityIcons
-                name="calendar-blank"
-                size={20}
-                style={styles.infoIcon}
-              />
-              <Text style={styles.infoText}>{date}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <MaterialCommunityIcons
-                name="clock-outline"
-                size={20}
-                style={styles.infoIcon}
-              />
-              <Text style={styles.infoText}>{time} (1 hour)</Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <MaterialCommunityIcons
-                name="video-outline"
-                size={20}
-                style={styles.infoIcon}
-              />
-              <Text style={styles.infoText}>Video Call Session</Text>
-            </View>
           </View>
-        ) : (
-          <View style={styles.dateTimeRow}>
+
+          <View style={styles.divider} />
+
+          <View style={styles.infoRow}>
+            <MaterialCommunityIcons name="calendar-blank" size={20} style={styles.infoIcon} />
+            <Text style={styles.infoText}>{ appointmentDetails ? getDate(appointmentDetails) : ''}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <MaterialCommunityIcons name="clock-outline" size={20} style={styles.infoIcon} />
+            <Text style={styles.infoText}>{ appointmentDetails ? getStartTime(appointmentDetails) : ''}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <MaterialCommunityIcons name="video-outline" size={20} style={styles.infoIcon} />
+            <Text style={styles.infoText}>Video Call Session</Text>
+          </View>
+        </View>
+        {/* ) : ( */}
+        {/* <View style={styles.dateTimeRow}>
             <View style={styles.dateTimeField}>
               <Text style={styles.filterLabel}>Appointment Date</Text>
               <DatePickerInput
@@ -160,13 +198,11 @@ export default function BookingScreen() {
                 style={styles.dateTimeInput}
               />
             </View>
-          </View>
-        )}
+          </View> */}
+        {/* )} */}
 
         {/* --- Notes Section --- */}
-        <Text style={styles.sectionTitle}>
-          Notes for Interpreter (Optional)
-        </Text>
+        <Text style={styles.sectionTitle}>Notes for Interpreter (Optional)</Text>
         <TextInput
           value={notes}
           onChangeText={setNotes}
@@ -195,35 +231,20 @@ export default function BookingScreen() {
         </View> */}
 
         <View style={[styles.calloutCard, styles.calloutGreen, { marginTop: 24 }]}>
-          <MaterialCommunityIcons
-            name="check-circle"
-            size={24}
-            style={[styles.calloutIcon, { color: "#059669" }]}
-          />
+          <MaterialCommunityIcons name="check-circle" size={24} style={[styles.calloutIcon, { color: "#059669" }]} />
           <View style={styles.calloutTextContainer}>
-            <Text style={[styles.calloutTitle, { color: "#065F46" }]}>
-              Free Service
-            </Text>
-            <Text style={{ color: "#047857" }}>
-              This interpretation session is provided at no cost.
-            </Text>
+            <Text style={[styles.calloutTitle, { color: "#065F46" }]}>Free Service</Text>
+            <Text style={{ color: "#047857" }}>This interpretation session is provided at no cost.</Text>
           </View>
         </View>
 
         {/* --- Action Buttons --- */}
-        <TouchableOpacity
-          style={[styles.button, styles.buttonPrimary, { marginTop: 24 }]}
-          onPress={handleBooking}
-        >
-          <Text style={[styles.buttonText, styles.buttonTextPrimary]}>
-            Confirm & Book Session
-          </Text>
+        <TouchableOpacity style={[styles.button, styles.buttonPrimary, { marginTop: 24 }]} onPress={handleBooking}>
+          <Text style={[styles.buttonText, styles.buttonTextPrimary]}>Confirm & Book Session</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={[styles.buttonText, styles.cancelButtonText]}>
-            Cancel
-          </Text>
+          <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
