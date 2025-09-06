@@ -218,7 +218,6 @@ export default function SearchScreen() {
     if (!confirmed) return;
 
     try {
-      const appointmentId = await updateRequest(request.id, isAccepted);
       setRequests((prev) => prev.filter((_, i) => i !== index));
       if (isAccepted) {
         const providerToken = await getValidProviderToken();
@@ -229,8 +228,9 @@ export default function SearchScreen() {
           request.appointment.profile!
         );
         const meetingURL = meetingLink.split("/")[3];
-        await addAppointmentMeetingURL(appointmentId, meetingURL);
+        await addAppointmentMeetingURL(request.appointment.id, meetingURL);
       }
+      await updateRequest(request.id, isAccepted);
     } catch (error) {
       console.error("Error updating request:", error);
     }

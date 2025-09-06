@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
 import { useLocalSearchParams, Stack, useRouter } from "expo-router";
-import { interpreters } from "../../data/mockData";
-import { TextInput, MD3Theme, ActivityIndicator } from "react-native-paper";
+import { TextInput, MD3Theme } from "react-native-paper";
 import { useAppTheme } from "../../../hooks/useAppTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -13,6 +12,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SPECIALISATION } from "@/constants/data";
 import { showConfirmAlert } from "@/utils/alert";
 import { getDate, getStartTime } from "@/utils/helper";
+import LoadingScreen from "../../../components/LoadingScreen";
+import InterpreterNotFoundScreen from "../../../components/InterpreterNotFoundScreen";
 
 export default function BookingScreen() {
   const router = useRouter();
@@ -83,38 +84,10 @@ export default function BookingScreen() {
 
   const [notes, setNotes] = React.useState("");
 
-
   if (isLoading) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: theme.colors.background,
-        }}
-      >
-        <Stack.Screen options={{ headerShown: false }} />
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text
-          style={{
-            marginTop: 16,
-            color: theme.colors.onBackground,
-          }}
-        >
-          Loading...
-        </Text>
-      </View>
-    );
-  }
-
-  // Defensive programming
-  else if (!profile) {
-    return (
-      <View>
-        <Text>Interpreter not found.</Text>
-      </View>
-    );
+    return <LoadingScreen />;
+  } else if (!profile) {
+    return <InterpreterNotFoundScreen />;
   }
 
   const initials = profile!.name
@@ -139,9 +112,15 @@ export default function BookingScreen() {
         <View style={styles.sessionCard}>
           <Text style={styles.sectionTitle}>Session Details</Text>
           <View style={styles.interpreterRow}>
-            <LinearGradient colors={[theme.colors.primary, theme.colors.secondary]} style={styles.avatarContainer}>
+            {/* <LinearGradient colors={[theme.colors.primary, theme.colors.secondary]} style={styles.avatarContainer}>
               <Text style={styles.avatarText}>{initials}</Text>
-            </LinearGradient>
+            </LinearGradient> */}
+                      <Image
+                        source={{
+                          uri: profile.photo,
+                        }}
+                        style={styles.avatarContainer}
+                      />
             <View style={styles.interpreterInfo}>
               <Text style={styles.interpreterName}>{profile.name}</Text>
               {
@@ -166,11 +145,11 @@ export default function BookingScreen() {
 
           <View style={styles.infoRow}>
             <MaterialCommunityIcons name="calendar-blank" size={20} style={styles.infoIcon} />
-            <Text style={styles.infoText}>{ appointmentDetails ? getDate(appointmentDetails) : ''}</Text>
+            <Text style={styles.infoText}>{appointmentDetails ? getDate(appointmentDetails) : ""}</Text>
           </View>
           <View style={styles.infoRow}>
             <MaterialCommunityIcons name="clock-outline" size={20} style={styles.infoIcon} />
-            <Text style={styles.infoText}>{ appointmentDetails ? getStartTime(appointmentDetails) : ''}</Text>
+            <Text style={styles.infoText}>{appointmentDetails ? getStartTime(appointmentDetails) : ""}</Text>
           </View>
 
           <View style={styles.infoRow}>

@@ -5,8 +5,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { ActivityIndicator, Card, Chip, MD3Theme } from "react-native-paper";
+import { Card, Chip, MD3Theme } from "react-native-paper";
 import { useAppTheme } from "../../../hooks/useAppTheme";
+import LoadingScreen from "../../../components/LoadingScreen";
+import InterpreterNotFoundScreen from "../../../components/InterpreterNotFoundScreen";
 
 export default function InterpreterDetailScreen() {
   const router = useRouter();
@@ -33,36 +35,9 @@ export default function InterpreterDetailScreen() {
   }, [id]);
 
   if (isLoading) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: theme.colors.background,
-        }}
-      >
-        <Stack.Screen options={{ headerShown: false }} />
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text
-          style={{
-            marginTop: 16,
-            color: theme.colors.onBackground,
-          }}
-        >
-          Loading...
-        </Text>
-      </View>
-    );
-  }
-
-  // Defensive programming
-  else if (!profile) {
-    return (
-      <View>
-        <Text>Interpreter not found.</Text>
-      </View>
-    );
+    return <LoadingScreen />;
+  } else if (!profile) {
+    return <InterpreterNotFoundScreen />;
   }
 
   const initials = profile.name
@@ -86,9 +61,15 @@ export default function InterpreterDetailScreen() {
       <View style={styles.contentContainer}>
         {/* --- Profile Section --- */}
         <View style={styles.profileSection}>
-          <LinearGradient colors={[theme.colors.primary, theme.colors.secondary]} style={styles.avatarContainer}>
+          {/* <LinearGradient colors={[theme.colors.primary, theme.colors.secondary]} style={styles.avatarContainer}>
             <Text style={styles.avatarText}>{initials}</Text>
-          </LinearGradient>
+          </LinearGradient> */}
+          <Image
+            source={{
+              uri: profile.photo,
+            }}
+            style={styles.avatarContainer}
+          />
 
           <Text style={styles.name}>{profile.name}</Text>
 

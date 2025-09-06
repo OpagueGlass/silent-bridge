@@ -3,9 +3,7 @@ import { useAppTheme } from "@/hooks/useAppTheme";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import React from "react";
-import { Text, View } from "react-native";
-import { ActivityIndicator } from "react-native-paper";
+import LoadingScreen from "../../components/LoadingScreen";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -13,26 +11,7 @@ export default function TabLayout() {
   const { authState, isInterpreter } = useAuth();
 
   if (authState.isLoading) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: theme.colors.background,
-        }}
-      >
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text
-          style={{
-            marginTop: 16,
-            color: theme.colors.onBackground,
-          }}
-        >
-          Loading...
-        </Text>
-      </View>
-    );
+    return <LoadingScreen />;
   }
 
   // // Don't render tabs if not authenticated
