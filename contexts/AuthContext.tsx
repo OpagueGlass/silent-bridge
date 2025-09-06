@@ -1,4 +1,5 @@
-import { hasInterpreterProfile, getProfile, Profile } from "@/utils/query";
+import { getProfile, hasInterpreterProfile, Profile } from "@/utils/query";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Session, User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../utils/supabase";
@@ -47,9 +48,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       // Checks for an existing session on initial load
       setSession(session);
-      setProviderToken(session?.provider_token || null);
       if (session?.user) {
         await loadProfile(session.user);
+        await refreshProviderToken();
       }
       updateAuthState({ isLoading: false });
     });
@@ -57,9 +58,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listens for changes to auth state
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
-      setProviderToken(session?.provider_token || null);
+      
+      // Store the refresh token whenever we get a new session
+      if (session?.provider_refresh_token) {
+        await AsyncStorage.setItem("providerRefreshToken", session.provider_refresh_token);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -75,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         scopes: "https://www.googleapis.com/auth/calendar.events",
         queryParams: {
           access_type: "offline",
-          prompt: "consent"
+          prompt: "consent",
         },
         redirectTo: `${window.location.origin}/auth/callback`,
       },
@@ -87,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   const signOut = async () => {
     await supabase.auth.signOut();
+    await AsyncStorage.setItem("providerRefreshToken", "");
     setProfile(null);
     setProviderToken(null);
     setIsInterpreter(false);
@@ -127,8 +133,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Refreshes the Google provider token when it expires
    */
   const refreshProviderToken = async (): Promise<string | null> => {
-    if (!session?.provider_refresh_token) {
+    const token = await AsyncStorage.getItem("providerRefreshToken");
+    if (!token) {
       console.error("No refresh token available");
+      await signIn();
       return null;
     }
 
@@ -141,12 +149,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: new URLSearchParams({
           client_id: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID!,
           client_secret: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET!,
-          refresh_token: session.provider_refresh_token,
+          refresh_token: token,
           grant_type: "refresh_token",
         }),
       });
 
       if (!response.ok) {
+        console.error(`Token refresh failed: ${response.status}`);
+        if (response.status === 400 || response.status === 401) {
+          // If token is invalid or expired, try to sign in again
+          await signIn();
+        }
         throw new Error(`Token refresh failed: ${response.status}`);
       }
 
@@ -161,6 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null;
     } catch (error) {
       console.error("Failed to refresh provider token:", error);
+      await signIn();
       return null;
     }
   };
@@ -169,16 +183,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Gets a valid provider token and refreshing if necessary
    */
   const getValidProviderToken = async (): Promise<string | null> => {
-    if (!session?.provider_token || !providerToken) return await refreshProviderToken();
-
-    try {
-      // Test if current token is valid by making a simple Google API call
-      const response = await fetch("https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=" + providerToken);
-      if (response.ok) {
-        return providerToken;
+    if (providerToken) {
+      try {
+        // Test if current token is valid by making a simple Google API call
+        const response = await fetch("https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=" + providerToken);
+        if (response.ok) {
+          return providerToken;
+        }
+      } catch (error) {
+        return await refreshProviderToken();
       }
-    } catch (error) {
-      return await refreshProviderToken();
     }
 
     return await refreshProviderToken();
