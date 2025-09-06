@@ -1,7 +1,7 @@
-import { supabase } from "./supabase";
-import { getAgeRangeFromDOB, getMinMaxDOB } from "./helper";
 import { AgeRange } from "@/constants/data";
 import { Tables } from "./database-types";
+import { getAgeRangeFromDOB, getMinMaxDOB } from "./helper";
+import { supabase } from "./supabase";
 
 // Profile and InterpreterProfile interfaces
 export interface Profile {
@@ -21,10 +21,11 @@ export interface InterpreterProfile extends Profile {
 }
 
 export interface Appointment {
+  id: number; 
+  status: "Approved" | "Pending" | "Completed" | "Rejected" | "Cancelled";
   startTime: string;
   endTime: string;
   hospitalName: string | null;
-  status: string;
   meetingUrl: string | null;
   profile: Profile | null;
 }
@@ -89,6 +90,7 @@ const convertToInterpreterProfile = (data: {
 
 const convertToAppointment = (
   data: {
+    id: number;
     start_time: string;
     end_time: string;
     hospital_name: string | null;
@@ -97,12 +99,13 @@ const convertToAppointment = (
   },
   profile: Tables<"profile"> | null
 ): Appointment => {
-  const { start_time, end_time, hospital_name, status, meeting_url } = data;
+  const { id, status, start_time, end_time, hospital_name, meeting_url } = data;
   const formattedRest = {
+    id,
+    status: status as Appointment["status"],
     startTime: start_time,
     endTime: end_time,
     hospitalName: hospital_name,
-    status: status,
     meetingUrl: meeting_url,
   };
 
@@ -353,6 +356,8 @@ export const getUpcomingUserAppointments = async (user_id: string) => {
     .from("appointment")
     .select(
       `
+      id, 
+      status,
       start_time,
       end_time,
       deaf_user_id,
@@ -389,6 +394,8 @@ export const getUpcomingInterpreterAppointments = async (interpreter_id: string)
     .from("appointment")
     .select(
       `
+      id,
+      status,
       start_time,
       end_time,
       interpreter_id,
@@ -425,6 +432,8 @@ export const getReviewUserAppointments = async (user_id: string) => {
     .from("appointment")
     .select(
       `
+      id,
+      status,
       start_time,
       end_time,
       deaf_user_id,
@@ -467,6 +476,8 @@ export const getReviewInterpreterAppointments = async (interpreter_id: string) =
     .from("appointment")
     .select(
       `
+      id,
+      status,
       start_time,
       end_time,
       interpreter_id,
