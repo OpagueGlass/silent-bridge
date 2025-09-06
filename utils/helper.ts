@@ -1,5 +1,5 @@
 import { AgeRange, AGE_RANGE, Spec, Language, State } from "@/constants/data";
-import { Appointment } from "./query";
+import { Appointment, Profile } from "./query";
 
 export const getAgeRangeFromDOB = (dateOfBirth: string): AgeRange => {
   const age = Math.floor((Date.now() - new Date(dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365));
@@ -32,29 +32,37 @@ export const getDuration = (appointment: Appointment) => {
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 };
 
-export const getStartTime = (appointment: Appointment) => {
+export const getDate = (appointment: { startTime: string }) => {
+  const startTime = new Date(appointment.startTime);
+  return startTime.toLocaleDateString("en-GB");
+}
+
+export const getStartTime = (appointment: { startTime: string }) => {
   const startTime = new Date(appointment.startTime);
   return startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-export const getTimeRange = (appointment: Appointment) => {
+export const getTimeRange = (appointment: { startTime: string, endTime: string }) => {
   const endTime = new Date(appointment.endTime);
   return `${getStartTime(appointment)} - ${endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 };
 
-export const getMeetLink = async (providerToken: string, startTime: string, endTime: string) => {
+export const getMeetLink = async (providerToken: string, startTime: string, endTime: string, profile: Profile) => {
   // Use providerToken to create a Google Meet link via Google Calendar API
   const event = {
-    summary: "Meeting Title",
+    summary: `Appointment with ${profile.name}`,
     start: { dateTime: startTime },
     end: { dateTime: endTime },
     conferenceData: {
       createRequest: { requestId: "unique-request-id" },
     },
+    attendees: [
+      { email: profile.email }
+    ]
   };
 
   const response = await fetch(
-    "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1",
+    "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all",
     {
       method: "POST",
       headers: {
