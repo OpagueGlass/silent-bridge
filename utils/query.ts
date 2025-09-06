@@ -35,6 +35,13 @@ export interface Request {
   appointment: Appointment;
 }
 
+export interface Rating {
+  name: string;
+  photo: string;
+  score: number;
+  message: string | null;
+}
+
 // Convert Date to "HH:MM:SS+TZ" format for timetz
 const toTimetz = (date: Date): string => {
   return `${date.toISOString().substring(11, 19)}`;
@@ -542,6 +549,29 @@ export const submitRating = async (
   if (error) {
     console.error("Error submitting rating:", error);
   }
+};
+
+export const getRatings = async (rated_user_id: string): Promise<Rating[]> => {
+  const { data, error } = await supabase
+    .from("rating").select(
+      `
+      profile!rater_id (*),
+      score,
+      message
+      `
+    ).eq("rated_user_id", rated_user_id).order("score", { ascending: false })
+
+  if (error) {
+    console.error("Error fetching reviews:", error);
+    return [];
+  }
+
+  return data.map(({ profile, score, message }) => ({
+    name: profile.name,
+    photo: profile.photo,
+    score,
+    message,
+  }));
 };
 
 /**
