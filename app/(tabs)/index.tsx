@@ -18,6 +18,7 @@ import InterpreterReviewCard from "../../components/InterpreterReviewCard";
 import ReviewModal from "../../components/ReviewModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
+import { joinAppointment } from "../../utils/helper";
 // import {
 //   Appointment,
 //   appointments as userAppointments,
@@ -176,7 +177,7 @@ export default function HomeScreen() {
       case "Approved":
         return (
           <>
-            <Button mode="contained" style={{ flex: 1 }}>
+            <Button mode="contained" style={{ flex: 1 }} onPress={() => joinAppointment(appointment)}>
               Join Appointment
             </Button>
           </>

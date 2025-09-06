@@ -7,6 +7,7 @@ import { Button, Card, Chip, MD3Theme, Text } from "react-native-paper";
 // import { PopulatedRequest } from "../app/data/mockBookingsDeaf";
 import { Appointment } from "../utils/query";
 import { useAppTheme } from "../hooks/useAppTheme";
+import { joinAppointment } from "../utils/helper";
 
 const calculateDuration = (startTime: string, endTime: string): string => {
   const diffInMs = new Date(endTime).getTime() - new Date(startTime).getTime();
@@ -93,7 +94,7 @@ export default function InterpreterApprovedCard({
           </View>
         )}
         <View style={[styles.appointmentActions, { marginTop: 16 }]}>
-          <Button mode="contained" style={{ flex: 1 }}>
+          <Button mode="contained" style={{ flex: 1 }} onPress={() => joinAppointment(appointment)}>
             Join Appointment
           </Button>
         </View>

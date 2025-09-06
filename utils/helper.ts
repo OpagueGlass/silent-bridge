@@ -1,5 +1,7 @@
 import { AgeRange, AGE_RANGE, Spec, Language, State } from "@/constants/data";
 import { Appointment, Profile } from "./query";
+import { Linking } from "react-native";
+import { showAlert } from "./alert";
 
 export const getAgeRangeFromDOB = (dateOfBirth: string): AgeRange => {
   const age = Math.floor((Date.now() - new Date(dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365));
@@ -35,16 +37,16 @@ export const getDuration = (appointment: Appointment) => {
 export const getDate = (appointment: { startTime: string }) => {
   const startTime = new Date(appointment.startTime);
   return startTime.toLocaleDateString("en-GB");
-}
+};
 
 export const getStartTime = (appointment: { startTime: string }) => {
   const startTime = new Date(appointment.startTime);
-  return startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
 
-export const getTimeRange = (appointment: { startTime: string, endTime: string }) => {
+export const getTimeRange = (appointment: { startTime: string; endTime: string }) => {
   const endTime = new Date(appointment.endTime);
-  return `${getStartTime(appointment)} - ${endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  return `${getStartTime(appointment)} - ${endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 };
 
 export const getMeetLink = async (providerToken: string, startTime: string, endTime: string, profile: Profile) => {
@@ -56,9 +58,7 @@ export const getMeetLink = async (providerToken: string, startTime: string, endT
     conferenceData: {
       createRequest: { requestId: "unique-request-id" },
     },
-    attendees: [
-      { email: profile.email }
-    ]
+    attendees: [{ email: profile.email }],
   };
 
   const response = await fetch(
@@ -76,4 +76,13 @@ export const getMeetLink = async (providerToken: string, startTime: string, endT
   const result = await response.json();
   const meetLink = result.conferenceData?.entryPoints?.find((ep: any) => ep.entryPointType === "video")?.uri;
   return meetLink;
+};
+
+export const joinAppointment = (appointment: Appointment) => {
+  if (appointment.meetingUrl) {
+    const meetingLink = `https://meet.google.com/${appointment.meetingUrl}`;
+    Linking.openURL(meetingLink);
+  } else {
+    showAlert("No Meeting Link", "The meeting link for this appointment has not been set yet.");
+  }
 };
