@@ -36,6 +36,13 @@ export interface Request {
   appointment: Appointment;
 }
 
+export interface Rating {
+  name: string;
+  photo: string;
+  score: number;
+  message: string | null;
+}
+
 // Convert Date to "HH:MM:SS+TZ" format for timetz
 const toTimetz = (date: Date): string => {
   return `${date.toISOString().substring(11, 19)}`;
@@ -84,10 +91,10 @@ const convertToInterpreterProfile = (data: {
 const convertToAppointment = (
   data: {
     id: number;
-    status: string;
     start_time: string;
     end_time: string;
     hospital_name: string | null;
+    status: string;
     meeting_url: string | null;
   },
   profile: Tables<"profile"> | null
@@ -355,6 +362,7 @@ export const getUpcomingUserAppointments = async (user_id: string) => {
       end_time,
       deaf_user_id,
       hospital_name,
+      status,
       meeting_url,
       interpreter_profile (
         profile (*)
@@ -393,6 +401,7 @@ export const getUpcomingInterpreterAppointments = async (interpreter_id: string)
       interpreter_id,
       hospital_name,
       meeting_url,
+      status,
       profile (*)
       `
     )
@@ -430,6 +439,7 @@ export const getReviewUserAppointments = async (user_id: string) => {
       deaf_user_id,
       hospital_name,
       meeting_url,
+      status,
       interpreter_profile (
         profile (*)
       )
@@ -473,6 +483,7 @@ export const getReviewInterpreterAppointments = async (interpreter_id: string) =
       interpreter_id,
       hospital_name,
       meeting_url,
+      status,
       profile (*)
       `
     )
@@ -549,6 +560,29 @@ export const submitRating = async (
   if (error) {
     console.error("Error submitting rating:", error);
   }
+};
+
+export const getRatings = async (rated_user_id: string): Promise<Rating[]> => {
+  const { data, error } = await supabase
+    .from("rating").select(
+      `
+      profile!rater_id (*),
+      score,
+      message
+      `
+    ).eq("rated_user_id", rated_user_id).order("score", { ascending: false })
+
+  if (error) {
+    console.error("Error fetching reviews:", error);
+    return [];
+  }
+
+  return data.map(({ profile, score, message }) => ({
+    name: profile.name,
+    photo: profile.photo,
+    score,
+    message,
+  }));
 };
 
 /**

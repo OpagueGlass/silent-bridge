@@ -2,77 +2,111 @@
 
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import {
-  Button,
-  Card,
-  Checkbox,
-  Chip,
-  MD3Theme,
-  Menu,
-  Text,
-  TextInput,
-} from "react-native-paper";
+import { useState, useEffect } from "react";
+import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Button, Card, Chip, MD3Theme, Menu, Text, TextInput } from "react-native-paper";
 import DatePickerInput from "../../components/DatePickerInput";
 import TimePickerInput from "../../components/TimePickerInput";
 import UserProfileModal from "../../components/UserProfileModal";
-import { SPECIALISATION } from "../../constants/data";
-import { useAuth } from "../../contexts/AuthContext";
-import { useAppTheme } from "../../hooks/useAppTheme";
-import { interpreterAppointments } from "../data/mockBookingsDeaf";
-import { interpreters } from "../data/mockData";
+import {
+  searchInterpreters,
+  InterpreterProfile,
+  getRequests,
+  Request,
+  Profile,
+  updateRequest,
+  addAppointmentMeetingURL,
+} from "@/utils/query";
+import { LANGUAGES, SPECIALISATION } from "@/constants/data";
+import { parseDate, getMeetLink, getDuration, getStartTime } from "@/utils/helper";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { showConfirmAlert, showValidationError } from "../../utils/alert";
+
+const durationOptions = ["00:15", "00:30", "00:45", "01:00", "01:15", "01:30", "01:45", "02:00"];
+const ageRangeOptions = [
+  { value: "Any", label: "Any", ageStart: 0, ageEnd: 100 },
+  { value: "18-24", label: "18 - 24", ageStart: 18, ageEnd: 24 },
+  { value: "25-44", label: "25 - 44", ageStart: 25, ageEnd: 44 },
+  { value: "45-60", label: "45 - 60", ageStart: 45, ageEnd: 60 },
+];
+
+// Mock requests for interpreters
+// const requests = [
+//   {
+//     id: 1,
+//     clientName: "Alice Wong",
+//     date: "20/05/2024",
+//     time: "10:00 - 11:00",
+//     type: "Medical Appointment",
+//     location: "Sunway Medical Centre",
+//     status: "Pending",
+//   },
+//   {
+//     id: 2,
+//     clientName: "David Lee",
+//     date: "22/05/2024",
+//     time: "14:00 - 15:30",
+//     type: "Legal Consultation",
+//     location: "Lee Hishammuddin Allen & Gledhill",
+//     status: "Pending",
+//   },
+// ];
+
+const defaultParams = {
+  duration: 0,
+  selectedLanguage: 0,
+  selectedSpecialisation: 7,
+  selectedGender: "Any",
+  ageRange: 0,
+  minRating: 3,
+};
 
 export default function SearchScreen() {
+  const { isInterpreter, profile, getValidProviderToken } = useAuth();
   const router = useRouter();
-  const { isInterpreter } = useAuth();
   const theme = useAppTheme();
   const styles = createStyles(theme);
 
   const [isProfileModalVisible, setProfileModalVisible] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const openProfileModal = (userId: number) => {
-    setSelectedUserId(userId);
-    setProfileModalVisible(true);
-  };
+  const [selectedUserProfile, setSelectedUserProfile] = useState<Profile | null>(null);
+  // const openProfileModal = (userId: number) => {
+  //   setSelectedUserId(userId);
+  //   setProfileModalVisible(true);
+  // };
 
-  const [requests, setRequests] = useState(interpreterAppointments);
+  // const [requests, setRequests] = useState(interpreterAppointments);
   const [statusFilter, setStatusFilter] = useState("Pending");
   const [statusMenuVisible, setStatusMenuVisible] = useState(false);
 
-  const handleUpdateRequestStatus = (
-    requestId: number,
-    newStatus: "Approved" | "Rejected"
-  ) => {
-    setRequests((currentRequests) =>
-      currentRequests.map((req) =>
-        req.id === requestId ? { ...req, status: newStatus } : req
-      )
-    );
-  };
+  // const handleUpdateRequestStatus = (
+  //   requestId: number,
+  //   newStatus: "Approved" | "Rejected"
+  // ) => {
+  //   setRequests((currentRequests) =>
+  //     currentRequests.map((req) =>
+  //       req.id === requestId ? { ...req, status: newStatus } : req
+  //     )
+  //   );
+  // };
 
-  const processedRequests = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  // const processedRequests = useMemo(() => {
+  //   const today = new Date();
+  //   today.setHours(0, 0, 0, 0);
 
-    return requests
-      .filter((r) => r.status !== "Completed")
-      .filter((r) => {
-        const [year, month, day] = r.date.split("-").map(Number);
-        const requestDate = new Date(year, month - 1, day);
-        return requestDate >= today;
-      })
-      .filter((r) => {
-        return statusFilter === "All" || r.status === statusFilter;
-      })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [requests, statusFilter]);
+  //   return requests
+  //     .filter((r) => r.status !== "Completed")
+  //     .filter((r) => {
+  //       const [year, month, day] = r.date.split("-").map(Number);
+  //       const requestDate = new Date(year, month - 1, day);
+  //       return requestDate >= today;
+  //     })
+  //     .filter((r) => {
+  //       return statusFilter === "All" || r.status === statusFilter;
+  //     })
+  //     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  // }, [requests, statusFilter]);
 
   const getStatusChipColor = (status: string) => {
     switch (status) {
@@ -90,112 +124,136 @@ export default function SearchScreen() {
   };
 
   const [searchMode, setSearchMode] = useState<"filter" | "name">("filter");
-
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Search filters
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
-  const [duration, setDuration] = useState("00:15");
+  const [duration, setDuration] = useState(defaultParams.duration);
+  const [selectedLanguage, setSelectedLanguage] = useState(defaultParams.selectedLanguage);
+  const [selectedSpecialisation, setSelectedSpecialisation] = useState(defaultParams.selectedSpecialisation);
+  const [selectedGender, setSelectedGender] = useState(defaultParams.selectedGender);
+  const [ageRange, setAgeRange] = useState(defaultParams.ageRange);
+  const [minRating, setMinRating] = useState(defaultParams.minRating);
+
+  // Dropdown menu visibility
   const [durationMenuVisible, setDurationMenuVisible] = useState(false);
+  const [languageMenuVisible, setLanguageMenuVisible] = useState(false);
+  const [specialisationMenuVisible, setSpecialisationMenuVisible] = useState(false);
+
+  // Results
+  const [hasSearched, setHasSearched] = useState(false);
+  const [displayedInterpreters, setDisplayedInterpreters] = useState<InterpreterProfile[]>([]);
+  const [requests, setRequests] = useState<Request[]>([]);
+
   const openMenu = () => setDurationMenuVisible(true);
   const closeMenu = () => setDurationMenuVisible(false);
-  const durationOptions = [
-    "00:15", "00:30", "00:45",
-    "01:00", "01:15", "01:30",
-    "01:45", "02:00"
-  ];
-  const [selectedLanguage, setSelectedLanguage] = useState("Any");
-  const [languageMenuVisible, setLanguageMenuVisible] = useState(false);
   const openLanguageMenu = () => setLanguageMenuVisible(true);
   const closeLanguageMenu = () => setLanguageMenuVisible(false);
-  const [selectedSpecs, setSelectedSpecs] = useState(
-    new Array(SPECIALISATION.length).fill(false)
-  );
-  const languageOptions = ["Any", "English", "Malay", "Mandarin", "Tamil"];
-  const [selectedGender, setSelectedGender] = useState("Any");
-  const [ageRange, setAgeRange] = useState("Any");
-  const [minRating, setMinRating] = useState(3);
-
-  const [hasSearched, setHasSearched] = useState(false);
-  const [displayedInterpreters, setDisplayedInterpreters] = useState<
-    typeof interpreters
-  >([]);
-  const handleSearch = () => {
-    let results = [];
-    if (searchMode === "name") {
-      if (!searchQuery) {
-        alert("Please enter a name to search.");
-        return;
-      }
-      results = interpreters.filter((interpreter) => {
-        const cleanedQuery = searchQuery.trim().toLowerCase();
-        const nameWords = interpreter.name.toLowerCase().split(" ");
-        const queryWords = cleanedQuery.split(" ");
-        return queryWords.every((queryWord) =>
-          nameWords.some((nameWord) => nameWord.startsWith(queryWord))
-        );
-      });
-    } else {
-      if (!appointmentDate || !appointmentTime) {
-        alert("Please select a date and time.");
-        return;
-      }
-      results = interpreters.filter((interpreter) => {
-        const dateAndTimeMatch =
-          interpreter.availability
-            ?.find((day) => day.date === appointmentDate)
-            ?.slots.includes(appointmentTime) ?? false;
-        const languageMatch = selectedLanguage === "Any" || interpreter.languages.includes(selectedLanguage);
-        const specMatch = (() => {
-          const chosenSpecs = SPECIALISATION.filter(
-            (_, index) => selectedSpecs[index]
-          );
-          if (chosenSpecs.length === 0) {
-            return true;
-          }
-          return chosenSpecs.some(spec => interpreter.specialisation.includes(spec));
-        })();
-        const genderMatch =
-          selectedGender === "Any" || interpreter.gender === selectedGender;
-        const ageMatch =
-          ageRange === "Any"
-            ? true
-            : interpreter.age >= parseInt(ageRange.split("-")[0]) &&
-              interpreter.age <= parseInt(ageRange.split("-")[1]);
-        const ratingMatch = interpreter.rating >= minRating;
-
-        return (
-          dateAndTimeMatch &&
-          languageMatch &&
-          specMatch &&
-          genderMatch &&
-          ageMatch &&
-          ratingMatch
-        );
-      });
-    }
-    setDisplayedInterpreters(results);
-    setHasSearched(true);
-  };
 
   const handleToggleSearchMode = () => {
-    const newMode = searchMode === "filter" ? "name" : "filter";
-    setSearchMode(newMode);
-
-    if (newMode === "name") {
-      setAppointmentDate("");
-      setAppointmentTime("");
-      setDuration("00:15");
-      setSelectedLanguage("Any");
-      setSelectedSpecs(new Array(SPECIALISATION.length).fill(false));
-      setSelectedGender("Any");
-      setAgeRange("Any");
-      setMinRating(3);
-    } else {
-      setSearchQuery("");
-    }
-    setHasSearched(false);
-    setDisplayedInterpreters([]);
+    setSearchMode(searchMode === "filter" ? "name" : "filter");
   };
+  const openSpecialisationMenu = () => setSpecialisationMenuVisible(true);
+  const closeSpecialisationMenu = () => setSpecialisationMenuVisible(false);
+  const openProfileModal = (profile: Profile | null) => {
+    setSelectedUserProfile(profile);
+    setProfileModalVisible(true);
+  };
+
+  const validateSearch = () => {
+    if (appointmentDate === "") {
+      showValidationError("Please select an appointment date.");
+      return false;
+    }
+    if (appointmentTime === "") {
+      showValidationError("Please select an appointment time.");
+      return false;
+    }
+    return true;
+  };
+
+  const handleSearch = () => {
+    if (!validateSearch() || !profile) return;
+
+    const startTime = parseDate(appointmentDate);
+    const [startHour, startMinute] = appointmentTime.split(":").map((num) => parseInt(num, 10));
+    startTime.setHours(startHour, startMinute);
+    const endTime = new Date(startTime.getTime() + (duration + 1) * 15 * 60000);
+    const { ageStart, ageEnd } = ageRangeOptions[ageRange];
+
+    AsyncStorage.setItem(
+      "appointmentDetails",
+      JSON.stringify({
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        id: null,
+        deaf_user_id: profile!.id,
+        hospital_name: null,
+      })
+    );
+
+    setHasSearched(true);
+    searchInterpreters(
+      selectedSpecialisation + 1,
+      selectedLanguage + 1,
+      profile!.location,
+      ageStart,
+      ageEnd,
+      startTime,
+      endTime,
+      minRating,
+      selectedGender === "Any" ? null : selectedGender
+    ).then((results) => {
+      setDisplayedInterpreters(results);
+    });
+  };
+
+  const handleUpdateRequest = (isAccepted: boolean) => async (request: Request, index: number) => {
+    const updateType = isAccepted ? "accept" : "reject";
+    const confirmed = await showConfirmAlert(
+      `${updateType.charAt(0).toUpperCase() + updateType.slice(1)} Request`,
+      `Are you sure you want to ${updateType} this request?`
+    );
+    if (!confirmed) return;
+
+    try {
+      const appointmentId = await updateRequest(request.id, isAccepted);
+      setRequests((prev) => prev.filter((_, i) => i !== index));
+      if (isAccepted) {
+        const providerToken = await getValidProviderToken();
+        const meetingLink = await getMeetLink(
+          providerToken!,
+          request.appointment.startTime,
+          request.appointment.endTime,
+          request.appointment.profile!
+        );
+        const meetingURL = meetingLink.split("/")[3];
+        await addAppointmentMeetingURL(appointmentId, meetingURL);
+      }
+    } catch (error) {
+      console.error("Error updating request:", error);
+    }
+  };
+
+  const handleAcceptRequest = handleUpdateRequest(true);
+  const handleRejectRequest = handleUpdateRequest(false);
+
+  useEffect(() => {
+    const fetchRequests = async () => {
+      if (profile && isInterpreter) {
+        try {
+          const id = profile.id;
+          const requests = await getRequests(id);
+          setRequests(requests);
+        } catch (error) {
+          console.error("Error fetching requests:", error);
+        }
+      }
+    };
+
+    fetchRequests();
+  }, [profile]);
 
   if (isInterpreter) {
     return (
@@ -221,7 +279,7 @@ export default function SearchScreen() {
                 </Button>
               }
             >
-              {["All", "Pending", "Approved", "Rejected", "Cancelled"].map(status => (
+              {["All", "Pending", "Approved", "Rejected", "Cancelled"].map((status) => (
                 <Menu.Item
                   key={status}
                   onPress={() => {
@@ -233,100 +291,86 @@ export default function SearchScreen() {
               ))}
             </Menu>
 
-            {processedRequests.length > 0 ? (
-              processedRequests.map((request) => (
-                <Card key={request.id} style={styles.requestCard}>
-                  <Card.Content>
-                    <View style={styles.requestHeader}>
-                      <View style={styles.requestInfo}>
-                        <Text style={styles.clientName}>
-                          {request.clientName}
-                        </Text>
-                        <Text style={styles.requestDateTime}>
-                          {new Date(request.date).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' })} • {request.time}
-                        </Text>
-                      </View>
-                      <Chip
+            {requests.map((request, index) => (
+              <Card key={request.id} style={styles.requestCard}>
+                <Card.Content>
+                  <View style={styles.requestHeader}>
+                    <View style={styles.requestInfo}>
+                      <Text style={styles.clientName}>{request.appointment.profile?.name}</Text>
+                      <Text style={styles.requestDateTime}>
+                        {new Date(request.appointment.startTime).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}{" "}
+                        • {getStartTime(request.appointment)}
+                      </Text>
+                    </View>
+                    {/* <Chip
                         style={{ backgroundColor: getStatusChipColor(request.status) }}
                         textStyle={{ color: 'white', fontSize: 12 }}
                       >
                         {request.status}
-                      </Chip>
-                    </View>
+                      </Chip> */}
+                  </View>
 
-                    <View style={styles.detailsContainer}>
-                      <View style={styles.requestDetailRow}>
-                        <MaterialCommunityIcons name="email-outline" size={18} color="#666" />
-                        <Text style={styles.requestDetailText} selectable>{request.clientEmail}</Text>
-                      </View>
-                      <View style={styles.requestDetailRow}>
-                        <MaterialCommunityIcons name="clock-outline" size={18} color="#666" />
-                        <Text style={styles.requestDetailText}>Duration: {request.duration}</Text>
-                      </View>
-                      {request.doctorLanguage && (
+                  <View style={styles.detailsContainer}>
+                    <View style={styles.requestDetailRow}>
+                      <MaterialCommunityIcons name="email-outline" size={18} color="#666" />
+                      <Text style={styles.requestDetailText} selectable>
+                        {request.appointment.profile?.email}
+                      </Text>
+                    </View>
+                    <View style={styles.requestDetailRow}>
+                      <MaterialCommunityIcons name="clock-outline" size={18} color="#666" />
+                      <Text style={styles.requestDetailText}>Duration: {getDuration(request.appointment)}</Text>
+                    </View>
+                    {/* {request.doctorLanguage && (
                         <View style={styles.requestDetailRow}>
                           <MaterialCommunityIcons name="translate" size={18} color="#666" />
                           <Text style={styles.requestDetailText}>Doctor's Language: {request.doctorLanguage}</Text>
                         </View>
-                      )}
-                      <View style={styles.requestDetailRow}>
-                        <MaterialCommunityIcons name="hospital-building" size={18} color="#666" />
-                        <Text style={styles.requestDetailText}>Hospital: {request.location}</Text>
-                      </View>
+                      )} */}
+                    <View style={styles.requestDetailRow}>
+                      <MaterialCommunityIcons name="hospital-building" size={18} color="#666" />
+                      <Text style={styles.requestDetailText}>Hospital: {request.appointment.hospitalName}</Text>
                     </View>
+                  </View>
 
-                    <View style={styles.requestActions}>
-                      <Button
-                        mode="text"
-                        onPress={() => openProfileModal(request.id)}
-                        disabled={request.status === 'Rejected' || request.status === 'Cancelled'}
-                      >
-                        Profile
-                      </Button>
-                      
-                      {request.status === "Pending" && (
-                        <View style={styles.rightActionButtons}>
-                          <Button
-                            mode="outlined"
-                            style={[styles.rejectButton, styles.actionButton]}
-                            textColor="#F44336"
-                            onPress={() => handleUpdateRequestStatus(request.id, "Rejected")}
-                          >
-                            Reject
-                          </Button>
-                          <Button
-                            mode="contained"
-                            style={styles.actionButton}
-                            onPress={() => handleUpdateRequestStatus(request.id, "Approved")}
-                          >
-                            Accept
-                          </Button>
-                        </View>
-                      )}
-                      {request.status === "Approved" && (
-                        <Button
-                          mode="contained"
-                          style={styles.actionButton}
-                          onPress={() => alert(`Joining appointment with ${request.clientName}...`)}
-                        >
-                          Join Appointment
-                        </Button>
-                      )}
-                    </View>
-                  </Card.Content>
-                </Card>
-              ))
-            ) : (
-              <Text style={{ textAlign: 'center', color: '#666', marginTop: 20 }}>
-                No requests found for the selected filter.
-              </Text>
-            )}
+                  <View style={styles.requestActions}>
+                    <Button
+                      mode="text"
+                      onPress={() => openProfileModal(request.appointment.profile)}
+                      // disabled={request.status === 'Rejected' || request.status === 'Cancelled'}
+                      style={styles.profileTextButton}
+                    >
+                      Profile
+                    </Button>
+                    <Button
+                      mode="outlined"
+                      style={[styles.actionButton, styles.rejectButton]}
+                      textColor="#F44336"
+                      onPress={() => handleRejectRequest(request, index)}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      mode="contained"
+                      style={styles.actionButton}
+                      onPress={() => handleAcceptRequest(request, index)}
+                    >
+                      Accept
+                    </Button>
+                  </View>
+                </Card.Content>
+              </Card>
+            ))}
           </View>
         </ScrollView>
 
         <UserProfileModal
           visible={isProfileModalVisible}
-          userId={selectedUserId}
+          profile={selectedUserProfile}
           onClose={() => setProfileModalVisible(false)}
         />
       </View>
@@ -338,18 +382,13 @@ export default function SearchScreen() {
       <View style={styles.header}>
         <View style={styles.headerTopRow}>
           <Text style={styles.title}>Interpreter Discovery</Text>
-          <TouchableOpacity
-            style={styles.toggleButton}
-            onPress={handleToggleSearchMode}
-          >
+          <TouchableOpacity style={styles.toggleButton} onPress={handleToggleSearchMode}>
             <MaterialCommunityIcons
               name={searchMode === "filter" ? "account-search" : "tune"}
               size={18}
               color="white"
             />
-            <Text style={styles.toggleButtonText}>
-              {searchMode === "filter" ? "Search by Name" : "Filter Search"}
-            </Text>
+            <Text style={styles.toggleButtonText}>{searchMode === "filter" ? "Search by Name" : "Filter Search"}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -377,6 +416,7 @@ export default function SearchScreen() {
                   value={appointmentDate}
                   onChange={setAppointmentDate}
                   style={styles.dateTimeInput}
+                  minDate={new Date()}
                 />
               </View>
               <View style={styles.dateTimeField}>
@@ -398,20 +438,17 @@ export default function SearchScreen() {
                   visible={durationMenuVisible}
                   onDismiss={closeMenu}
                   anchor={
-                    <TouchableOpacity
-                      onPress={openMenu}
-                      style={styles.dropdownAnchor}
-                    >
-                      <Text style={styles.dropdownText}>{duration}</Text>
+                    <TouchableOpacity onPress={openMenu} style={styles.dropdownAnchor}>
+                      <Text style={styles.dropdownText}>{durationOptions[duration]}</Text>
                       <MaterialCommunityIcons name="chevron-down" size={20} />
                     </TouchableOpacity>
                   }
                 >
-                  {durationOptions.map((option) => (
+                  {durationOptions.map((option, index) => (
                     <Menu.Item
                       key={option}
                       onPress={() => {
-                        setDuration(option);
+                        setDuration(index);
                         closeMenu();
                       }}
                       title={option}
@@ -427,22 +464,17 @@ export default function SearchScreen() {
                   visible={languageMenuVisible}
                   onDismiss={closeLanguageMenu}
                   anchor={
-                    <TouchableOpacity
-                      onPress={openLanguageMenu}
-                      style={styles.dropdownAnchor}
-                    >
-                      <Text style={styles.dropdownText}>
-                        {selectedLanguage}
-                      </Text>
+                    <TouchableOpacity onPress={openLanguageMenu} style={styles.dropdownAnchor}>
+                      <Text style={styles.dropdownText}>{[LANGUAGES[selectedLanguage]]}</Text>
                       <MaterialCommunityIcons name="chevron-down" size={20} />
                     </TouchableOpacity>
                   }
                 >
-                  {languageOptions.map((option) => (
+                  {LANGUAGES.map((option, index) => (
                     <Menu.Item
                       key={option}
                       onPress={() => {
-                        setSelectedLanguage(option);
+                        setSelectedLanguage(index);
                         closeLanguageMenu();
                       }}
                       title={option}
@@ -451,28 +483,33 @@ export default function SearchScreen() {
                 </Menu>
               </View>
             </View>
-
-            {/* --- SPECIALISATIONS --- */}
-            <Text style={styles.filterLabel}>Specialisation</Text>
-            <Card style={styles.checkboxCard}>
-              <Card.Content>
-                <View style={styles.checkboxGrid}>
-                  {SPECIALISATION.map((spec, index) => (
-                    <View key={spec} style={styles.checkboxItem}>
-                      <Checkbox
-                        status={selectedSpecs[index] ? "checked" : "unchecked"}
-                        onPress={() => {
-                          const newSpecs = [...selectedSpecs];
-                          newSpecs[index] = !newSpecs[index];
-                          setSelectedSpecs(newSpecs);
-                        }}
-                      />
-                      <Text style={styles.checkboxLabel}>{spec}</Text>
-                    </View>
+            <View style={styles.durationLanguageRow}>
+              {/* --- SPECIALISATION --- */}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.filterLabel}>Specialisation</Text>
+                <Menu
+                  visible={specialisationMenuVisible}
+                  onDismiss={closeSpecialisationMenu}
+                  anchor={
+                    <TouchableOpacity onPress={openSpecialisationMenu} style={styles.dropdownAnchor}>
+                      <Text style={styles.dropdownText}>{SPECIALISATION[selectedSpecialisation]}</Text>
+                      <MaterialCommunityIcons name="chevron-down" size={20} />
+                    </TouchableOpacity>
+                  }
+                >
+                  {SPECIALISATION.map((option, index) => (
+                    <Menu.Item
+                      key={index}
+                      onPress={() => {
+                        setSelectedSpecialisation(index);
+                        closeSpecialisationMenu();
+                      }}
+                      title={option}
+                    />
                   ))}
-                </View>
-              </Card.Content>
-            </Card>
+                </Menu>
+              </View>
+            </View>
 
             {/* --- GENDER --- */}
             <Text style={styles.filterLabel}>Gender</Text>
@@ -480,9 +517,7 @@ export default function SearchScreen() {
               {[
                 {
                   value: "Any",
-                  icon: (
-                    <MaterialCommunityIcons name="account-group" size={22} />
-                  ),
+                  icon: <MaterialCommunityIcons name="account-group" size={22} />,
                   label: "Any",
                 },
                 {
@@ -500,22 +535,12 @@ export default function SearchScreen() {
                 return (
                   <TouchableOpacity
                     key={option.value}
-                    style={[
-                      styles.genderOption,
-                      isSelected && styles.genderOptionSelected,
-                    ]}
+                    style={[styles.genderOption, isSelected && styles.genderOptionSelected]}
                     onPress={() => setSelectedGender(option.value)}
                     activeOpacity={0.9}
                   >
                     <Text style={styles.genderIcon}>{option.icon}</Text>
-                    <Text
-                      style={[
-                        styles.genderLabel,
-                        isSelected && styles.genderLabelSelected,
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
+                    <Text style={[styles.genderLabel, isSelected && styles.genderLabelSelected]}>{option.label}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -524,31 +549,16 @@ export default function SearchScreen() {
             {/* --- AGE --- */}
             <Text style={styles.filterLabel}>Age</Text>
             <View style={styles.genderRow}>
-              {[
-                { value: "Any", label: "Any" },
-                { value: "18-24", label: "18 - 24" },
-                { value: "25-44", label: "25 - 44" },
-                { value: "45-60", label: "45 - 60" },
-              ].map((option) => {
-                const isSelected = ageRange === option.value;
+              {ageRangeOptions.map((option, index) => {
+                const isSelected = ageRange === index;
                 return (
                   <TouchableOpacity
                     key={option.value}
-                    style={[
-                      styles.genderOption,
-                      isSelected && styles.genderOptionSelected,
-                    ]}
-                    onPress={() => setAgeRange(option.value)}
+                    style={[styles.genderOption, isSelected && styles.genderOptionSelected]}
+                    onPress={() => setAgeRange(index)}
                     activeOpacity={0.9}
                   >
-                    <Text
-                      style={[
-                        styles.genderLabel,
-                        isSelected && styles.genderLabelSelected,
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
+                    <Text style={[styles.genderLabel, isSelected && styles.genderLabelSelected]}>{option.label}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -570,11 +580,7 @@ export default function SearchScreen() {
               </View>
             </View>
 
-            <TextInput
-              style={styles.dateTimeRow}
-              label="Enter hospital's name... (Optional)"
-              mode="outlined"
-            />
+            <TextInput style={styles.dateTimeRow} label="Enter hospital's name... (Optional)" mode="outlined" />
           </>
         )}
 
@@ -596,32 +602,25 @@ export default function SearchScreen() {
             <>
               <Text style={styles.sectionTitle}>Top Matches</Text>
 
-              {displayedInterpreters.slice(0, 5).map((interpreter) => (
+              {displayedInterpreters.map((interpreter) => (
                 <Card key={interpreter.id} style={styles.interpreterCard}>
                   <Card.Content>
                     <View style={styles.interpreterHeader}>
-                      <Image
-                        source={{ uri: interpreter.avatar }}
-                        style={styles.interpreterAvatar}
-                      />
+                      <Image source={{ uri: interpreter.photo }} style={styles.interpreterAvatar} />
                       <View style={styles.interpreterInfo}>
-                        <Text style={styles.interpreterName}>
-                          {interpreter.name}
-                        </Text>
+                        <Text style={styles.interpreterName}>{interpreter.name}</Text>
                         <Text style={styles.interpreterSpecialisation}>
-                          {interpreter.specialisation}
+                          {interpreter.interpreterSpecialisations.map((spec) => SPECIALISATION[spec]).join(", ")}
                         </Text>
                         <View style={styles.interpreterMeta}>
-                          <Text style={styles.interpreterRating}>
-                            ⭐ {interpreter.rating}
-                          </Text>
+                          <Text style={styles.interpreterRating}>⭐ {interpreter.avgRating}</Text>
                         </View>
                         <View style={styles.interpreterTags}>
                           <Chip style={styles.tag} textStyle={styles.tagText}>
                             {interpreter.gender}
                           </Chip>
                           <Chip style={styles.tag} textStyle={styles.tagText}>
-                            {interpreter.age}
+                            {interpreter.ageRange}
                           </Chip>
                         </View>
                       </View>
@@ -636,8 +635,8 @@ export default function SearchScreen() {
                             pathname: "/interpreter/[id]",
                             params: {
                               id: interpreter.id,
-                              date: appointmentDate,
-                              time: appointmentTime,
+                              // date: appointmentDate,
+                              // time: appointmentTime,
                             },
                           });
                         }}
@@ -654,8 +653,8 @@ export default function SearchScreen() {
                               pathname: `/interpreter/[id]/book`,
                               params: {
                                 id: interpreter.id,
-                                date: appointmentDate,
-                                time: appointmentTime,
+                                // date: appointmentDate,
+                                // time: appointmentTime,
                               },
                             });
                           } else {
@@ -772,19 +771,19 @@ const createStyles = (theme: MD3Theme) =>
     },
     rightActionButtons: {
       flex: 1,
-      flexDirection: 'row',
+      flexDirection: "row",
       gap: 8,
     },
     decisionButton: {
       minWidth: 100,
-      justifyContent: 'center',
+      justifyContent: "center",
     },
     profileTextButton: {
       marginRight: 8,
     },
     actionButton: {
       flex: 1,
-      justifyContent: 'center',
+      justifyContent: "center",
     },
     rejectButton: {
       borderColor: "#F44336",

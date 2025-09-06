@@ -369,7 +369,7 @@ export type Database = {
           message: string | null
           rated_user_id: string
           rater_id: string
-          score: number | null
+          score: number
         }
         Insert: {
           appointment_id: number
@@ -377,7 +377,7 @@ export type Database = {
           message?: string | null
           rated_user_id?: string
           rater_id?: string
-          score?: number | null
+          score: number
         }
         Update: {
           appointment_id?: number
@@ -385,7 +385,7 @@ export type Database = {
           message?: string | null
           rated_user_id?: string
           rater_id?: string
-          score?: number | null
+          score?: number
         }
         Relationships: [
           {
