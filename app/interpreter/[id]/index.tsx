@@ -1,56 +1,84 @@
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from "react-native";
-import { useLocalSearchParams, useRouter, Stack, Link } from "expo-router";
-import { interpreters } from "../../data/mockData";
-import { Chip, Card, MD3Theme } from "react-native-paper";
+import { LANGUAGES, SPECIALISATION } from "@/constants/data";
+import { getInterpreterProfile, getRatings, InterpreterProfile, Rating } from "@/utils/query";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Card, Chip, MD3Theme } from "react-native-paper";
 import { useAppTheme } from "../../../hooks/useAppTheme";
 
 export default function InterpreterDetailScreen() {
   const router = useRouter();
 
   const { id, date, time } = useLocalSearchParams();
-  const interpreter = interpreters.find((item) => item.id.toString() === id);
+
+  const [profile, setProfile] = useState<InterpreterProfile | null>(null);
+  const [ratings, setRatings] = useState<Rating[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const theme = useAppTheme();
   const styles = createStyles(theme);
 
-  // Defensive programming
-  if (!interpreter) {
+  useEffect(() => {
+    const fetchInterpreterData = async () => {
+      const interpreterProfile = await getInterpreterProfile(id.toString());
+      const interpreterRatings = await getRatings(id.toString());
+      setProfile(interpreterProfile);
+      setRatings(interpreterRatings);
+      setIsLoading(false);
+    };
+
+    fetchInterpreterData();
+  }, [id]);
+
+  if (isLoading) {
     return (
-      <View style={styles.container}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: theme.colors.background,
+        }}
+      >
+        <Stack.Screen options={{ headerShown: false }} />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text
+          style={{
+            marginTop: 16,
+            color: theme.colors.onBackground,
+          }}
+        >
+          Loading...
+        </Text>
+      </View>
+    );
+  }
+
+  // Defensive programming
+  else if (!profile) {
+    return (
+      <View>
         <Text>Interpreter not found.</Text>
       </View>
     );
   }
 
-  const initials = interpreter.name
+  const initials = profile.name
     .split(" ")
     .map((word) => word[0])
     .slice(0, 2)
     .join("");
-  const fullStars = Math.floor(interpreter.rating);
+  const fullStars = Math.floor(profile.avgRating ?? 0);
 
   return (
     <ScrollView style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
-          <MaterialCommunityIcons
-            name="arrow-left"
-            size={24}
-            color={theme.colors.onSurface}
-          />
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color={theme.colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Interpreter Profile</Text>
       </View>
@@ -58,20 +86,17 @@ export default function InterpreterDetailScreen() {
       <View style={styles.contentContainer}>
         {/* --- Profile Section --- */}
         <View style={styles.profileSection}>
-          <LinearGradient
-            colors={[theme.colors.primary, theme.colors.secondary]}
-            style={styles.avatarContainer}
-          >
+          <LinearGradient colors={[theme.colors.primary, theme.colors.secondary]} style={styles.avatarContainer}>
             <Text style={styles.avatarText}>{initials}</Text>
           </LinearGradient>
 
-          <Text style={styles.name}>{interpreter.name}</Text>
+          <Text style={styles.name}>{profile.name}</Text>
 
           {/* --- Personal Info (Gender & Age) --- */}
           <View style={styles.personalInfoContainer}>
-            <Text style={styles.subtitle}>{interpreter.gender}</Text>
+            <Text style={styles.subtitle}>{profile.gender}</Text>
             <Text style={styles.subtitle}>•</Text>
-            <Text style={styles.subtitle}>{interpreter.age}</Text>
+            <Text style={styles.subtitle}>{profile.ageRange}</Text>
           </View>
 
           {/* --- Rating --- */}
@@ -86,9 +111,7 @@ export default function InterpreterDetailScreen() {
                 />
               ))}
             </View>
-            <Text style={styles.reviewText}>
-              {interpreter.rating} (reviews)
-            </Text>
+            <Text style={styles.reviewText}>{profile.avgRating} (reviews)</Text>
           </View>
 
           {/* --- Mock Availability Status --- */}
@@ -98,51 +121,62 @@ export default function InterpreterDetailScreen() {
           </View>
         </View>
 
-        {/* --- Specializations Section --- */}
+        {/* --- Specialisations Section --- */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Specializations</Text>
+          <Text style={styles.sectionTitle}>Specialisations</Text>
           <View style={styles.chipContainer}>
-            <Chip style={styles.chip} textStyle={styles.chipText}>
-              {interpreter.specialisation}
-            </Chip>
+            {profile.interpreterSpecialisations.map((spec) => (
+              <Chip key={spec} style={styles.chip} textStyle={styles.chipText}>
+                {SPECIALISATION[spec]}
+              </Chip>
+            ))}
+          </View>
+        </View>
+
+        {/* --- Languages Section --- */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Languages</Text>
+          <View style={styles.chipContainer}>
+            {profile.interpreterLanguages.map((lang) => (
+              <Chip key={lang} style={styles.chip} textStyle={styles.chipText}>
+                {LANGUAGES[lang]}
+              </Chip>
+            ))}
           </View>
         </View>
 
         {/* --- Mock About Section --- */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About</Text>
-          <Text style={styles.aboutText}>
-            Certified interpreter with 8+ years of experience...
-          </Text>
+          {/* <Text style={styles.aboutText}>Certified interpreter with 8+ years of experience...</Text> */}
+          <Text style={styles.aboutText}>Location: {profile.location}</Text>
+          <Text style={styles.aboutText}>Email: {profile.email}</Text>
         </View>
 
         {/* --- Mock Recent Reviews Section --- */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent Reviews</Text>
-          <Card style={styles.reviewCard}>
-            <Card.Content style={styles.reviewCardContent}>
-              <View style={styles.reviewHeader}>
-                <View style={styles.reviewAvatar} />
-                <View>
-                  <Text style={styles.reviewName}>Sarah M.</Text>
+          {ratings.map((rating, index) => (
+            <Card key={index} style={styles.reviewCard}>
+              <Card.Content style={styles.reviewCardContent}>
+                <View style={styles.reviewHeader}>
+                  <Image
+                    source={{
+                      uri: rating.photo,
+                    }}
+                    style={styles.reviewAvatar}
+                  />
+                  <Text style={styles.reviewName}>{rating.name}</Text>
                   <View style={styles.starsContainer}>
-                    {[...Array(5)].map((_, i) => (
-                      <MaterialCommunityIcons
-                        key={i}
-                        name="star"
-                        size={14}
-                        color="#FBBF24"
-                      />
+                    {[...Array(rating.score)].map((_, i) => (
+                      <MaterialCommunityIcons key={i} name="star" size={14} color="#FBBF24" />
                     ))}
                   </View>
                 </View>
-              </View>
-              <Text style={styles.reviewBody}>
-                "Excellent service! Maria was professional and very helpful
-                during my medical appointment."
-              </Text>
-            </Card.Content>
-          </Card>
+                {rating.message && <Text style={styles.reviewBody}>{rating.message}</Text>}
+              </Card.Content>
+            </Card>
+          ))}
         </View>
 
         {/* --- Action Buttons Section --- */}
@@ -153,16 +187,14 @@ export default function InterpreterDetailScreen() {
               router.push({
                 pathname: `/interpreter/[id]/book`,
                 params: {
-                  id: interpreter.id,
+                  id: profile.id,
                   date,
                   time,
                 },
               })
             }
           >
-          <Text style={[styles.buttonText, styles.buttonTextPrimary]}>
-              Book Session
-            </Text>
+            <Text style={[styles.buttonText, styles.buttonTextPrimary]}>Book Session</Text>
           </TouchableOpacity>
 
           {/* <TouchableOpacity style={[styles.button, styles.buttonSecondary]}>
@@ -290,6 +322,7 @@ const createStyles = (theme: MD3Theme) =>
     reviewCard: {
       borderRadius: 12,
       backgroundColor: theme.colors.surface,
+      marginBottom: 12,
     },
     reviewCardContent: {
       padding: 16,

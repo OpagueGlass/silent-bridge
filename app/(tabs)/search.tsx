@@ -2,9 +2,9 @@
 
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
-import { Button, Card, Checkbox, Chip, MD3Theme, Menu, Text, TextInput } from "react-native-paper";
+import { Button, Card, Chip, MD3Theme, Menu, Text, TextInput } from "react-native-paper";
 import DatePickerInput from "../../components/DatePickerInput";
 import TimePickerInput from "../../components/TimePickerInput";
 import UserProfileModal from "../../components/UserProfileModal";
@@ -21,6 +21,8 @@ import { LANGUAGES, SPECIALISATION } from "@/constants/data";
 import { parseDate, getMeetLink, getDuration, getStartTime } from "@/utils/helper";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { showConfirmAlert, showValidationError } from "../../utils/alert";
 
 const durationOptions = ["00:15", "00:30", "00:45", "01:00", "01:15", "01:30", "01:45", "02:00"];
 const ageRangeOptions = [
@@ -159,12 +161,37 @@ export default function SearchScreen() {
     setProfileModalVisible(true);
   };
 
+  const validateSearch = () => {
+    if (appointmentDate === "") {
+      showValidationError("Please select an appointment date.");
+      return false;
+    }
+    if (appointmentTime === "") {
+      showValidationError("Please select an appointment time.");
+      return false;
+    }
+    return true;
+  };
+
   const handleSearch = () => {
+    if (!validateSearch() || !profile) return;
+
     const startTime = parseDate(appointmentDate);
     const [startHour, startMinute] = appointmentTime.split(":").map((num) => parseInt(num, 10));
     startTime.setHours(startHour, startMinute);
     const endTime = new Date(startTime.getTime() + (duration + 1) * 15 * 60000);
     const { ageStart, ageEnd } = ageRangeOptions[ageRange];
+
+    AsyncStorage.setItem(
+      "appointmentDetails",
+      JSON.stringify({
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        id: null,
+        deaf_user_id: profile!.id,
+        hospital_name: null,
+      })
+    );
 
     setHasSearched(true);
     searchInterpreters(
@@ -183,6 +210,13 @@ export default function SearchScreen() {
   };
 
   const handleUpdateRequest = (isAccepted: boolean) => async (request: Request, index: number) => {
+    const updateType = isAccepted ? "accept" : "reject";
+    const confirmed = await showConfirmAlert(
+      `${updateType.charAt(0).toUpperCase() + updateType.slice(1)} Request`,
+      `Are you sure you want to ${updateType} this request?`
+    );
+    if (!confirmed) return;
+
     try {
       const appointmentId = await updateRequest(request.id, isAccepted);
       setRequests((prev) => prev.filter((_, i) => i !== index));
@@ -191,7 +225,8 @@ export default function SearchScreen() {
         const meetingLink = await getMeetLink(
           providerToken!,
           request.appointment.startTime,
-          request.appointment.endTime
+          request.appointment.endTime,
+          request.appointment.profile!
         );
         const meetingURL = meetingLink.split("/")[3];
         await addAppointmentMeetingURL(appointmentId, meetingURL);
@@ -381,6 +416,7 @@ export default function SearchScreen() {
                   value={appointmentDate}
                   onChange={setAppointmentDate}
                   style={styles.dateTimeInput}
+                  minDate={new Date()}
                 />
               </View>
               <View style={styles.dateTimeField}>
@@ -599,8 +635,8 @@ export default function SearchScreen() {
                             pathname: "/interpreter/[id]",
                             params: {
                               id: interpreter.id,
-                              date: appointmentDate,
-                              time: appointmentTime,
+                              // date: appointmentDate,
+                              // time: appointmentTime,
                             },
                           });
                         }}
@@ -617,8 +653,8 @@ export default function SearchScreen() {
                               pathname: `/interpreter/[id]/book`,
                               params: {
                                 id: interpreter.id,
-                                date: appointmentDate,
-                                time: appointmentTime,
+                                // date: appointmentDate,
+                                // time: appointmentTime,
                               },
                             });
                           } else {

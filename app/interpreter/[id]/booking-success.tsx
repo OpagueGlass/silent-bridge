@@ -1,40 +1,50 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Linking,
-  Alert,
-  Pressable,
-} from "react-native";
+import { useState, useEffect, useMemo } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, Pressable } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { interpreters } from "../../data/mockData";
-import { MD3Theme } from "react-native-paper";
+import { ActivityIndicator, MD3Theme } from "react-native-paper";
 import { useAppTheme } from "../../../hooks/useAppTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { getInterpreterProfile, InterpreterProfile } from "@/utils/query";
+import { SPECIALISATION } from "@/constants/data";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getDate, getStartTime } from "@/utils/helper";
 
 export default function BookingSuccessScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
+  const { id } = useLocalSearchParams();
 
   const theme = useAppTheme();
-  const styles = React.useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const [profile, setProfile] = useState<InterpreterProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
 
-  const interpreterId = params.id as string;
-  const date = params.date as string;
-  const time = params.time as string;
+  useEffect(() => {
+    const fetchInterpreterProfile = async () => {
+      const interpreterProfile = await getInterpreterProfile(id.toString());
+      setProfile(interpreterProfile);
+      const storedDetails = await AsyncStorage.getItem("appointmentDetails").then((data) =>
+        data ? JSON.parse(data) : null
+      );
+      if (storedDetails) {
+        setDate(getDate(storedDetails));
+        setTime(getStartTime(storedDetails));
+      }
+      setIsLoading(false);
+    };
+
+    fetchInterpreterProfile();
+  }, [id]);
 
   const [isHovering, setIsHovering] = useState(false);
   const handleEmailPress = async () => {
-    if (!interpreter?.email) return;
+    if (!profile?.email) return;
 
     const subject = `Inquiry Regarding Booking Request`;
-    const url = `mailto:${interpreter.email}?subject=${encodeURIComponent(
-      subject
-    )}`;
+    const url = `mailto:${profile.email}?subject=${encodeURIComponent(subject)}`;
 
     try {
       const canOpen = await Linking.canOpenURL(url);
@@ -48,11 +58,32 @@ export default function BookingSuccessScreen() {
     }
   };
 
-  const interpreter = interpreters.find(
-    (item) => item.id.toString() === interpreterId
-  );
+  if (isLoading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: theme.colors.background,
+        }}
+      >
+        <Stack.Screen options={{ headerShown: false }} />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text
+          style={{
+            marginTop: 16,
+            color: theme.colors.onBackground,
+          }}
+        >
+          Loading...
+        </Text>
+      </View>
+    );
+  }
 
-  if (!interpreter) {
+  // Defensive programming
+  else if (!profile) {
     return (
       <View style={styles.screen}>
         <Text>Error: Booking details not found.</Text>
@@ -60,7 +91,7 @@ export default function BookingSuccessScreen() {
     );
   }
 
-  const initials = interpreter.name
+  const initials = profile.name
     .split(" ")
     .map((word) => word[0])
     .slice(0, 2)
@@ -70,15 +101,8 @@ export default function BookingSuccessScreen() {
     <ScrollView style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.replace("/(tabs)/search")}
-          style={styles.backButton}
-        >
-          <MaterialCommunityIcons
-            name="arrow-left"
-            size={24}
-            color={theme.colors.onSurface}
-          />
+        <TouchableOpacity onPress={() => router.replace("/(tabs)/search")} style={styles.backButton}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color={theme.colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Booking Confirmed</Text>
       </View>
@@ -88,51 +112,38 @@ export default function BookingSuccessScreen() {
             <MaterialCommunityIcons name="check" size={48} color="white" />
           </View>
           <Text style={styles.successTitle}>Request Sent!</Text>
-          <Text style={styles.successSubtitle}>
-            Waiting for your interpreter to accept your request
-          </Text>
+          <Text style={styles.successSubtitle}>Waiting for your interpreter to accept your request</Text>
         </View>
 
         <View style={styles.summaryCard}>
           <View style={styles.interpreterRow}>
-            <LinearGradient
-              colors={[theme.colors.primary, theme.colors.secondary]}
-              style={styles.avatarContainer}
-            >
+            <LinearGradient colors={[theme.colors.primary, theme.colors.secondary]} style={styles.avatarContainer}>
               <Text style={styles.avatarText}>{initials}</Text>
             </LinearGradient>
 
             <View style={styles.interpreterInfo}>
-
               <View style={styles.nameRow}>
-
-                <Text style={styles.interpreterName}>{interpreter.name}</Text>
-                <View> 
-                  <Pressable
-                    onHoverIn={() => setIsHovering(true)}
-                    onHoverOut={() => setIsHovering(false)}
-                  >
+                <Text style={styles.interpreterName}>{profile.name}</Text>
+                <View>
+                  <Pressable onHoverIn={() => setIsHovering(true)} onHoverOut={() => setIsHovering(false)}>
                     <TouchableOpacity onPress={handleEmailPress}>
-                      <MaterialCommunityIcons 
-                        name="email-fast" 
-                        size={20} 
-                        color="darkblue"
-                      />
+                      <MaterialCommunityIcons name="email-fast" size={20} color="darkblue" />
                     </TouchableOpacity>
                   </Pressable>
 
                   {isHovering && (
                     <View style={styles.customTooltip}>
-                      <Text style={styles.customTooltipText}>{interpreter.email}</Text>
+                      <Text style={styles.customTooltipText}>{profile.email}</Text>
                     </View>
                   )}
                 </View>
               </View>
 
-              <Text style={styles.interpreterSubtitle}>
-                {interpreter.specialisation}
-              </Text>
-
+              {
+                <Text style={styles.interpreterSubtitle}>
+                  {profile.interpreterSpecialisations.map((spec) => SPECIALISATION[spec]).join(", ")}
+                </Text>
+              }
             </View>
           </View>
 
@@ -144,23 +155,14 @@ export default function BookingSuccessScreen() {
           </View>
 
           <View style={styles.infoRow}>
-            <MaterialCommunityIcons
-              name="calendar-blank"
-              size={20}
-              style={styles.infoIcon}
-            />
+            <MaterialCommunityIcons name="calendar-blank" size={20} style={styles.infoIcon} />
             <Text style={styles.infoText}>{date}</Text>
           </View>
 
           <View style={styles.infoRow}>
-            <MaterialCommunityIcons
-              name="clock-outline"
-              size={20}
-              style={styles.infoIcon}
-            />
+            <MaterialCommunityIcons name="clock-outline" size={20} style={styles.infoIcon} />
             <Text style={styles.infoText}>{time}</Text>
           </View>
-
         </View>
 
         <View style={styles.section}>
@@ -170,12 +172,8 @@ export default function BookingSuccessScreen() {
               <Text style={styles.stepNumberText}>1</Text>
             </View>
             <View style={styles.stepTextContainer}>
-              <Text style={styles.stepTitle}>
-                {interpreter.name} reviews your request
-              </Text>
-              <Text style={styles.stepBody}>
-                Your interpreter will accept or decline shortly
-              </Text>
+              <Text style={styles.stepTitle}>{profile.name} reviews your request</Text>
+              <Text style={styles.stepBody}>Your interpreter will accept or decline shortly</Text>
             </View>
           </View>
           <View style={styles.stepRow}>
@@ -184,9 +182,7 @@ export default function BookingSuccessScreen() {
             </View>
             <View style={styles.stepTextContainer}>
               <Text style={styles.stepTitle}>You'll get notified</Text>
-              <Text style={styles.stepBody}>
-                We'll send you an instant notification with the response
-              </Text>
+              <Text style={styles.stepBody}>We'll send you an instant notification with the response</Text>
             </View>
           </View>
           <View style={styles.stepRow}>
@@ -195,9 +191,7 @@ export default function BookingSuccessScreen() {
             </View>
             <View style={styles.stepTextContainer}>
               <Text style={styles.stepTitle}>Start your session</Text>
-              <Text style={styles.stepBody}>
-                If accepted, you can chat and join your appointment
-              </Text>
+              <Text style={styles.stepBody}>If accepted, you can chat and join your appointment</Text>
             </View>
           </View>
         </View>
@@ -224,9 +218,7 @@ export default function BookingSuccessScreen() {
               color={theme.colors.primary}
               style={styles.buttonIcon}
             />
-            <Text style={[styles.buttonText, styles.buttonTextSecondary]}>
-              Find Other Interpreters
-            </Text>
+            <Text style={[styles.buttonText, styles.buttonTextSecondary]}>Find Other Interpreters</Text>
           </TouchableOpacity>
         </View>
 
@@ -256,14 +248,10 @@ export default function BookingSuccessScreen() {
           <Text style={styles.changedMindText}>Changed your mind?</Text>
           <View style={styles.linksContainer}>
             <TouchableOpacity>
-              <Text style={[styles.linkText, styles.cancelLink]}>
-                Cancel Request
-              </Text>
+              <Text style={[styles.linkText, styles.cancelLink]}>Cancel Request</Text>
             </TouchableOpacity>
             <TouchableOpacity>
-              <Text style={[styles.linkText, styles.supportLink]}>
-                Contact Support
-              </Text>
+              <Text style={[styles.linkText, styles.supportLink]}>Contact Support</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -347,28 +335,28 @@ const createStyles = (theme: MD3Theme) =>
       flex: 1,
     },
     nameRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       marginBottom: 4,
     },
     customTooltip: {
-      position: 'absolute',
-      bottom: '100%', 
-      left: '50%',
-      transform: [{ translateX: -50 }], 
-      backgroundColor: '#616161', 
+      position: "absolute",
+      bottom: "100%",
+      left: "50%",
+      transform: [{ translateX: -50 }],
+      backgroundColor: "#616161",
       paddingHorizontal: 8,
       paddingVertical: 4,
       borderRadius: 4,
-      marginBottom: 8, 
+      marginBottom: 8,
     },
     customTooltipText: {
-      color: 'white',
+      color: "white",
       fontSize: 12,
     },
     interpreterName: {
       fontSize: 16,
-      fontWeight: '600',
+      fontWeight: "600",
       color: theme.colors.onSurface,
       marginRight: 8, // Adds space between the name and the separator
     },
@@ -514,21 +502,21 @@ const createStyles = (theme: MD3Theme) =>
       color: theme.colors.primary,
     },
     statusBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       paddingVertical: 6,
       paddingHorizontal: 12,
-      borderRadius: 999, 
-      alignSelf: 'flex-start', 
-      marginBottom: 16, 
+      borderRadius: 999,
+      alignSelf: "flex-start",
+      marginBottom: 16,
     },
     statusBadgePending: {
-      backgroundColor: '#FFEFCF', 
+      backgroundColor: "#FFEFCF",
     },
     statusText: {
       marginLeft: 6,
-      color: '#9D5200', 
-      fontWeight: '600',
+      color: "#9D5200",
+      fontWeight: "600",
       fontSize: 14,
     },
   });
