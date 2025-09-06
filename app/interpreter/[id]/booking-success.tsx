@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, Pressable } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, Pressable, Image } from "react-native";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { interpreters } from "../../data/mockData";
-import { ActivityIndicator, MD3Theme } from "react-native-paper";
+import { MD3Theme } from "react-native-paper";
 import { useAppTheme } from "../../../hooks/useAppTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -10,6 +9,8 @@ import { getInterpreterProfile, InterpreterProfile } from "@/utils/query";
 import { SPECIALISATION } from "@/constants/data";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getDate, getStartTime } from "@/utils/helper";
+import LoadingScreen from "../../../components/LoadingScreen";
+import InterpreterNotFoundScreen from "../../../components/InterpreterNotFoundScreen";
 
 export default function BookingSuccessScreen() {
   const router = useRouter();
@@ -59,36 +60,9 @@ export default function BookingSuccessScreen() {
   };
 
   if (isLoading) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: theme.colors.background,
-        }}
-      >
-        <Stack.Screen options={{ headerShown: false }} />
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text
-          style={{
-            marginTop: 16,
-            color: theme.colors.onBackground,
-          }}
-        >
-          Loading...
-        </Text>
-      </View>
-    );
-  }
-
-  // Defensive programming
-  else if (!profile) {
-    return (
-      <View style={styles.screen}>
-        <Text>Error: Booking details not found.</Text>
-      </View>
-    );
+    return <LoadingScreen />;
+  } else if (!profile) {
+    return <InterpreterNotFoundScreen />;
   }
 
   const initials = profile.name
@@ -117,9 +91,15 @@ export default function BookingSuccessScreen() {
 
         <View style={styles.summaryCard}>
           <View style={styles.interpreterRow}>
-            <LinearGradient colors={[theme.colors.primary, theme.colors.secondary]} style={styles.avatarContainer}>
+            {/* <LinearGradient colors={[theme.colors.primary, theme.colors.secondary]} style={styles.avatarContainer}>
               <Text style={styles.avatarText}>{initials}</Text>
-            </LinearGradient>
+            </LinearGradient> */}
+            <Image
+              source={{
+                uri: profile.photo,
+              }}
+              style={styles.avatarContainer}
+            />
 
             <View style={styles.interpreterInfo}>
               <View style={styles.nameRow}>
