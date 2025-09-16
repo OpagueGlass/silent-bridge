@@ -9,30 +9,6 @@ import "react-native-reanimated";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { theme } from "@/theme/theme";
-import { showError } from "@/utils/alert";
-
-// function NavigationHandler() {
-//   const { authState, userProfile, user } = useAuth();
-
-//   useEffect(() => {
-//     // Add delay to ensure root layout is mounted
-//     const handleNavigation = () => {
-//       if (!authState.isLoading && !userProfile) {
-
-//         router.replace("/auth");
-//         if (user && !userProfile) {
-//           showError("Profile not found. Please complete your profile setup.");
-//         }
-
-//       }
-//     };
-
-//     const timeoutId = setTimeout(handleNavigation, 1);
-//     return () => clearTimeout(timeoutId);
-//   }, [userProfile, authState.isLoading]);
-
-//   return null;
-// }
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
