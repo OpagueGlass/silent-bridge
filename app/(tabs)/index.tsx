@@ -3,14 +3,7 @@
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
-import {
-  Button,
-  Dialog,
-  Menu,
-  Portal,
-  Text,
-  TextInput,
-} from "react-native-paper";
+import { Button, Dialog, Menu, Portal, Text, TextInput } from "react-native-paper";
 import ClientAppointmentsCard from "../../components/ClientAppointmentsCard";
 import ClientReviewCard from "../../components/ClientReviewCard";
 import InterpreterApprovedCard from "../../components/InterpreterApprovedCard";
@@ -32,12 +25,15 @@ import {
   getReviewUserAppointments,
   getUpcomingUserAppointments,
   getReviewInterpreterAppointments,
-  getUpcomingInterpreterAppointments
+  getUpcomingInterpreterAppointments,
+  submitRating,
 } from "../../utils/query";
-
+import { showAlert } from "@/utils/alert";
 
 export default function HomeScreen() {
-  { /* --- INTERPRETER & CLIENT --- */ }
+  {
+    /* --- INTERPRETER & CLIENT --- */
+  }
   const { profile, isInterpreter } = useAuth();
   const theme = useAppTheme();
   const router = useRouter();
@@ -58,7 +54,9 @@ export default function HomeScreen() {
     }
   };
 
-  { /* --- CLIENT --- */ }
+  {
+    /* --- CLIENT --- */
+  }
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
   const [completedAppointments, setCompletedAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,16 +96,23 @@ export default function HomeScreen() {
     setReviewModalVisible(false);
     setSelectedAppointment(null);
   };
-  const handleSubmitReview = (rating: number, comment: string) => {
+  const handleSubmitReview = async (rating: number, comment: string) => {
     if (selectedAppointment) {
-      console.log(
-        `Submitting review for appointment ID: ${selectedAppointment.id}`
+      if (rating < 1 || rating > 5) {
+        showAlert("Invalid Rating", "Please provide a rating between 1 and 5 stars.");
+        return;
+      }
+      await submitRating(selectedAppointment.id, profile!.id, selectedAppointment.profile!.id,rating, comment)
+      .catch((error) => {
+        console.error("Failed to submit review:", error);
+        showAlert("Submission Failed", "There was an error submitting your review. Please try again.");
+      });
+      setCompletedAppointments((prev) =>
+        prev.filter((app) => app.id !== selectedAppointment.id)
       );
-      console.log(`Rating: ${rating}`);
-      console.log(`Comment: "${comment}"`);
     }
     handleCloseReviewModal();
-    ("Thank you for your review!");
+    showAlert("Appointment Reviewed", "Thank you for your review!");
   };
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -118,7 +123,7 @@ export default function HomeScreen() {
   const [isCancelDialogVisible, setCancelDialogVisible] = useState(false);
 
   const filteredUpcomingAppointments = useMemo(() => {
-    const now = new Date(); 
+    const now = new Date();
     const timeFilteredAppointments = upcomingAppointments.filter((appointment) => {
       const startTime = new Date(appointment.startTime);
       const endTime = new Date(appointment.endTime);
@@ -141,9 +146,7 @@ export default function HomeScreen() {
         })
         .toLowerCase();
       const interpreterName = a.profile?.name.toLowerCase() || "";
-      const queryMatch =
-        displayDate.includes(formattedQuery) ||
-        interpreterName.includes(formattedQuery);
+      const queryMatch = displayDate.includes(formattedQuery) || interpreterName.includes(formattedQuery);
       return statusMatch && queryMatch;
     });
   }, [upcomingAppointments, searchQuery, statusFilter]);
@@ -155,11 +158,7 @@ export default function HomeScreen() {
   const performCancel = () => {
     if (!selectedAppointment) return;
     setUpcomingAppointments((prev) =>
-      prev.map((app) =>
-        app.id === selectedAppointment.id
-          ? { ...app, status: "Cancelled" }
-          : app
-      )
+      prev.map((app) => (app.id === selectedAppointment.id ? { ...app, status: "Cancelled" } : app))
     );
     setCancelDialogVisible(false);
     setSelectedAppointment(null);
@@ -169,10 +168,7 @@ export default function HomeScreen() {
     setSelectedAppointment(null);
   };
 
-  const renderUserAppointmentActions = (
-    status: Appointment["status"],
-    appointment: Appointment
-  ) => {
+  const renderUserAppointmentActions = (status: Appointment["status"], appointment: Appointment) => {
     switch (status) {
       case "Approved":
         return (
@@ -185,11 +181,7 @@ export default function HomeScreen() {
       case "Pending":
         return (
           <>
-            <Button
-              mode="contained"
-              disabled
-              style={styles.actionButtonPrimary}
-            >
+            <Button mode="contained" disabled style={styles.actionButtonPrimary}>
               Awaiting Approval
             </Button>
             <Button
@@ -210,7 +202,9 @@ export default function HomeScreen() {
     }
   };
 
-  { /* --- INTERPRETER --- */ }
+  {
+    /* --- INTERPRETER --- */
+  }
   const [approvedInterpreterAppointments, setApprovedInterpreterAppointments] = useState<Appointment[]>([]);
   const [completedInterpreterAppointments, setCompletedInterpreterAppointments] = useState<Appointment[]>([]);
 
@@ -229,15 +223,14 @@ export default function HomeScreen() {
           ]);
           setCompletedInterpreterAppointments(completedData);
           setApprovedInterpreterAppointments(approvedData);
-        }       
-      else {
-        const [completedData, upcomingData] = await Promise.all([
-          getReviewUserAppointments(profile.id),
-          getUpcomingUserAppointments(profile.id),
-        ]);
-        setCompletedAppointments(completedData);
-        setUpcomingAppointments(upcomingData);
-      }
+        } else {
+          const [completedData, upcomingData] = await Promise.all([
+            getReviewUserAppointments(profile.id),
+            getUpcomingUserAppointments(profile.id),
+          ]);
+          setCompletedAppointments(completedData);
+          setUpcomingAppointments(upcomingData);
+        }
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -261,15 +254,13 @@ export default function HomeScreen() {
   };
   const handleSubmitClientReview = (rating: number, comment: string) => {
     if (appointmentToReview) {
-      console.log(
-        `Interpreter reviewing client: ${appointmentToReview.profile?.name}`
-      );
+      console.log(`Interpreter reviewing client: ${appointmentToReview.profile?.name}`);
       console.log(`Rating: ${rating}, Comment: "${comment}"`);
     }
     handleCloseClientReview();
   };
 
-  const [interpreterSearchQuery, setInterpreterSearchQuery] = useState(""); 
+  const [interpreterSearchQuery, setInterpreterSearchQuery] = useState("");
 
   const filteredInterpreterApproved = useMemo(() => {
     return approvedInterpreterAppointments
@@ -285,24 +276,20 @@ export default function HomeScreen() {
             year: "numeric",
           })
           .toLowerCase();
-        const clientName = a.profile?.name.toLowerCase() || '';
+        const clientName = a.profile?.name.toLowerCase() || "";
 
-        return (
-          displayDate.includes(formattedQuery) || clientName.includes(formattedQuery)
-        );
+        return displayDate.includes(formattedQuery) || clientName.includes(formattedQuery);
       });
   }, [approvedInterpreterAppointments, interpreterSearchQuery]);
 
-  { /* --- INTERPRETER UI --- */ }
+  {
+    /* --- INTERPRETER UI --- */
+  }
   if (isInterpreter) {
     return (
-      <ScrollView
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
-      >
+      <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {/* --- HEADER --- */}
-        <View
-          style={[styles.header, { backgroundColor: theme.colors.primary }]}
-        >
+        <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
           <Text variant="headlineMedium" style={styles.greeting}>
             Welcome back, {profile?.name || "Interpreter"}!
           </Text>
@@ -357,10 +344,7 @@ export default function HomeScreen() {
 
               {filteredInterpreterApproved.length > 0 ? (
                 filteredInterpreterApproved.map((appointment) => (
-                  <InterpreterApprovedCard
-                    key={appointment.id}
-                    appointment={appointment}
-                  />
+                  <InterpreterApprovedCard key={appointment.id} appointment={appointment} />
                 ))
               ) : (
                 <Text>No approved appointments found.</Text>
@@ -384,11 +368,11 @@ export default function HomeScreen() {
     );
   }
 
-  { /* --- CLIENT UI --- */ }
+  {
+    /* --- CLIENT UI --- */
+  }
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-    >
+    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* --- HEADER --- */}
       <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
         <Text variant="headlineMedium" style={styles.greeting}>
@@ -414,11 +398,7 @@ export default function HomeScreen() {
             </View>
             {completedAppointments.length > 0 ? (
               completedAppointments.map((appointment) => (
-                <ClientReviewCard
-                  key={appointment.id}
-                  appointment={appointment}
-                  onReview={handleOpenReviewModal}
-                />
+                <ClientReviewCard key={appointment.id} appointment={appointment} onReview={handleOpenReviewModal} />
               ))
             ) : (
               <Text>No recent sessions to review.</Text>
@@ -453,18 +433,16 @@ export default function HomeScreen() {
                   </Button>
                 }
               >
-                {["All", "Approved", "Pending", "Rejected", "Cancelled"].map(
-                  (status) => (
-                    <Menu.Item
-                      key={status}
-                      onPress={() => {
-                        setStatusFilter(status);
-                        setStatusMenuVisible(false);
-                      }}
-                      title={status}
-                    />
-                  )
-                )}
+                {["All", "Approved", "Pending", "Rejected", "Cancelled"].map((status) => (
+                  <Menu.Item
+                    key={status}
+                    onPress={() => {
+                      setStatusFilter(status);
+                      setStatusMenuVisible(false);
+                    }}
+                    title={status}
+                  />
+                ))}
               </Menu>
             </View>
             {filteredUpcomingAppointments.length > 0 ? (
@@ -473,10 +451,7 @@ export default function HomeScreen() {
                   key={appointment.id}
                   appointment={appointment}
                   getStatusColor={getStatusColor}
-                  actions={renderUserAppointmentActions(
-                    appointment.status,
-                    appointment
-                  )}
+                  actions={renderUserAppointmentActions(appointment.status, appointment)}
                 />
               ))
             ) : (
@@ -501,9 +476,7 @@ export default function HomeScreen() {
         <Dialog visible={isCancelDialogVisible} onDismiss={hideCancelDialog}>
           <Dialog.Title>Cancel Request</Dialog.Title>
           <Dialog.Content>
-            <Text variant="bodyMedium">
-              Are you sure you want to cancel this appointment request?
-            </Text>
+            <Text variant="bodyMedium">Are you sure you want to cancel this appointment request?</Text>
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={hideCancelDialog}>No</Button>
@@ -513,7 +486,6 @@ export default function HomeScreen() {
           </Dialog.Actions>
         </Dialog>
       </Portal>
-
     </ScrollView>
   );
 }
