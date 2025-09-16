@@ -2,22 +2,21 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import LoadingScreen from "../../components/LoadingScreen";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const theme = useAppTheme();
-  const { authState, isInterpreter } = useAuth();
+  const { authState, isInterpreter, profile } = useAuth();
 
   if (authState.isLoading) {
     return <LoadingScreen />;
   }
 
-  // // Don't render tabs if not authenticated
-  // if (!authState.isAuthenticated || !userProfile) {
-  //   return null;
-  // }
+  if (!profile) {
+    return <Redirect href="/auth" />;
+  }
 
   return (
     <Tabs

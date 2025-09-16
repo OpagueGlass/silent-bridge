@@ -21,7 +21,7 @@ export interface InterpreterProfile extends Profile {
 }
 
 export interface Appointment {
-  id: number; 
+  id: number;
   status: "Approved" | "Pending" | "Completed" | "Rejected" | "Cancelled";
   startTime: string;
   endTime: string;
@@ -442,11 +442,13 @@ export const getReviewUserAppointments = async (user_id: string) => {
       status,
       interpreter_profile (
         profile (*)
-      )
+      ),
+      rating (*)
       `
     )
     .eq("deaf_user_id", user_id)
     .not("interpreter_id", "is", null)
+    .is("rating", null)
     .lt("end_time", new Date().toISOString())
     .gte("end_time", reviewPeriod.toISOString())
     .order("start_time", { ascending: true });
@@ -564,13 +566,16 @@ export const submitRating = async (
 
 export const getRatings = async (rated_user_id: string): Promise<Rating[]> => {
   const { data, error } = await supabase
-    .from("rating").select(
+    .from("rating")
+    .select(
       `
       profile!rater_id (*),
       score,
       message
       `
-    ).eq("rated_user_id", rated_user_id).order("score", { ascending: false })
+    )
+    .eq("rated_user_id", rated_user_id)
+    .order("score", { ascending: false });
 
   if (error) {
     console.error("Error fetching reviews:", error);
