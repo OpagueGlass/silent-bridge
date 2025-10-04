@@ -1,14 +1,14 @@
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { getAvailability, setAvailability } from "@/utils/query";
+import { showError, showSuccess, showValidationError } from "@/utils/alert";
+import { deleteAvailability, getAvailability, setAvailability } from "@/utils/query";
 import { Stack, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
-import { ActivityIndicator, Button, Card, MD3Theme, Modal, Portal, Text } from "react-native-paper";
 import { Calendar, DateData } from "react-native-calendars";
+import { ActivityIndicator, Button, Card, IconButton, MD3Theme, Modal, Portal, Text } from "react-native-paper";
 import TimePickerInput from "../../components/TimePickerInput";
-import DatePickerInput from "../../components/DatePickerInput"; 
-import { showError, showSuccess, showValidationError } from "@/utils/alert";
 
 type WeeklyAvailability = {
   day_id: number;
@@ -22,38 +22,42 @@ const daysOfWeek = [
   { label: "Sat", id: 6 }, { label: "Sun", id: 7 }
 ];
 
-const formatDate = (date: Date) => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-};
-
-// Every time the screen needs to update or re-render (like when click a button), the entire function runs again
 export default function ManageAvailabilityScreen() {
   const theme = useAppTheme();
   const styles = createStyles(theme);
   const { profile } = useAuth();
+  const router = useRouter();
 
+  // Data from database
   const [weeklyAvailability, setWeeklyAvailability] = useState<WeeklyAvailability[]>([]);
-  // Which month the calendar is currently displaying
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Calendar state
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  // Which single day the user has tapped on
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
 
-  // To display (popups) the details of the day that clicked
+  // Modal state (popup when click a day)
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [selectedDayInfo, setSelectedDayInfo] = useState<{date: string, dayOfWeek: string, startTime: string, endTime: string} | null>(null);
+  const [selectedDayInfo, setSelectedDayInfo] = useState<{date: string, dayOfWeek: string, dayId: number, startTime: string, endTime: string} | null>(null);
+
+  // Edit modal state
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editStartTime, setEditStartTime] = useState("09:00");
+  const [editEndTime, setEditEndTime] = useState("17:00");
+
+  // Form inputs - Weekly schedule
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("17:00");
   
-  // Fetch existing availability from Supabase and save it to state
+  // Fetch existing availability from Supabase
   useEffect(() => {
     const fetchAvailability = async () => {
       if (!profile?.id) return;
       try {
         const data = await getAvailability(profile.id);
-        // Saves the get data to the component's official memory
         setWeeklyAvailability(data);
       } catch (error) {
         showError("Could not load existing availability.");
@@ -62,6 +66,7 @@ export default function ManageAvailabilityScreen() {
     fetchAvailability();
   }, [profile?.id]);
   
+  // Calculate which dates to mark (highlight) on calendar
   const markedDates = useMemo(() => {
     const marks: { [key: string]: any } = {};
     const availabilityMap = new Map(weeklyAvailability.map(item => [item.day_id, {startTime: item.start_time, endTime: item.end_time}]));
@@ -86,15 +91,9 @@ export default function ManageAvailabilityScreen() {
       }
     }
     return marks;
-  }, [weeklyAvailability, currentMonth, selectedDate, theme.colors]);
+  }, [weeklyAvailability, currentMonth, theme.colors]);
 
-  const [startDate, setStartDate] = useState(formatDate(new Date()));
-  const [endDate, setEndDate] = useState(formatDate(new Date(new Date().setDate(new Date().getDate() + 30))));
-  const [selectedDays, setSelectedDays] = useState<number[]>([]);
-  const [startTime, setStartTime] = useState("09:00");
-  const [endTime, setEndTime] = useState("17:00");
-  const [isLoading, setIsLoading] = useState(false);
-
+  // When user clicks a day on calendar
   const handleDayPress = (day: DateData) => {
     setSelectedDate(day.dateString);
 
@@ -103,24 +102,72 @@ export default function ManageAvailabilityScreen() {
     const availabilityForDay = weeklyAvailability.find(a => a.day_id === dayOfWeek);
 
     if (availabilityForDay) {
+        const startTimeFormatted = availabilityForDay.start_time.substring(0, 5);
+        const endTimeFormatted = availabilityForDay.end_time.substring(0, 5);
+        
         setSelectedDayInfo({
             date: date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
             dayOfWeek: date.toLocaleDateString('en-US', { weekday: 'long' }),
-            startTime: availabilityForDay.start_time.substring(0, 5),
-            endTime: availabilityForDay.end_time.substring(0, 5),
+            dayId: dayOfWeek,
+            startTime: startTimeFormatted,
+            endTime: endTimeFormatted,
         });
+        setEditStartTime(startTimeFormatted);
+        setEditEndTime(endTimeFormatted);
+        setIsEditMode(false);
         setIsModalVisible(true);
     } else {
         setSelectedDayInfo(null);
     }
   };
   
+  // Toggle day selection (Mon, Tue, etc.)
   const handleDayToggle = (dayId: number) => {
     setSelectedDays((prev) =>
       prev.includes(dayId) ? prev.filter((id) => id !== dayId) : [...prev, dayId]
     );
   };
 
+  // Delete availability for a specific day
+  const handleDeleteAvailability = async () => {
+    if (!profile?.id || !selectedDayInfo) return;
+    
+    setIsLoading(true);
+    try {
+      await deleteAvailability(profile.id, selectedDayInfo.dayId);
+      showSuccess("Availability removed");
+      const data = await getAvailability(profile.id);
+      setWeeklyAvailability(data);
+      setIsModalVisible(false);
+    } catch (error) {
+      console.error("Failed to delete availability:", error);
+      showError("An error occurred while deleting availability.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Update availability for a specific day
+  const handleUpdateAvailability = async () => {
+    if (!profile?.id || !selectedDayInfo) return;
+    
+    setIsLoading(true);
+    try {
+      await setAvailability(profile.id, selectedDayInfo.dayId, `${editStartTime}:00`, `${editEndTime}:00`);
+      showSuccess("Availability updated");
+      const data = await getAvailability(profile.id);
+      setWeeklyAvailability(data);
+      setIsEditMode(false);
+      setIsModalVisible(false);
+    } catch (error) {
+      console.error("Failed to update availability:", error);
+      showError("An error occurred while updating availability.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Save availability to database
   const handleApplyAvailability = async () => {
     if (!profile?.id) {
         showError("You must be logged in to set availability.");
@@ -137,12 +184,13 @@ export default function ManageAvailabilityScreen() {
           setAvailability(profile.id, dayId, `${startTime}:00`, `${endTime}:00`)
         );
         await Promise.all(updatePromises);
-        showSuccess("Availability Updated");
+        showSuccess("Availability updated");
         const data = await getAvailability(profile.id);
         setWeeklyAvailability(data);
+        setSelectedDays([]);
       } catch (error) {
         console.error("Failed to set availability:", error);
-        showError("An error occurred while saving your availability. Please try again.");
+        showError("An error occurred while saving your availability.");
       } finally {
         setIsLoading(false);
       }
@@ -156,6 +204,13 @@ export default function ManageAvailabilityScreen() {
           headerStyle: { backgroundColor: theme.colors.primary },
           headerTintColor: theme.colors.onPrimary,
           headerTitleStyle: { color: theme.colors.onPrimary },
+          headerLeft: () => (
+            <IconButton
+              icon="arrow-left"
+              iconColor={theme.colors.onPrimary}
+              onPress={() => router.back()}
+            />
+          ),
         }}
       />
       <ScrollView style={styles.container}>
@@ -182,19 +237,6 @@ export default function ManageAvailabilityScreen() {
         </View>
 
         <View style={styles.card}>
-            <View style={styles.cardSection}>
-                <View style={styles.datePickerRow}>
-                    <View style={styles.datePickerWrapper}>
-                        <Text style={styles.label}>Start date</Text>
-                        <DatePickerInput label="" value={startDate} onChange={setStartDate} />
-                    </View>
-                    <View style={styles.datePickerWrapper}>
-                        <Text style={styles.label}>Valid until</Text>
-                        <DatePickerInput label="" value={endDate} onChange={setEndDate} />
-                    </View>
-                </View>
-            </View>
-
             <View style={styles.cardSection}>
                 <Text style={styles.label}>Repeat on</Text>
                 <View style={styles.dayToggleContainer}>
@@ -250,17 +292,68 @@ export default function ManageAvailabilityScreen() {
               title={selectedDayInfo?.date}
               subtitle={selectedDayInfo?.dayOfWeek}
               titleStyle={styles.modalTitle}
+              right={(props) => (
+                <IconButton
+                  icon={isEditMode ? "close" : "pencil"}
+                  onPress={() => setIsEditMode(!isEditMode)}
+                />
+              )}
             />
             <Card.Content>
-              <View style={styles.modalTimeContainer}>
-                <Text variant="bodyLarge" style={styles.modalTimeText}>
-                  {selectedDayInfo?.startTime} - {selectedDayInfo?.endTime}
-                </Text>
-                <Text style={styles.modalChip}>Weekly</Text>
-              </View>
+              {isEditMode ? (
+                <View>
+                  <View style={styles.modalTimePickerRow}>
+                    <View style={styles.modalTimePickerWrapper}>
+                      <Text style={styles.modalLabel}>Start time</Text>
+                      <TimePickerInput label="" value={editStartTime} onChange={setEditStartTime} />
+                    </View>
+                    <View style={styles.modalTimePickerWrapper}>
+                      <Text style={styles.modalLabel}>End time</Text>
+                      <TimePickerInput label="" value={editEndTime} onChange={setEditEndTime} />
+                    </View>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.modalTimeContainer}>
+                  <Text variant="bodyLarge" style={styles.modalTimeText}>
+                    {selectedDayInfo?.startTime} - {selectedDayInfo?.endTime}
+                  </Text>
+                </View>
+              )}
             </Card.Content>
-            <Card.Actions>
-              <Button onPress={() => setIsModalVisible(false)}>OK</Button>
+            <Card.Actions style={styles.modalActions}>
+              {isEditMode ? (
+                <>
+                  <Button 
+                    mode="outlined" 
+                    onPress={() => setIsEditMode(false)}
+                    disabled={isLoading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    mode="contained" 
+                    onPress={handleUpdateAvailability}
+                    loading={isLoading}
+                    disabled={isLoading}
+                  >
+                    Save
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button 
+                    mode="outlined" 
+                    textColor={theme.colors.error}
+                    onPress={handleDeleteAvailability}
+                    loading={isLoading}
+                    disabled={isLoading}
+                  >
+                    Delete
+                  </Button>
+                  <Button onPress={() => setIsModalVisible(false)}>Close</Button>
+                </>
+              )}
             </Card.Actions>
           </Card>
         </Modal>
@@ -281,23 +374,6 @@ const createStyles = (theme: MD3Theme) =>
       padding: 20,
       backgroundColor: theme.colors.surface,
       borderRadius: theme.roundness * 2,
-    },
-    datePickerRow: {
-        flexDirection: 'row',
-        gap: 16,
-        marginBottom: 12,
-    },
-    datePickerWrapper: {
-        flex: 1,
-    },
-    datePresetRow: {
-        flexDirection: 'row',
-        gap: 8,
-        justifyContent: 'flex-start',
-        alignItems: 'center',
-    },
-    datePresetButton: {
-        flex: 1,
     },
     calendar: {
       borderRadius: theme.roundness * 2,
@@ -333,14 +409,23 @@ const createStyles = (theme: MD3Theme) =>
     modalTimeText: {
         fontWeight: '500',
     },
-    modalChip: {
-        backgroundColor: theme.colors.primaryContainer,
-        color: theme.colors.onPrimaryContainer,
-        borderRadius: theme.roundness,
+    modalTimePickerRow: {
+        flexDirection: 'row',
+        gap: 16,
+        marginTop: 8,
+    },
+    modalTimePickerWrapper: {
+        flex: 1,
+    },
+    modalLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        marginBottom: 8,
+        color: theme.colors.onSurface,
+    },
+    modalActions: {
+        justifyContent: 'flex-end',
         paddingHorizontal: 8,
-        paddingVertical: 4,
-        fontSize: 12,
-        overflow: 'hidden',
     },
     cardSection: {
         marginBottom: 24,

@@ -638,3 +638,22 @@ export const getAvailability = async (interpreter_id: string) => {
 
   return data || [];
 };
+
+/**
+ * Deletes the availability of an interpreter for a particular day.
+ *
+ * @param interpreter_id The ID of the interpreter
+ * @param day_id The ID of the day (1=Monday, 7=Sunday)
+ */
+export const deleteAvailability = async (interpreter_id: string, day_id: number) => {
+  const { error } = await supabase
+    .from("availability")
+    .delete()
+    .eq("interpreter_id", interpreter_id)
+    .eq("day_id", day_id);
+
+  if (error) {
+    console.error("Error deleting availability:", error);
+    throw error;
+  }
+};
