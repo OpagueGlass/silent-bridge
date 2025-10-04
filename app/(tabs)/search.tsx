@@ -694,7 +694,7 @@ const createStyles = (theme: MD3Theme) =>
     },
     header: {
       padding: 20,
-      backgroundColor: "#2196F3",
+      backgroundColor: theme.colors.primary,
       paddingTop: 60,
       overflow: "visible",
     },

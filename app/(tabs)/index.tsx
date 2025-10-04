@@ -290,12 +290,23 @@ export default function HomeScreen() {
       <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {/* --- HEADER --- */}
         <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
+          
           <Text variant="headlineMedium" style={styles.greeting}>
             Welcome back, {profile?.name || "Interpreter"}!
           </Text>
           <Text variant="bodyLarge" style={styles.subtitle}>
             Manage your scheduled appointments
           </Text>
+
+          <Button
+            mode="contained"
+            onPress={() => router.push('/interpreter/availability')}
+            style={{ marginTop: 20, backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
+            icon="calendar-clock"
+          >
+            Manage Availability
+          </Button>     
+       
         </View>
 
         {isLoading ? (

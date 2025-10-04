@@ -612,3 +612,29 @@ export const setAvailability = async (interpreter_id: string, day_id: number, st
     console.error("Error setting availability:", error);
   }
 };
+
+/**
+ * Gets the weekly availability for an interpreter.
+ *
+ * @param interpreter_id The ID of the interpreter
+ * @returns A list of availability objects, each containing day_id, start_time, and end_time
+ */
+export const getAvailability = async (interpreter_id: string) => {
+  const { data, error } = await supabase
+    .from("availability")
+    .select(
+      `
+      day_id,
+      start_time,
+      end_time
+      `
+    )
+    .eq("interpreter_id", interpreter_id);
+
+  if (error) {
+    console.error("Error fetching availability:", error);
+    throw error;
+  }
+
+  return data || [];
+};
