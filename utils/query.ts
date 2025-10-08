@@ -612,3 +612,21 @@ export const setAvailability = async (interpreter_id: string, day_id: number, st
     console.error("Error setting availability:", error);
   }
 };
+
+export const getOtherParticipant = async (roomId: string): Promise<string | null> => {
+  const { data, error } = await supabase.rpc('get_other_participant', { p_room: roomId });
+  if (error) {
+    console.error('get_other_participant error:', error);
+    return null;
+  }
+  return typeof data === 'string' ? data : null;
+};
+
+export const initiateChat = async (otherUserId: string): Promise<string | null> => {
+  const { data, error } = await supabase.rpc('create_or_get_chat_room', { other_user_id: otherUserId });
+  if (error) {
+    console.error('Error initiating chat:', error);
+    return null;
+  }
+  return typeof data === 'string' ? data : null;
+};

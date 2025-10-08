@@ -34,7 +34,9 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="home" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="home" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -42,7 +44,11 @@ export default function TabLayout() {
         options={{
           title: isInterpreter ? "Requests" : "Search",
           tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name={isInterpreter ? "assignment" : "search"} size={size} color={color} />
+            <MaterialIcons
+              name={isInterpreter ? "assignment" : "search"}
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
@@ -50,24 +56,36 @@ export default function TabLayout() {
         name="chat"
         options={{
           title: "Chat",
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="chat" size={size} color={color} />,
-          href: null,
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="chat" size={size} color={color} />
+          ),
         }}
       />
-      <Tabs.Screen 
-        name="sign" 
-          options={{ 
-            title: "Signs",
-            tabBarIcon: ({ color, size }) => <MaterialIcons name="sign-language" size={size} color={color} />,
-          }} 
-      /> 
+      <Tabs.Screen
+        name="sign"
+        options={{
+          title: "Sign",
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="sign-language" size={size} color={color} />
+          ),
+        }}
+      />
       <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color, size }) => <MaterialIcons name="settings" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="settings" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="chat/[id]"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
   );
 }
+

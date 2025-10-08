@@ -1,169 +1,112 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
-import { Card, TextInput, IconButton } from "react-native-paper";
-import { MaterialIcons } from "@expo/vector-icons";
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, FlatList } from 'react-native';
+import { Card, ActivityIndicator } from 'react-native-paper';
+import { useRouter } from 'expo-router';
+import { supabase } from '@/utils/supabase'; // Adjust path if needed
+import { useAuth } from '@/contexts/AuthContext'; // Adjust path if needed
+import { useAppTheme } from '@/hooks/useAppTheme'; // Adjust path if needed
 
-export default function ChatScreen() {
-  const [selectedChat, setSelectedChat] = useState(null);
-  const [message, setMessage] = useState("");
-
-  // Mock chat data
-  const chats = [
-    {
-      id: 1,
-      name: "John Smith",
-      lastMessage: "Thank you for the session today!",
-      time: "10:30",
-      avatar: "/placeholder.svg?height=50&width=50",
-      unread: 2,
-    },
-    {
-      id: 2,
-      name: "Sarah Johnson",
-      lastMessage: "Looking forward to our appointment",
-      time: "09:15",
-      avatar: "/placeholder.svg?height=50&width=50",
-      unread: 0,
-    },
-    {
-      id: 3,
-      name: "Mike Chen",
-      lastMessage: "Can we reschedule for tomorrow?",
-      time: "Yesterday",
-      avatar: "/placeholder.svg?height=50&width=50",
-      unread: 1,
-    },
-  ];
-
-  // Mock messages for selected chat
-  const messages = [
-    {
-      id: 1,
-      text: "Hi! I have a question about our upcoming appointment.",
-      sender: "other",
-      time: "10:25",
-    },
-    {
-      id: 2,
-      text: "Of course! What would you like to know?",
-      sender: "me",
-      time: "10:26",
-    },
-    {
-      id: 3,
-      text: "What should I prepare for the medical interpretation session?",
-      sender: "other",
-      time: "10:27",
-    },
-    {
-      id: 4,
-      text: "Please bring any medical documents and a list of questions you want to ask the doctor.",
-      sender: "me",
-      time: "10:28",
-    },
-  ];
-
-  const sendMessage = () => {
-    if (message.trim()) {
-      // Add message sending logic here
-      setMessage("");
-    }
+/**
+ * Represents the structure of a single chat conversation for the list.
+ */
+interface Chat {
+  room_id: string;
+  other_user: {
+    id: string;
+    name: string;
+    photo: string;
   };
+}
 
-  if (selectedChat) {
-    const chat = chats.find((c) => c.id === selectedChat);
+/**
+ * Screen that displays a list of all chat conversations for the logged-in user.
+ */
+export default function ChatListScreen() {
+  const router = useRouter();
+  const theme = useAppTheme();
+  const { session } = useAuth();
+  const user = session?.user;
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    return (
-      <View style={styles.container}>
-        <View style={styles.chatHeader}>
-          <TouchableOpacity onPress={() => setSelectedChat(null)} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="#ffffff" />
-          </TouchableOpacity>
-          <Image source={{ uri: chat.avatar }} style={styles.headerAvatar} />
-          <View style={styles.headerInfo}>
-            <Text style={styles.headerName}>{chat.name}</Text>
-            <Text style={styles.headerStatus}>Online</Text>
-          </View>
-        </View>
+  useEffect(() => {
+    if (!user) return;
 
-        <ScrollView style={styles.messagesContainer}>
-          {messages.map((msg) => (
-            <View
-              key={msg.id}
-              style={[styles.messageContainer, msg.sender === "me" ? styles.myMessage : styles.otherMessage]}
-            >
-              <View style={[styles.messageBubble, msg.sender === "me" ? styles.myBubble : styles.otherBubble]}>
-                <Text
-                  style={[styles.messageText, msg.sender === "me" ? styles.myMessageText : styles.otherMessageText]}
-                >
-                  {msg.text}
-                </Text>
-                <Text
-                  style={[styles.messageTime, msg.sender === "me" ? styles.myMessageTime : styles.otherMessageTime]}
-                >
-                  {msg.time}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </ScrollView>
+    /**
+     * Fetches the list of chat rooms from the database using the
+     * 'get_user_chats' remote procedure call.
+     * It includes type guarding to ensure the data matches the 'Chat' interface.
+     */
+    const fetchChats = async () => {
+      setLoading(true);
+      const { data, error } = await supabase.rpc('get_user_chats');
 
-        <View style={styles.inputContainer}>
-          <TextInput
-            value={message}
-            onChangeText={setMessage}
-            placeholder="Type a message..."
-            style={styles.messageInput}
-            mode="outlined"
-            multiline
-            right={
-              <TextInput.Icon
-                icon="attachment"
-                onPress={() => {
-                  /* Handle attachment */
-                }}
-              />
+      if (error) {
+        console.error('Error fetching chats:', error);
+        setChats([]); // Ensure state is an empty array on error
+      } else if (data && Array.isArray(data)) {
+        // FIX: Perform a type guard and data transformation.
+        // This ensures that every item in the array has the expected structure
+        // before we try to set it in the state.
+        const validChats = data
+          .map((item: any) => {
+            // Check if 'other_user' and its properties exist and are of the correct type.
+            if (
+              item &&
+              typeof item.room_id === 'string' &&
+              item.other_user &&
+              typeof item.other_user.id === 'string' &&
+              typeof item.other_user.name === 'string' &&
+              typeof item.other_user.photo === 'string'
+            ) {
+              // If valid, return the object cast to the correct type.
+              return item as Chat;
             }
-          />
-          <IconButton icon="send" mode="contained" onPress={sendMessage} style={styles.sendButton} />
-        </View>
-      </View>
-    );
+            // If invalid, return null.
+            return null;
+          })
+          // Filter out any null entries that resulted from invalid data.
+          .filter((item): item is Chat => item !== null);
+        
+        setChats(validChats);
+      } else {
+        // Handle cases where data is null or not an array.
+        setChats([]);
+      }
+      setLoading(false);
+    };
+
+    fetchChats();
+  }, [user]);
+
+  // ... (The rest of the component's JSX and styles remain the same)
+  if (loading) {
+    return <ActivityIndicator style={{ flex: 1, justifyContent: 'center' }} />;
   }
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Chat</Text>
-      </View>
+  const renderItem = ({ item }: { item: Chat }) => (
+    <TouchableOpacity onPress={() => router.push({ pathname: '/chat/[id]', params: { id: item.room_id } })}>
+      <Card style={styles.chatCard}>
+        <Card.Title
+          title={item.other_user.name}
+          titleStyle={{ color: theme.colors.onSurface }}
+          left={(props) => <Image {...props} source={{ uri: item.other_user.photo }} style={styles.avatar} />}
+        />
+      </Card>
+    </TouchableOpacity>
+  );
 
-      <ScrollView style={styles.chatsList}>
-        {chats.map((chat) => (
-          <TouchableOpacity key={chat.id} onPress={() => setSelectedChat(chat.id)}>
-            <Card style={styles.chatCard}>
-              <Card.Content style={styles.chatContent}>
-                <Image source={{ uri: chat.avatar }} style={styles.avatar} />
-                <View style={styles.chatInfo}>
-                  <View style={styles.chatHeader}>
-                    <Text style={styles.chatName}>{chat.name}</Text>
-                    <Text style={styles.chatTime}>{chat.time}</Text>
-                  </View>
-                  <Text style={styles.lastMessage} numberOfLines={1}>
-                    {chat.lastMessage}
-                  </Text>
-                </View>
-                {chat.unread > 0 && (
-                  <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadText}>{chat.unread}</Text>
-                  </View>
-                )}
-              </Card.Content>
-            </Card>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+  return (
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <Text style={[styles.header, { color: theme.colors.onSurface }]}>Conversations</Text>
+      <FlatList
+        data={chats}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.room_id}
+        ListEmptyComponent={<Text style={styles.emptyText}>No conversations yet.</Text>}
+      />
     </View>
   );
 }
@@ -171,158 +114,26 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    paddingTop: 50,
   },
   header: {
-    padding: 20,
-    backgroundColor: "#2196F3",
-    paddingTop: 60,
-  },
-  title: {
     fontSize: 24,
-    fontWeight: "bold",
-    color: "#ffffff",
-  },
-  chatsList: {
-    flex: 1,
+    fontWeight: 'bold',
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
   chatCard: {
-    marginHorizontal: 10,
-    marginVertical: 5,
-  },
-  chatContent: {
-    flexDirection: "row",
-    alignItems: "center",
+    marginHorizontal: 16,
+    marginBottom: 10,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 15,
-  },
-  chatInfo: {
-    flex: 1,
-  },
-  chatHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 5,
-  },
-  chatName: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  chatTime: {
-    fontSize: 12,
-    color: "#666",
-  },
-  lastMessage: {
-    fontSize: 14,
-    color: "#666",
-  },
-  unreadBadge: {
-    backgroundColor: "#2196F3",
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 10,
-  },
-  unreadText: {
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  chatHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#2196F3",
-    padding: 15,
-    paddingTop: 60,
-  },
-  backButton: {
-    marginRight: 15,
-  },
-  headerAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginRight: 15,
   },
-  headerInfo: {
-    flex: 1,
-  },
-  headerName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#ffffff",
-  },
-  headerStatus: {
-    fontSize: 14,
-    color: "#ffffff",
-    opacity: 0.8,
-  },
-  messagesContainer: {
-    flex: 1,
-    padding: 15,
-  },
-  messageContainer: {
-    marginBottom: 15,
-  },
-  myMessage: {
-    alignItems: "flex-end",
-  },
-  otherMessage: {
-    alignItems: "flex-start",
-  },
-  messageBubble: {
-    maxWidth: "80%",
-    padding: 12,
-    borderRadius: 18,
-  },
-  myBubble: {
-    backgroundColor: "#2196F3",
-    borderBottomRightRadius: 4,
-  },
-  otherBubble: {
-    backgroundColor: "#ffffff",
-    borderBottomLeftRadius: 4,
-  },
-  messageText: {
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 50,
     fontSize: 16,
-    marginBottom: 4,
-  },
-  myMessageText: {
-    color: "#ffffff",
-  },
-  otherMessageText: {
-    color: "#333",
-  },
-  messageTime: {
-    fontSize: 12,
-  },
-  myMessageTime: {
-    color: "#ffffff",
-    opacity: 0.8,
-    textAlign: "right",
-  },
-  otherMessageTime: {
-    color: "#666",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    padding: 15,
-    backgroundColor: "#ffffff",
-    alignItems: "flex-end",
-  },
-  messageInput: {
-    flex: 1,
-    marginRight: 10,
-    maxHeight: 100,
-  },
-  sendButton: {
-    backgroundColor: "#2196F3",
-  },
+  }
 });

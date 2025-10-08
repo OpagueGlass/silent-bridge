@@ -2,9 +2,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useMemo } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card, MD3Theme } from 'react-native-paper';
+import { useRouter } from 'expo-router'; 
 import { interpreterAppointments } from '../app/data/mockBookingsDeaf';
 import { useAppTheme } from '../hooks/useAppTheme';
-import { Profile } from '@/utils/query';
+import { Profile, initiateChat } from '@/utils/query';
 
 interface UserProfileModalProps {
   visible: boolean;
@@ -14,11 +15,28 @@ interface UserProfileModalProps {
 
 export default function UserProfileModal({ visible, profile, onClose }: UserProfileModalProps) {
   const theme = useAppTheme();
+  const router = useRouter();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   if (!profile) {
     return null; // Do not render if user not found
   }
+
+  
+  /**
+   * Handles the action of sending a message. It initiates a chat and navigates
+   * to the chat room, then closes the modal.
+   */
+  const handleSendMessage = async () => {
+    if (!profile) return;
+    const roomId = await initiateChat(profile.id);
+    if (roomId) {
+      onClose(); // Close the modal first
+      router.push({ pathname: '/chat/[id]', params: { id: roomId } }); // Then navigate
+    } else {
+      console.error("Could not initiate chat from profile.");
+    }
+  };
 
   return (
     <Modal
@@ -68,7 +86,7 @@ export default function UserProfileModal({ visible, profile, onClose }: UserProf
               <Text style={styles.sectionTitle}>User Notes</Text>
               <View style={styles.notesCard}>
                 <Text style={styles.notesText}>
-                  "{profile.name.split(' ')[0]} is a returning patient who previously had a successful surgery. His family is very concerned about his recovery and tends to ask many detailed questions."
+                  {`"${profile.name.split(' ')[0]} is a returning patient who previously had a successful surgery. His family is very concerned about his recovery and tends to ask many detailed questions."`}
                 </Text>
               </View>
             </View>

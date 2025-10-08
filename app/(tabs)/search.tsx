@@ -16,6 +16,7 @@ import {
   Profile,
   updateRequest,
   addAppointmentMeetingURL,
+  initiateChat,
 } from "@/utils/query";
 import { LANGUAGES, SPECIALISATION } from "@/constants/data";
 import { parseDate, getMeetLink, getDuration, getStartTime } from "@/utils/helper";
@@ -107,6 +108,16 @@ export default function SearchScreen() {
   //     })
   //     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   // }, [requests, statusFilter]);
+
+  const handleInitiateChat = async (otherUserId: string) => {
+    if (!otherUserId) return;
+    const roomId = await initiateChat(otherUserId);
+    if (roomId) {
+      router.push({ pathname: "/chat/[id]", params: { id: roomId } });
+    } else {
+      console.error('Could not initiate chat.');
+    }
+  };
 
   const getStatusChipColor = (status: string) => {
     switch (status) {
@@ -346,6 +357,7 @@ export default function SearchScreen() {
                     >
                       Profile
                     </Button>
+                    <Button onPress={() => request.appointment.profile && handleInitiateChat(request.appointment.profile.id)}>Chat</Button>
                     <Button
                       mode="outlined"
                       style={[styles.actionButton, styles.rejectButton]}
@@ -627,6 +639,7 @@ export default function SearchScreen() {
                     </View>
 
                     <View style={styles.interpreterActions}>
+                      <Button onPress={() => handleInitiateChat(interpreter.id)}>Chat</Button>
                       <Button
                         mode="outlined"
                         style={styles.profileButton}
@@ -643,7 +656,6 @@ export default function SearchScreen() {
                       >
                         Profile
                       </Button>
-
                       <Button
                         mode="contained"
                         style={styles.bookButton}
