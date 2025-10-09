@@ -130,23 +130,44 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          height: number | null
           id: string
+          mime_type: string | null
           room_id: string
           sender_id: string
+          type: string | null
+          width: number | null
         }
         Insert: {
           content: string
           created_at?: string
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          height?: number | null
           id?: string
+          mime_type?: string | null
           room_id: string
           sender_id: string
+          type?: string | null
+          width?: number | null
         }
         Update: {
           content?: string
           created_at?: string
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          height?: number | null
           id?: string
+          mime_type?: string | null
           room_id?: string
           sender_id?: string
+          type?: string | null
+          width?: number | null
         }
         Relationships: [
           {
@@ -473,6 +494,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_or_get_chat_room: {
+        Args: { other_user_id: string }
+        Returns: string
+      }
+      get_other_participant: {
+        Args: { p_room: string }
+        Returns: string
+      }
+      get_requests_with_overlaps: {
+        Args: { p_interpreter_id: string }
+        Returns: {
+          appointment_data: Json
+          has_overlap: boolean
+          note: string
+          overlapping_appointments: Json[]
+          profile_data: Json
+          request_id: number
+        }[]
+      }
       get_user_chats: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -480,9 +520,34 @@ export type Database = {
           room_id: string
         }[]
       }
+      is_member_of_room: {
+        Args: { _room_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_room_member: {
         Args: { p_room_id: string }
         Returns: boolean
+      }
+      search_interpreters: {
+        Args: {
+          p_appointment_end: string
+          p_appointment_start: string
+          p_day: number
+          p_end_time: string
+          p_gender?: string
+          p_language: number
+          p_max_dob: string
+          p_min_dob: string
+          p_min_rating: number
+          p_spec: number
+          p_start_time: string
+          p_state: string
+        }
+        Returns: {
+          languages: Json
+          profile_data: Json
+          specialisations: Json
+        }[]
       }
     }
     Enums: {
