@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -72,7 +72,7 @@ export default function ChatRoomScreen() {
   const [uploading, setUploading] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
-  // 简单的签名URL缓存，避免重复请求
+  // 签名URL缓存（路径 -> URL）
   const signedUrlCache = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
@@ -126,7 +126,7 @@ export default function ChatRoomScreen() {
     fetchInitialData();
   }, [roomId, user]);
 
-  // 实时订阅新消息（对方发的）
+  // 实时订阅新消息（对方发的），依旧忽略自己发的以避免与本地追加重复
   useEffect(() => {
     if (!roomId || !user) return;
 
@@ -141,7 +141,7 @@ export default function ChatRoomScreen() {
           filter: `room_id=eq.${roomId}`,
         },
         (payload) => {
-          if (payload.new.sender_id !== user.id) {
+          if ((payload.new as any).sender_id !== user.id) {
             setMessages((curr) => [...curr, payload.new as Message]);
           }
         }
@@ -153,7 +153,7 @@ export default function ChatRoomScreen() {
     };
   }, [roomId, user]);
 
-  // 发送文本消息
+  // 发送文本消息（乐观追加）
   const handleSendMessage = async () => {
     if (newMessage.trim() === '' || !user || !roomId) return;
 
@@ -224,7 +224,7 @@ export default function ChatRoomScreen() {
     });
   };
 
-  // 上传并写入附件消息
+  // 上传并写入附件消息（插入后 .select('*').single() 立刻取回并追加）
   const uploadAndSendAttachment = async (f: {
     uri: string;
     fileName: string;
@@ -251,20 +251,28 @@ export default function ChatRoomScreen() {
         .upload(path, blob, { contentType: f.mimeType });
       if (upErr) throw upErr;
 
-      // 写入消息记录（附件元数据）
-      const { error: insErr } = await supabase.from('chat_messages').insert({
-        room_id: roomId,
-        sender_id: user.id,
-        type: f.kind,
-        content: '', 
-        file_path: path,
-        file_name: f.fileName,
-        mime_type: f.mimeType,
-        file_size: f.size ?? blob.size ?? null,
-        width: f.width ?? null,
-        height: f.height ?? null,
-      });
+      // 写入消息记录并立刻取回该新行
+      const { data: inserted, error: insErr } = await supabase
+        .from('chat_messages')
+        .insert({
+          room_id: roomId,
+          sender_id: user.id,
+          type: f.kind,
+          content: '', // 附件消息文本为空
+          file_path: path,
+          file_name: f.fileName,
+          mime_type: f.mimeType,
+          file_size: typeof f.size === 'number' ? f.size : (blob as any).size ?? null,
+          width: f.width ?? null,
+          height: f.height ?? null,
+        })
+        .select('*')
+        .single();
       if (insErr) throw insErr;
+
+      if (inserted) {
+        setMessages((curr) => [...curr, inserted as Message]);
+      }
     } catch (e) {
       console.error('Upload/send failed:', e);
     } finally {
@@ -272,26 +280,37 @@ export default function ChatRoomScreen() {
     }
   };
 
-  // 为文件/图片生成签名URL（带缓存）
+  // 生成签名URL（带缓存与轻量重试）
   const getSignedUrl = useCallback(
     async (filePath: string, kind: MsgKind): Promise<string | null> => {
       if (!filePath) return null;
-      const cache = signedUrlCache.current.get(filePath);
-      if (cache) return cache;
 
-      const { data, error } = await supabase.storage
-        .from('chat-attachments')
-        .createSignedUrl(filePath, 60, {
-          // 图片加 transform 可控宽高，文件加 download=true 触发下载
-          transform: kind === 'image' ? { width: 1200, height: 1200 } : undefined,
-          download: kind === 'file' ? true : undefined,
-        });
-      if (error || !data?.signedUrl) {
-        console.error('createSignedUrl error:', error);
-        return null;
+      const cached = signedUrlCache.current.get(filePath);
+      if (cached) return cached;
+
+      const attempts = 3; // 最多尝试3次
+      let lastError: any = null;
+
+      for (let i = 0; i < attempts; i++) {
+        const { data, error } = await supabase.storage
+          .from('chat-attachments')
+          .createSignedUrl(filePath, 60, {
+            transform: kind === 'image' ? { width: 1200, height: 1200 } : undefined,
+            download: kind === 'file' ? true : undefined,
+          });
+
+        if (!error && data?.signedUrl) {
+          signedUrlCache.current.set(filePath, data.signedUrl);
+          return data.signedUrl;
+        }
+
+        lastError = error;
+        // 退避等待，再试
+        await new Promise((r) => setTimeout(r, 400 + i * 400));
       }
-      signedUrlCache.current.set(filePath, data.signedUrl);
-      return data.signedUrl;
+
+      console.error('createSignedUrl error after retries:', lastError);
+      return null;
     },
     []
   );
@@ -347,7 +366,13 @@ export default function ChatRoomScreen() {
     <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
       {/* 头部 */}
       <View style={[styles.header, { backgroundColor: theme.colors.elevation.level2 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => {
+            // 统一回到聊天列表，避免回到 Home
+            router.replace('/chat');
+          }}
+          style={styles.backButton}
+        >
           <MaterialIcons name="arrow-back" size={24} color={theme.colors.primary} />
         </TouchableOpacity>
         {otherUser?.photo ? <Image source={{ uri: otherUser.photo }} style={styles.headerAvatar} /> : null}
