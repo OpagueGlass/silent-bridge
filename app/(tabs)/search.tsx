@@ -193,7 +193,7 @@ export default function SearchScreen() {
         hospital_name: null,
       })
     );
-
+    setLoading(true);
     setHasSearched(true);
     searchInterpreters(
       selectedSpecialisation + 1,
@@ -208,6 +208,7 @@ export default function SearchScreen() {
     ).then((results) => {
       setDisplayedInterpreters(results);
     });
+    setLoading(false);
   };
 
   const handleAcceptRequest = async (request: Request) => {
@@ -637,7 +638,9 @@ export default function SearchScreen() {
       </View>
 
       {/* --- SEARCH RESULT --- */}
-      {hasSearched && (
+
+      {loading ? <ActivityIndicator style={{ marginTop: 20 }} /> :
+      hasSearched && (
         <View style={styles.section}>
           {displayedInterpreters.length > 0 ? (
             <>
