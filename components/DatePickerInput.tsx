@@ -1,6 +1,6 @@
 import { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useEffect, useRef, useState } from "react";
-import { Platform, View, Pressable, Modal, Button, StyleSheet } from "react-native";
+import { Button, Modal, Platform, Pressable, StyleSheet, View } from "react-native";
 import { TextInput } from "react-native-paper";
 import { useAppTheme } from "../hooks/useAppTheme";
 
@@ -233,8 +233,9 @@ export default function DatePickerInput({
               <div ref={datePickerRef} style={{ 
                 position: 'absolute',
                 top: '100%',
-                right: 0,
+                left: 0,
                 zIndex: 1000,
+                marginTop: '4px',
                 // backgroundColor: 'white',
                 // border: '1px solid #ccc',
                 // borderRadius: '8px',
