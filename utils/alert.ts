@@ -34,6 +34,8 @@ const showWebModal = (title: string, message: string): Promise<boolean> => {
       max-width: 400px;
       width: 90%;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      max-height: 80vh;
+      overflow-y: auto;
     `;
 
     // Create title
@@ -46,15 +48,18 @@ const showWebModal = (title: string, message: string): Promise<boolean> => {
       color: #333;
     `;
 
-    // Create message
-    const messageElement = document.createElement('p');
-    messageElement.textContent = message;
+    // Create message with support for line breaks
+    const messageElement = document.createElement('div');
     messageElement.style.cssText = `
       margin: 0 0 24px 0;
       font-size: 14px;
-      line-height: 1.5;
+      line-height: 1.6;
       color: #666;
+      white-space: pre-wrap;
+      word-wrap: break-word;
     `;
+    // Convert \n to actual line breaks
+    messageElement.textContent = message;
 
     // Create button container
     const buttonContainer = document.createElement('div');
@@ -74,7 +79,14 @@ const showWebModal = (title: string, message: string): Promise<boolean> => {
       border-radius: 4px;
       cursor: pointer;
       font-size: 14px;
+      transition: background-color 0.2s;
     `;
+    cancelButton.onmouseover = () => {
+      cancelButton.style.backgroundColor = '#f5f5f5';
+    };
+    cancelButton.onmouseout = () => {
+      cancelButton.style.backgroundColor = 'white';
+    };
 
     // Create OK button
     const okButton = document.createElement('button');
@@ -87,7 +99,14 @@ const showWebModal = (title: string, message: string): Promise<boolean> => {
       border-radius: 4px;
       cursor: pointer;
       font-size: 14px;
+      transition: background-color 0.2s;
     `;
+    okButton.onmouseover = () => {
+      okButton.style.backgroundColor = '#0051D5';
+    };
+    okButton.onmouseout = () => {
+      okButton.style.backgroundColor = '#007AFF';
+    };
 
     // Add event listeners
     const cleanup = () => document.body.removeChild(overlay);
@@ -108,6 +127,16 @@ const showWebModal = (title: string, message: string): Promise<boolean> => {
         resolve(false);
       }
     };
+
+    // Handle escape key
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        cleanup();
+        resolve(false);
+        document.removeEventListener('keydown', handleEscape);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
 
     // Assemble modal
     buttonContainer.appendChild(cancelButton);

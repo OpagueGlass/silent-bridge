@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
-import { Button, Card, Chip, MD3Theme, Menu, Text, TextInput } from "react-native-paper";
+import { ActivityIndicator, Button, Card, Chip, MD3Theme, Menu, Text, TextInput } from "react-native-paper";
 import DatePickerInput from "../../components/DatePickerInput";
 import TimePickerInput from "../../components/TimePickerInput";
 import UserProfileModal from "../../components/UserProfileModal";
@@ -153,6 +153,7 @@ export default function SearchScreen() {
   const [specialisationMenuVisible, setSpecialisationMenuVisible] = useState(false);
 
   // Results
+  const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [displayedInterpreters, setDisplayedInterpreters] = useState<InterpreterProfile[]>([]);
   const [requests, setRequests] = useState<Request[]>([]);
@@ -203,7 +204,7 @@ export default function SearchScreen() {
         hospital_name: null,
       })
     );
-
+    setLoading(true);
     setHasSearched(true);
     searchInterpreters(
       selectedSpecialisation + 1,
@@ -214,41 +215,78 @@ export default function SearchScreen() {
       startTime,
       endTime,
       minRating,
-      selectedGender === "Any" ? null : selectedGender
+      selectedGender === "Any" ? undefined : selectedGender
     ).then((results) => {
       setDisplayedInterpreters(results);
     });
+    setLoading(false);
   };
 
-  const handleUpdateRequest = (isAccepted: boolean) => async (request: Request, index: number) => {
-    const updateType = isAccepted ? "accept" : "reject";
-    const confirmed = await showConfirmAlert(
-      `${updateType.charAt(0).toUpperCase() + updateType.slice(1)} Request`,
-      `Are you sure you want to ${updateType} this request?`
-    );
+  const handleAcceptRequest = async (request: Request) => {
+    let confirmMessage = `Are you sure you want to accept this request?`;
+
+    if (request.hasOverlap && request.overlappingAppointments && request.overlappingAppointments.length > 0) {
+      const overlapDetails = request.overlappingAppointments
+        .map((overlap) => {
+          const startTime = new Date(overlap.startTime).toLocaleString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          const endTime = new Date(overlap.endTime).toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          return `\n• ${overlap.userName} (${startTime} - ${endTime})`;
+        })
+        .join("");
+
+      confirmMessage = `Are you sure you want to accept this request?\n\nThis will automatically reject ${request.overlappingAppointments.length} overlapping request(s):${overlapDetails}`;
+    }
+
+    const confirmed = await showConfirmAlert(`Accept Request`, confirmMessage);
     if (!confirmed) return;
 
     try {
-      setRequests((prev) => prev.filter((_, i) => i !== index));
-      if (isAccepted) {
-        const providerToken = await getValidProviderToken();
-        const meetingLink = await getMeetLink(
-          providerToken!,
-          request.appointment.startTime,
-          request.appointment.endTime,
-          request.appointment.profile!
-        );
-        const meetingURL = meetingLink.split("/")[3];
-        await addAppointmentMeetingURL(request.appointment.id, meetingURL);
-      }
-      await updateRequest(request.id, isAccepted);
+      setLoading(true);
+      const providerToken = await getValidProviderToken();
+      const meetingLink = await getMeetLink(
+        providerToken!,
+        request.appointment.startTime,
+        request.appointment.endTime,
+        request.appointment.profile!
+      );
+      const meetingURL = meetingLink.split("/")[3];
+      await addAppointmentMeetingURL(request.appointment.id, meetingURL);
+      await updateRequest(request.id, true);
+      await Promise.all(request.overlappingAppointments?.map(
+        (overlap) => updateRequest(overlap.requestId, false)));
+      const updatedRequests = await getRequests(profile!.id);
+      setRequests(updatedRequests);
+      setLoading(false);
     } catch (error) {
       console.error("Error updating request:", error);
     }
   };
 
-  const handleAcceptRequest = handleUpdateRequest(true);
-  const handleRejectRequest = handleUpdateRequest(false);
+  const handleRejectRequest = async (request: Request) => {
+    const confirmed = await showConfirmAlert(`Reject Request`, `Are you sure you want to reject this request?`);
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+      await updateRequest(request.id, false);
+      const updatedRequests = await getRequests(profile!.id);
+      setRequests(updatedRequests);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error rejecting request:", error);
+    }
+  };
+
+  // const handleAcceptRequest = handleUpdateRequest(true);
+  // const handleRejectRequest = handleUpdateRequest(false);
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -302,11 +340,14 @@ export default function SearchScreen() {
               ))}
             </Menu>
 
-            {requests.map((request, index) => (
-              <Card key={request.id} style={styles.requestCard}>
-                <Card.Content>
-                  <View style={styles.requestHeader}>
-                    <View style={styles.requestInfo}>
+            {loading ? (
+              <ActivityIndicator />
+            ) : (
+              requests.map((request) => (
+                <Card key={request.id} style={styles.requestCard}>
+                  <Card.Content>
+                    <View style={styles.requestHeader}>
+                      <View style={styles.requestInfo}>
                       <Text style={styles.clientName}>{request.appointment.profile?.name}</Text>
                       <Text style={styles.requestDateTime}>
                         {new Date(request.appointment.startTime).toLocaleDateString("en-GB", {
@@ -362,21 +403,22 @@ export default function SearchScreen() {
                       mode="outlined"
                       style={[styles.actionButton, styles.rejectButton]}
                       textColor="#F44336"
-                      onPress={() => handleRejectRequest(request, index)}
+                      onPress={() => handleRejectRequest(request)}
                     >
                       Reject
                     </Button>
                     <Button
                       mode="contained"
                       style={styles.actionButton}
-                      onPress={() => handleAcceptRequest(request, index)}
+                      onPress={() => handleAcceptRequest(request)}
                     >
                       Accept
                     </Button>
                   </View>
                 </Card.Content>
               </Card>
-            ))}
+            ))
+          )}
           </View>
         </ScrollView>
 
@@ -608,7 +650,9 @@ export default function SearchScreen() {
       </View>
 
       {/* --- SEARCH RESULT --- */}
-      {hasSearched && (
+
+      {loading ? <ActivityIndicator style={{ marginTop: 20 }} /> :
+      hasSearched && (
         <View style={styles.section}>
           {displayedInterpreters.length > 0 ? (
             <>
