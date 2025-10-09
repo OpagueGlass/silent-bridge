@@ -30,10 +30,19 @@ export interface Appointment {
   profile: Profile | null;
 }
 
+export interface OverlappingAppointment {
+  requestId: number;
+  userName: string;
+  startTime: string;
+  endTime: string;
+}
+
 export interface Request {
   id: number;
   note: string | null;
   appointment: Appointment;
+  hasOverlap: boolean;
+  overlappingAppointments: OverlappingAppointment[];
 }
 
 export interface Rating {
@@ -193,57 +202,45 @@ export const searchInterpreters = async (
   startTime: Date,
   endTime: Date,
   minRating: number = 0,
-  gender: string | null = null
-) => {
+  gender: string | undefined = undefined
+): Promise<InterpreterProfile[]> => {
   const { minDOB, maxDOB } = getMinMaxDOB(ageStart, ageEnd);
   const day = startTime.getDay() === 0 ? 7 : startTime.getDay();
   const start_time = toTimetz(startTime);
-  endTime.setSeconds(endTime.getSeconds() - 1); // Make end time exclusive
+  endTime.setSeconds(endTime.getSeconds() - 1);
   const end_time = toTimetz(endTime);
 
-  // Build the query with necessary filters and order by rating in descending order
-  let query = supabase
-    .from("interpreter_profile")
-    .select(
-      `
-      id,
-      profile (*),
-      interpreter_specialisation (specialisation_id),
-      interpreter_language (language_id),
-      availability (*)
-    `
-    )
-    .eq("interpreter_specialisation.specialisation_id", spec)
-    .eq("interpreter_language.language_id", language)
-    .eq("profile.location", state)
-    .gt("profile.date_of_birth", minDOB.toISOString())
-    .lt("profile.date_of_birth", maxDOB.toISOString())
-    .or(`avg_rating.gt.${minRating},avg_rating.is.null`, { referencedTable: "profile" })
-    .eq("availability.day_id", day)
-    .lte("availability.start_time", start_time)
-    .gt("availability.end_time", end_time)
-    .not("profile", "is", null) // Exclude profiles that only meet some of the criteria
-    .not("interpreter_specialisation", "is", null)
-    .not("interpreter_language", "is", null)
-    .not("availability", "is", null)
-    .order("profile(avg_rating)", { ascending: false, nullsFirst: false }); // requires brackets for workaround
-
-  // Sort by gender if specified
-  if (gender) {
-    query.order("profile(gender)", { ascending: true });
-  }
-
-  // Limit to top 5 results
-  const { data, error } = await query.limit(5);
+  const { data, error } = await supabase.rpc("search_interpreters", {
+    p_spec: spec,
+    p_language: language,
+    p_state: state,
+    p_min_dob: minDOB.toISOString(),
+    p_max_dob: maxDOB.toISOString(),
+    p_min_rating: minRating,
+    p_day: day,
+    p_start_time: start_time,
+    p_end_time: end_time,
+    p_appointment_start: startTime.toISOString(),
+    p_appointment_end: endTime.toISOString(),
+    p_gender: gender,
+  });
 
   if (error) {
     console.error("Error fetching interpreters:", error);
     return [];
   }
 
-  const interpreterProfiles = await Promise.all(data.map(({ id }) => getInterpreterProfile(id)));
+  // Convert the returned data to InterpreterProfile format
+  const interpreterProfiles = data.map((row) => {
+    const formattedData = {
+      profile: row.profile_data as Tables<"profile">,
+      interpreter_specialisation: row.specialisations as Tables<"interpreter_specialisation">[],
+      interpreter_language: row.languages as Tables<"interpreter_language">[],
+    };
+    return convertToInterpreterProfile(formattedData);
+  });
 
-  return interpreterProfiles.filter((profile) => profile !== null);
+  return interpreterProfiles;
 };
 
 /**
@@ -509,27 +506,34 @@ export const getReviewInterpreterAppointments = async (interpreter_id: string) =
  * @returns A list of pending requests for the interpreter
  */
 export const getRequests = async (interpreter_id: string) => {
-  const { data, error } = await supabase
-    .from("request")
-    .select(
-      `
-      *,
-      appointment (*, profile (*))
-    `
-    )
-    .eq("interpreter_id", interpreter_id)
-    .is("is_accepted", null) // Only get pending requests
-    .is("is_expired", false); // Only get non-expired requests
+  const { data, error } = await supabase.rpc("get_requests_with_overlaps", {
+    p_interpreter_id: interpreter_id,
+  });
 
   if (error) {
     console.error("Error fetching requests:", error);
     return [];
   }
 
-  return data.map(({ id, note, appointment }) => ({
-    id,
-    note,
-    appointment: convertToAppointment(appointment, appointment.profile),
+  return data.map((row) => ({
+    id: row.request_id,
+    note: row.note,
+    appointment: convertToAppointment(
+      row.appointment_data as Tables<"appointment">,
+      row.profile_data as Tables<"profile">
+    ),
+    hasOverlap: row.has_overlap,
+    overlappingAppointments:
+      (
+        row.overlapping_appointments as
+          | { request_id: number; user_name: string; start_time: string; end_time: string }[]
+          | null
+      )?.map((overlap) => ({
+        requestId: overlap.request_id,
+        userName: overlap.user_name,
+        startTime: overlap.start_time,
+        endTime: overlap.end_time,
+      })) || [],
   }));
 };
 
