@@ -70,6 +70,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const getURL = () => {
+    let url =
+      process?.env?.NEXT_PUBLIC_SITE_URL ??
+      process?.env?.NEXT_PUBLIC_VERCEL_URL ??
+      `${window.location.origin}`;
+    url = url.startsWith('http') ? url : `https://${url}`
+    url = url.endsWith('/') ? url : `${url}/`
+    return `${url}auth/callback`;
+  }
+
   /**
    * Signs in the user with Google OAuth and requests calendar access on first sign-in.
    */
@@ -82,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           access_type: "offline",
           prompt: "consent",
         },
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: getURL(),
       },
     });
   };
