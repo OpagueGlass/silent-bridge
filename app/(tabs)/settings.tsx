@@ -1,20 +1,22 @@
 "use client";
 
 import { useRouter } from "expo-router";
-import { useState, useEffect } from "react";
-import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
-import { ActivityIndicator, Button, Card, List, Switch } from "react-native-paper";
+import { useMemo, useState } from "react";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Button, Card, List, Switch, MD3Theme  } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
-import { showConfirmAlert } from "../../utils/alert";
 import { useAppTheme } from "../../hooks/useAppTheme";
+import { showConfirmAlert } from "../../utils/alert";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const { profile, isInterpreter, signOut } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
   const theme = useAppTheme();
+
+  // Call the createStyles function with the theme to get your styles
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handleSignOut = async () => {
     const confirmed = await showConfirmAlert("Sign Out", "Are you sure you want to sign out?");
@@ -104,9 +106,7 @@ export default function SettingsScreen() {
               title="Availability"
               description="Manage your available hours"
               right={() => <List.Icon icon="chevron-right" />}
-              onPress={() => {
-                /* Navigate to availability settings */
-              }}
+              onPress={() => { /* Navigate to availability */ }}
             />
             <List.Item
               title="Specializations"
@@ -129,7 +129,12 @@ export default function SettingsScreen() {
       )}
 
       <View style={styles.section}>
-        <Button mode="contained" onPress={handleSignOut} style={styles.signOutButton} buttonColor="#F44336">
+        <Button
+          mode="contained"
+          onPress={handleSignOut}
+          style={styles.signOutButton}
+          buttonColor={theme.colors.error}
+        >
           Sign Out
         </Button>
       </View>
@@ -141,20 +146,22 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: MD3Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: theme.colors.background,
   },
   header: {
-    padding: 20,
-    backgroundColor: "#2196F3",
-    paddingTop: 60,
+    backgroundColor: theme.colors.primary,
+    height: 130, // Fixed height for consistency
+    justifyContent: 'flex-start', // Aligns content to the top
+    paddingHorizontal: 24,
+    paddingTop: 80, // Space for the floating nav bar
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#ffffff",
+    color: theme.colors.surface, // White text for blue background
   },
   section: {
     padding: 20,
@@ -163,24 +170,25 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 15,
-    color: "#333",
+    color: theme.colors.onSurface,
   },
   profileCard: {
-    backgroundColor: "#ffffff",
+    backgroundColor: theme.colors.surface,
   },
   profileName: {
     fontSize: 20,
     fontWeight: "bold",
     marginBottom: 5,
+    color: theme.colors.onSurface,
   },
   profileEmail: {
     fontSize: 16,
-    color: "#666",
+    color: theme.colors.onSurfaceVariant,
     marginBottom: 5,
   },
   profileType: {
     fontSize: 14,
-    color: "#2196F3",
+    color: theme.colors.primary,
     marginBottom: 15,
     textTransform: "uppercase",
     fontWeight: "bold",
@@ -189,14 +197,14 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   settingsCard: {
-    backgroundColor: "#ffffff",
+    backgroundColor: theme.colors.surface,
   },
   signOutButton: {
     paddingVertical: 8,
   },
   versionText: {
     textAlign: "center",
-    color: "#666",
+    color: theme.colors.onSurfaceVariant,
     fontSize: 14,
   },
 });

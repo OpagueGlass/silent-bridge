@@ -617,6 +617,96 @@ export const setAvailability = async (interpreter_id: string, day_id: number, st
   }
 };
 
+/**
+ * Gets the weekly availability for an interpreter.
+ *
+ * @param interpreter_id The ID of the interpreter
+ * @returns A list of availability objects, each containing day_id, start_time, and end_time
+ */
+export const getAvailability = async (interpreter_id: string) => {
+  const { data, error } = await supabase
+    .from("availability")
+    .select(
+      `
+      day_id,
+      start_time,
+      end_time
+      `
+    )
+    .eq("interpreter_id", interpreter_id);
+
+  if (error) {
+    console.error("Error fetching availability:", error);
+    throw error;
+  }
+
+  return data || [];
+};
+
+/**
+ * Deletes the availability of an interpreter for a particular day.
+ *
+ * @param interpreter_id The ID of the interpreter
+ * @param day_id The ID of the day (1=Monday, 7=Sunday)
+ */
+export const deleteAvailability = async (interpreter_id: string, day_id: number) => {
+  const { error } = await supabase
+    .from("availability")
+    .delete()
+    .eq("interpreter_id", interpreter_id)
+    .eq("day_id", day_id);
+
+  if (error) {
+    console.error("Error deleting availability:", error);
+    throw error;
+  }
+};
+
+/**
+ * Gets the historical appointments for a user.
+ * @param user_id The ID of the user
+ * @param is_interpreter Whether the user is an interpreter
+ * @returns A list of completed appointments for the user
+ */
+export const getHistoryAppointments = async (user_id: string, is_interpreter: boolean) => {
+  let query = supabase
+    .from("appointment")
+    .select(
+      `
+      id, 
+      status,
+      start_time,
+      end_time,
+      hospital_name,
+      meeting_url,
+      interpreter_profile (
+        profile (*)
+      ),
+      profile!appointment_deaf_user_id_fkey (*)
+      `
+    )
+    .eq("status", "Completed")
+    .order("start_time", { ascending: false });
+
+  if (is_interpreter) {
+    query = query.eq("interpreter_id", user_id);
+  } else {
+    query = query.eq("deaf_user_id", user_id);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Error fetching history appointments:", error);
+    return [];
+  }
+
+  return data.map((item) => {
+    const { interpreter_profile, profile, ...rest } = item;
+    const otherPartyProfile = is_interpreter ? profile : interpreter_profile?.profile || null;
+    return convertToAppointment(rest, otherPartyProfile);
+  });
+};
 export const getOtherParticipant = async (roomId: string): Promise<string | null> => {
   const { data, error } = await supabase.rpc('get_other_participant', { p_room: roomId });
   if (error) {
