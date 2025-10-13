@@ -12,6 +12,7 @@ import ReviewModal from "../../components/ReviewModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
 import { joinAppointment } from "../../utils/helper";
+import { MD3Theme } from "react-native-paper";
 // import {
 //   Appointment,
 //   appointments as userAppointments,
@@ -36,6 +37,7 @@ export default function HomeScreen() {
   }
   const { profile, isInterpreter } = useAuth();
   const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const getStatusColor = (status: Appointment["status"]) => {
     switch (status) {
@@ -501,14 +503,17 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: MD3Theme) =>
+  StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    padding: 24,
-    paddingTop: 60,
-  },
+    header: {
+      backgroundColor: theme.colors.primary,
+      paddingHorizontal: 24,
+      paddingTop: 80,       
+      paddingBottom: 20,
+    },
   greeting: {
     color: "#ffffff",
     marginBottom: 8,

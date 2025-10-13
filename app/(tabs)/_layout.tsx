@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, Tabs, useRouter } from "expo-router";
 import { BottomTabBar } from "@react-navigation/bottom-tabs";
 import {
   View,
@@ -13,12 +13,13 @@ import {
   Modal,
   TouchableOpacity,
 } from "react-native";
+import { MD3Theme } from "react-native-paper";
 import { useState } from "react";
 import LoadingScreen from "../../components/LoadingScreen";
-import { useRouter } from "expo-router";
 
 type MaterialIconName =
   | "home"
+  | "history" // Add this line
   | "search"
   | "assignment"
   | "chat"
@@ -42,13 +43,13 @@ export default function TabLayout() {
     return <Redirect href="/auth" />;
   }
 
-  // Tabs data with typed icons
   const tabs: {
     name: string;
     title: string;
     icon: MaterialIconName;
   }[] = [
     { name: "index", title: "Home", icon: "home" },
+    { name: "history", title: "History", icon: "history" }, 
     {
       name: "search",
       title: isInterpreter ? "Requests" : "Search",
@@ -98,6 +99,8 @@ export default function TabLayout() {
                           router.push(
                             name === "index"
                               ? "/"
+                              : name === "history" 
+                              ? "/(tabs)/history"
                               : name === "chat"
                               ? "/(tabs)/chat"
                               : name === "search"
@@ -135,10 +138,10 @@ export default function TabLayout() {
       screenOptions={{
         tabBarPosition: "top",
         headerShown: false,
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
+        tabBarActiveTintColor: theme.colors.tertiary,
+        tabBarInactiveTintColor: theme.colors.onSurface,
         tabBarLabelStyle: {
-          fontSize: 16,
+          fontSize: 14,
           fontWeight: "600",
           textTransform: "none",
           flexShrink: 0,
@@ -181,9 +184,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 24,
     paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
-    backgroundColor: "#fff",
+    backgroundColor: "transparent", // Make background see-through
+    borderBottomWidth: 0,           // Remove the bottom border line
+    position: 'absolute',           // Make the bar float on top of screen content
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,                      // Ensure it stays on top
   },
   left: {
     flex: 1,
@@ -195,7 +202,7 @@ const styles = StyleSheet.create({
   brand: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#2c3e50",
+    color: "#F0B429",
   },
   hamburger: {
     padding: 8,

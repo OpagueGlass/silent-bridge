@@ -1,25 +1,25 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Dimensions,
-  View,
-  Text,
-  StyleSheet,
   FlatList,
   Image,
-  TouchableOpacity,
   ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { useAppTheme } from "../../hooks/useAppTheme";
-import { MD3Theme, TextInput, Card } from "react-native-paper";
-import { signCategories as allSignCategories } from "../data/signLanguageData";
+import { Card, MD3Theme, TextInput } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useAppTheme } from "../../hooks/useAppTheme";
+import { signCategories as allSignCategories } from "../data/signLanguageData";
 
 const originalCategories = allSignCategories.map((cat) => cat.title);
 const categories = ["All", "Favorites", ...originalCategories];
 
 export default function SignLanguageScreen() {
   const theme = useAppTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -63,95 +63,96 @@ export default function SignLanguageScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.searchBarContainer}>
-        <TextInput
-          label="Search signs..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          mode="outlined"
-          left={<TextInput.Icon icon="magnify" />}
-        />
-      </View>
-
-      {/* --- Horizontally Scrolling Category Bar --- */}
-      <View style={styles.categoryBarContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryScrollViewContent}
-        >
-          {categories.map((category) => {
-            const isSelected = selectedCategory === category;
-            return (
-              <TouchableOpacity
-                key={category}
-                style={[
-                  styles.categoryButton,
-                  isSelected && styles.categoryButtonSelected,
-                ]}
-                onPress={() => setSelectedCategory(category)}
-              >
-                <Text
-                  style={[
-                    styles.categoryText,
-                    isSelected && styles.categoryTextSelected,
-                  ]}
-                >
-                  {category}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* --- Result --- */}
-      <FlatList
-        data={filteredData}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContentContainer}
-        renderItem={({ item }) => {
-          const isFavorited = favorites.includes(item.id);
-          return (
-            <Card style={styles.itemCard}>
-              <View style={styles.gifContainer}>
-                <Image
-                  source={item.image}
-                  style={styles.gif}
-                  resizeMode="cover"
-                />
-              </View>
-              <View style={styles.cardInfo}>
-                <View style={styles.textContainer}>
-                  <Text style={styles.word}>{item.word}</Text>
-                  <Text style={styles.categorySubtext}>{item.category}</Text>
-                </View>
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Sign Dictionary</Text>
+        <View style={styles.searchBarContainer}>
+          <TextInput
+            label="Search signs..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            mode="outlined"
+            left={<TextInput.Icon icon="magnify" />}
+            style={{ backgroundColor: theme.colors.surface }}
+          />
+        </View>
+        <View style={styles.categoryBarContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryScrollViewContent}
+          >
+            {categories.map((category) => {
+              const isSelected = selectedCategory === category;
+              return (
                 <TouchableOpacity
-                  style={styles.favoriteButton}
-                  onPress={() => handleToggleFavorite(item.id)}
+                  key={category}
+                  style={[
+                    styles.categoryButton,
+                    isSelected && styles.categoryButtonSelected,
+                  ]}
+                  onPress={() => setSelectedCategory(category)}
                 >
-                  <MaterialCommunityIcons
-                    name={isFavorited ? "heart" : "heart-outline"}
-                    size={28}
-                    color={
-                      isFavorited
-                        ? theme.colors.error
-                        : theme.colors.onSurfaceVariant
-                    }
-                  />
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      isSelected && styles.categoryTextSelected,
+                    ]}
+                  >
+                    {category}
+                  </Text>
                 </TouchableOpacity>
-              </View>
-            </Card>
-          );
-        }}
-        ListEmptyComponent={() => (
+              );
+            })}
+          </ScrollView>
+        </View>
+      </View>
+
+      <View style={styles.listContentContainer}>
+        {filteredData.length > 0 ? (
+          filteredData.map((item) => {
+            const isFavorited = favorites.includes(item.id);
+            return (
+              <Card key={item.id} style={styles.itemCard}>
+                <View style={styles.gifContainer}>
+                  <Image
+                    source={item.image}
+                    style={styles.gif}
+                    resizeMode="cover"
+                  />
+                </View>
+                <View style={styles.cardInfo}>
+                  <View style={styles.textContainer}>
+                    <Text style={styles.word}>{item.word}</Text>
+                    <Text style={styles.categorySubtext}>
+                      {item.category}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.favoriteButton}
+                    onPress={() => handleToggleFavorite(item.id)}
+                  >
+                    <MaterialCommunityIcons
+                      name={isFavorited ? "heart" : "heart-outline"}
+                      size={28}
+                      color={
+                        isFavorited
+                          ? theme.colors.error
+                          : theme.colors.onSurfaceVariant
+                      }
+                    />
+                  </TouchableOpacity>
+                </View>
+              </Card>
+            );
+          })
+        ) : (
           <View style={styles.listEmptyComponent}>
             <Text style={styles.listEmptyText}>No signs found.</Text>
           </View>
         )}
-      />
-    </View>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -163,36 +164,42 @@ const createStyles = (theme: MD3Theme) =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
+    header: {
+      backgroundColor: theme.colors.primary,
+      paddingHorizontal: 24,
+      paddingTop: 80,       
+      paddingBottom: 20,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: theme.colors.surface,
+      marginBottom: 16,
+    },
     searchBarContainer: {
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      backgroundColor: theme.colors.surface,
+      backgroundColor: "transparent",
     },
     categoryBarContainer: {
-      backgroundColor: theme.colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.outlineVariant,
+      backgroundColor: "transparent",
+      marginTop: 12,
     },
-    categoryScrollViewContent: {
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-    },
+    categoryScrollViewContent: {},
     categoryButton: {
       paddingVertical: 8,
       paddingHorizontal: 16,
       borderRadius: 20,
       marginRight: 8,
-      backgroundColor: theme.colors.surfaceVariant,
+      backgroundColor: "rgba(255, 255, 255, 0.2)",
     },
     categoryButtonSelected: {
-      backgroundColor: theme.colors.primary,
+      backgroundColor: theme.colors.surface,
     },
     categoryText: {
       fontWeight: "500",
-      color: theme.colors.onSurfaceVariant,
+      color: "rgba(255, 255, 255, 0.9)",
     },
     categoryTextSelected: {
-      color: theme.colors.onPrimary,
+      color: theme.colors.primary,
     },
     listContentContainer: {
       padding: 16,

@@ -693,16 +693,16 @@ const createStyles = (theme: MD3Theme) =>
       backgroundColor: "#f5f5f5",
     },
     header: {
-      padding: 20,
       backgroundColor: theme.colors.primary,
-      paddingTop: 60,
-      overflow: "visible",
+      height: 130, // Fixed height for consistency
+      justifyContent: 'flex-start', // Aligns content to the top
+      paddingHorizontal: 24,
+      paddingTop: 80, // Space for the floating nav bar
     },
     title: {
       fontSize: 24,
       fontWeight: "bold",
-      color: "#ffffff",
-      marginBottom: 15,
+      color: theme.colors.surface, // White text for blue background
     },
     section: {
       padding: 20,
