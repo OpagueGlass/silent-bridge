@@ -435,7 +435,7 @@ export default function SearchScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTopRow}>
-          <Text style={styles.title}>Interpreter Discovery</Text>
+          <Text style={styles.title}>Search</Text>
           <TouchableOpacity style={styles.toggleButton} onPress={handleToggleSearchMode}>
             <MaterialCommunityIcons
               name={searchMode === "filter" ? "account-search" : "tune"}
