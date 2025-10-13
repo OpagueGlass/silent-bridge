@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Redirect, Tabs, useRouter } from "expo-router";
+import { Redirect, Tabs, useRouter, usePathname } from "expo-router";
 import { BottomTabBar } from "@react-navigation/bottom-tabs";
 import {
   View,
@@ -19,7 +19,7 @@ import LoadingScreen from "../../components/LoadingScreen";
 
 type MaterialIconName =
   | "home"
-  | "history" // Add this line
+  | "history" 
   | "search"
   | "assignment"
   | "chat"
@@ -34,7 +34,8 @@ export default function TabLayout() {
   const isMobile = width < 768;
   const [menuVisible, setMenuVisible] = useState(false);
   const router = useRouter();
-
+  const pathname = usePathname();
+  
   if (authState.isLoading) {
     return <LoadingScreen />;
   }
@@ -60,19 +61,23 @@ export default function TabLayout() {
     { name: "settings", title: "Settings", icon: "settings" },
   ];
 
+  const isChatScreen = pathname.startsWith('/chat');
+
   return (
     <Tabs
       tabBar={(props) => (
         <View style={styles.tabBarWrapper}>
+          {!isChatScreen && (
           <View style={styles.left}>
             <Text style={styles.brand}>SILENT BRIDGE</Text>
           </View>
+        )}
 
           {isMobile ? (
             <>
               <Pressable
                 onPress={() => setMenuVisible(true)}
-                style={styles.hamburger}
+                style={[styles.hamburger, isChatScreen && { marginLeft: 'auto' }]} 
                 accessibilityLabel="Open menu"
                 accessibilityHint="Opens navigation menu"
               >
