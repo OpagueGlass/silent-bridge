@@ -455,9 +455,9 @@ export const getReviewUserAppointments = async (user_id: string) => {
     return [];
   }
 
-  return data.map(({ interpreter_profile, ...rest }) =>
-    convertToAppointment(rest, interpreter_profile?.profile || null)
-  );
+  return data
+    .map(({ interpreter_profile, ...rest }) => convertToAppointment(rest, interpreter_profile?.profile || null))
+    .map((appointment) => ({ ...appointment, status: "Completed" }) as Appointment);
 };
 
 /**
@@ -483,10 +483,12 @@ export const getReviewInterpreterAppointments = async (interpreter_id: string) =
       hospital_name,
       meeting_url,
       status,
-      profile (*)
+      profile (*),
+      rating (*)
       `
     )
     .eq("interpreter_id", interpreter_id)
+    .is("rating", null)
     .lt("end_time", new Date().toISOString())
     .gte("end_time", reviewPeriod.toISOString())
     .order("start_time", { ascending: true });
@@ -496,7 +498,9 @@ export const getReviewInterpreterAppointments = async (interpreter_id: string) =
     return [];
   }
 
-  return data.map(({ profile, ...rest }) => convertToAppointment(rest, profile));
+  return data
+    .map(({ profile, ...rest }) => convertToAppointment(rest, profile))
+    .map((appointment) => ({ ...appointment, status: "Completed" } as Appointment));
 };
 
 /**
@@ -708,19 +712,19 @@ export const getHistoryAppointments = async (user_id: string, is_interpreter: bo
   });
 };
 export const getOtherParticipant = async (roomId: string): Promise<string | null> => {
-  const { data, error } = await supabase.rpc('get_other_participant', { p_room: roomId });
+  const { data, error } = await supabase.rpc("get_other_participant", { p_room: roomId });
   if (error) {
-    console.error('get_other_participant error:', error);
+    console.error("get_other_participant error:", error);
     return null;
   }
-  return typeof data === 'string' ? data : null;
+  return typeof data === "string" ? data : null;
 };
 
 export const initiateChat = async (otherUserId: string): Promise<string | null> => {
-  const { data, error } = await supabase.rpc('create_or_get_chat_room', { other_user_id: otherUserId });
+  const { data, error } = await supabase.rpc("create_or_get_chat_room", { other_user_id: otherUserId });
   if (error) {
-    console.error('Error initiating chat:', error);
+    console.error("Error initiating chat:", error);
     return null;
   }
-  return typeof data === 'string' ? data : null;
+  return typeof data === "string" ? data : null;
 };

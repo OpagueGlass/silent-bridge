@@ -1,4 +1,5 @@
 import { Image, TouchableOpacity, View } from "react-native";
+import { useRouter } from "../../.expo/types/router";
 
 export default function ProfileImage({
   profile,
@@ -26,14 +27,14 @@ export function ClickableProfileImage({
   size = 72,
   borderRadius = 16,
   isClickable,
-  onPress,
+  router,
   ...props
 }: {
-  profile: { photo: string } | null;
+  profile: { id: string, photo: string } | null;
   size?: number;
   borderRadius?: number;
   isClickable: boolean;
-  onPress: () => void;
+  router: ReturnType<typeof useRouter>;
   [key: string]: any;
 }) {
   if (!profile) return null;
@@ -42,7 +43,7 @@ export function ClickableProfileImage({
 
   if (isClickable) {
     return (
-      <TouchableOpacity {...props} onPress={onPress}>
+      <TouchableOpacity {...props} onPress={() => router.push(`/interpreter/${profile.id}`)}>
         {image}
       </TouchableOpacity>
     );

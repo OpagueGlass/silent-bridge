@@ -1,8 +1,8 @@
 import { theme } from "@/theme/theme";
 import { getDate, getStartTime } from "@/utils/helper";
 import { Appointment } from "@/utils/query";
-import * as Linking from "expo-linking";
-import { View, TouchableOpacity } from "react-native";
+import { openURL } from "expo-linking";
+import { View } from "react-native";
 import { Button, Card, Chip, Icon, Text } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { ClickableProfileImage } from "./ProfileImage";
@@ -10,13 +10,13 @@ import { ClickableProfileImage } from "./ProfileImage";
 const joinAppointment = (appointment: Appointment) => {
   if (appointment.meetingUrl) {
     const meetingLink = `https://meet.google.com/${appointment.meetingUrl}`;
-    Linking.openURL(meetingLink);
+    openURL(meetingLink);
   } else {
     // showAlert("No Meeting Link", "The meeting link for this appointment has not been set yet.");
   }
 };
 
-const statusColors: Record<Appointment["status"], string> = {
+export const statusColors: Record<Appointment["status"], string> = {
   Approved: theme.colors.success,
   Pending: theme.colors.warning,
   Completed: theme.colors.info,
@@ -24,23 +24,13 @@ const statusColors: Record<Appointment["status"], string> = {
   Cancelled: theme.colors.disabled,
 };
 
-export default function AppointmentCard({
-  appointment,
-  isInterpreter = false,
-  router,
-}: {
-  appointment: Appointment;
-  isInterpreter?: boolean;
-  router: ReturnType<typeof useRouter>;
-}) {
-  const handleViewProfile = () => {
-    if (!isInterpreter) {
-      router.push(`/interpreter/${appointment.profile?.id}`);
-    }
-  };
-
+export function AppointmentCardContent(
+  {appointment,
+  isInterpreter,
+  router}: {appointment: Appointment, isInterpreter: boolean, router: ReturnType<typeof useRouter>}
+) {
   return (
-    <Card onPress={() => {}}>
+    <>
       <Chip
         style={{
           backgroundColor: statusColors[appointment.status],
@@ -59,7 +49,7 @@ export default function AppointmentCard({
           size={72}
           borderRadius={16}
           isClickable={!isInterpreter}
-          onPress={handleViewProfile}
+          router={router}
           style={{ marginRight: 16 }}
         />
         <View>
@@ -80,6 +70,22 @@ export default function AppointmentCard({
           </View>
         </View>
       </Card.Content>
+    </>
+  );
+}
+
+export default function AppointmentCard({
+  appointment,
+  isInterpreter = false,
+  router,
+}: {
+  appointment: Appointment;
+  isInterpreter?: boolean;
+  router: ReturnType<typeof useRouter>;
+}) {
+  return (
+    <Card onPress={() => {}}>
+      <AppointmentCardContent appointment={appointment} isInterpreter={isInterpreter} router={router} />
       <Card.Actions style={{ flexDirection: "row", justifyContent: "space-between", paddingRight: 16 }}>
         <Button icon="message" style={{ flex: 1 }} contentStyle={{ justifyContent: "center" }} mode="contained-tonal">
           Message
