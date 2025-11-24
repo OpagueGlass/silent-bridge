@@ -36,13 +36,19 @@ export const getDuration = (appointment: Appointment) => {
 
 export const getDate = (appointment: { startTime: string }) => {
   const startTime = new Date(appointment.startTime);
-  return startTime.toLocaleDateString("en-GB");
+  return startTime.toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
 };
 
 export const getStartTime = (appointment: { startTime: string }) => {
   const startTime = new Date(appointment.startTime);
   return startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
+
 
 export const getTimeRange = (appointment: { startTime: string; endTime: string }) => {
   const endTime = new Date(appointment.endTime);
@@ -78,11 +84,3 @@ export const getMeetLink = async (providerToken: string, startTime: string, endT
   return meetLink;
 };
 
-export const joinAppointment = (appointment: Appointment) => {
-  if (appointment.meetingUrl) {
-    const meetingLink = `https://meet.google.com/${appointment.meetingUrl}`;
-    Linking.openURL(meetingLink);
-  } else {
-    showAlert("No Meeting Link", "The meeting link for this appointment has not been set yet.");
-  }
-};

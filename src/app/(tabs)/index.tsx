@@ -4,7 +4,8 @@ import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import { Button, Dialog, Menu, Portal, Text, TextInput } from "react-native-paper";
-import ClientAppointmentsCard from "../../components/ClientAppointmentsCard";
+// import ClientAppointmentsCard from "../../components/ClientAppointmentsCard";
+import AppointmentCard from "@/components/AppointmentCard";
 import ClientReviewCard from "../../components/ClientReviewCard";
 import InterpreterApprovedCard from "../../components/InterpreterApprovedCard";
 import InterpreterReviewCard from "../../components/InterpreterReviewCard";
@@ -357,7 +358,7 @@ export default function HomeScreen() {
 
               {filteredInterpreterApproved.length > 0 ? (
                 filteredInterpreterApproved.map((appointment) => (
-                  <InterpreterApprovedCard key={appointment.id} appointment={appointment} />
+                  <AppointmentCard key={appointment.id} appointment={appointment} isInterpreter={isInterpreter} router={router} />
                 ))
               ) : (
                 <Text>No approved appointments found.</Text>
@@ -460,11 +461,9 @@ export default function HomeScreen() {
             </View>
             {filteredUpcomingAppointments.length > 0 ? (
               filteredUpcomingAppointments.map((appointment) => (
-                <ClientAppointmentsCard
+                <AppointmentCard
                   key={appointment.id}
-                  appointment={appointment}
-                  getStatusColor={getStatusColor}
-                  actions={renderUserAppointmentActions(appointment.status, appointment)}
+                  appointment={appointment} isInterpreter={isInterpreter} router={router}
                 />
               ))
             ) : (
