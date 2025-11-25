@@ -3,7 +3,7 @@ import { Redirect, Stack, usePathname } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 
 export default function AuthLayout() {
-  const { authState, session } = useAuth();
+  const { authState, session, profile } = useAuth();
   const pathname = usePathname();
 
   if (authState.isLoading) {
@@ -13,6 +13,10 @@ export default function AuthLayout() {
   // Only redirect if not logged in and not already on the auth page
   if (!session && pathname !== "/auth") {
     return <Redirect href="/auth" />;
+  }
+
+  if (session && profile) {
+    return <Redirect href="/" />;
   }
 
   return (

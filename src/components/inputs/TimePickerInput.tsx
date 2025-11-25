@@ -1,17 +1,8 @@
 import { useDisclosure } from "@/hooks/useDisclosure";
 import { useCallback } from "react";
-import { TouchableOpacity } from "react-native";
+import { TouchableHighlight } from "react-native";
 import { TextInput } from "react-native-paper";
 import { TimePickerModal } from "react-native-paper-dates";
-import { CalendarDate } from "react-native-paper-dates/lib/typescript/Date/Calendar";
-
-const formatDate = (date: Date) => {
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-};
 
 export default function TimePickerInput({
   hours,
@@ -19,6 +10,7 @@ export default function TimePickerInput({
   minutes,
   setMinutes,
   validRange,
+  placeholder,
   ...props
 }: {
   hours: number | undefined;
@@ -26,6 +18,7 @@ export default function TimePickerInput({
   minutes: number | undefined;
   setMinutes: (minutes: number | undefined) => void;
   validRange?: { startDate: Date | undefined; endDate: Date | undefined };
+  placeholder?: string;
   [key: string]: any;
 }) {
   const { isOpen, open, close } = useDisclosure();
@@ -40,27 +33,29 @@ export default function TimePickerInput({
   );
 
   return (
-    <TouchableOpacity onPress={open} {...props}>
-      <TextInput
-        mode="outlined"
-        value={
-          hours === undefined || minutes === undefined
-            ? ""
-            : new Date(0, 0, 0, hours, minutes).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-        }
-        right={<TextInput.Icon icon="clock" onPress={open} />}
-        placeholder="Select a time"
-        style={{ pointerEvents: "none" }}
-      ></TextInput>
+    <>
+      <TouchableHighlight onPress={open} activeOpacity={0.6} underlayColor="#DDDDDD" {...props}>
+        <TextInput
+          mode="outlined"
+          value={
+            hours === undefined || minutes === undefined
+              ? ""
+              : new Date(0, 0, 0, hours, minutes).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          }
+          right={<TextInput.Icon icon="clock" onPress={open} />}
+          placeholder={placeholder ?? "Select a time"}
+          style={{ pointerEvents: "none" }}
+        ></TextInput>
+      </TouchableHighlight>
       <TimePickerModal
         locale="en"
-        label="Select time"
+        label={placeholder ? `Select ${placeholder.toLowerCase()}` : "Select time"}
         visible={isOpen}
         onDismiss={close}
         hours={hours}
         minutes={minutes}
         onConfirm={onConfirm}
       />
-    </TouchableOpacity>
+    </>
   );
 }

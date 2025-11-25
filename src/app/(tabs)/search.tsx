@@ -1,28 +1,28 @@
 "use client";
 
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useState, useEffect } from "react";
-import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
-import { ActivityIndicator, Button, Card, Chip, MD3Theme, Menu, Text, TextInput } from "react-native-paper";
-import DatePickerInput from "../../components/DatePickerInput";
-import TimePickerInput from "../../components/TimePickerInput";
-import UserProfileModal from "../../components/UserProfileModal";
-import {
-  searchInterpreters,
-  InterpreterProfile,
-  getRequests,
-  Request,
-  Profile,
-  updateRequest,
-  addAppointmentMeetingURL,
-  initiateChat,
-} from "@/utils/query";
+import DatePickerInput from "@/components/inputs/DatePickerInput";
+import TimePickerInput from "@/components/inputs/TimePickerInput";
+import UserProfileModal from "@/components/modals/UserProfileModal";
 import { LANGUAGES, SPECIALISATION } from "@/constants/data";
-import { parseDate, getMeetLink, getDuration, getStartTime } from "@/utils/helper";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import { getStartTime, getDuration, getMeetLink } from "@/utils/helper";
+import {
+  addAppointmentMeetingURL,
+  getRequests,
+  initiateChat,
+  InterpreterProfile,
+  Profile,
+  Request,
+  searchInterpreters,
+  updateRequest,
+} from "@/utils/query";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Button, Card, Chip, MD3Theme, Menu, Text, TextInput } from "react-native-paper";
 import { showConfirmAlert, showValidationError } from "../../utils/alert";
 
 const durationOptions = ["00:15", "00:30", "00:45", "01:00", "01:15", "01:30", "01:45", "02:00"];
@@ -115,7 +115,7 @@ export default function SearchScreen() {
     if (roomId) {
       router.push({ pathname: "/chat/[id]", params: { id: roomId } });
     } else {
-      console.error('Could not initiate chat.');
+      console.error("Could not initiate chat.");
     }
   };
 
@@ -138,8 +138,9 @@ export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Search filters
-  const [appointmentDate, setAppointmentDate] = useState("");
-  const [appointmentTime, setAppointmentTime] = useState("");
+  const [appointmentDate, setAppointmentDate] = useState<Date | undefined>();
+  const [hours, setHours] = useState<number | undefined>();
+  const [minutes, setMinutes] = useState<number | undefined>();
   const [duration, setDuration] = useState(defaultParams.duration);
   const [selectedLanguage, setSelectedLanguage] = useState(defaultParams.selectedLanguage);
   const [selectedSpecialisation, setSelectedSpecialisation] = useState(defaultParams.selectedSpecialisation);
@@ -173,23 +174,18 @@ export default function SearchScreen() {
     setProfileModalVisible(true);
   };
 
-  const validateSearch = () => {
-    if (appointmentDate === "") {
-      showValidationError("Please select an appointment date.");
-      return false;
-    }
-    if (appointmentTime === "") {
-      showValidationError("Please select an appointment time.");
-      return false;
-    }
-    return true;
-  };
-
   const handleSearch = () => {
-    if (!validateSearch() || !profile) return;
+    if (!appointmentDate) {
+      showValidationError("Please select an appointment date.");
+      return;
+    }
+    if (hours === undefined || minutes === undefined) {
+      showValidationError("Please select an appointment time.");
+      return;
+    }
 
-    const startTime = parseDate(appointmentDate);
-    const [startHour, startMinute] = appointmentTime.split(":").map((num) => parseInt(num, 10));
+    const startTime = new Date(appointmentDate);
+    const [startHour, startMinute] = [hours, minutes];
     startTime.setHours(startHour, startMinute);
     const endTime = new Date(startTime.getTime() + (duration + 1) * 15 * 60000);
     const { ageStart, ageEnd } = ageRangeOptions[ageRange];
@@ -260,8 +256,7 @@ export default function SearchScreen() {
       const meetingURL = meetingLink.split("/")[3];
       await addAppointmentMeetingURL(request.appointment.id, meetingURL);
       await updateRequest(request.id, true);
-      await Promise.all(request.overlappingAppointments?.map(
-        (overlap) => updateRequest(overlap.requestId, false)));
+      await Promise.all(request.overlappingAppointments?.map((overlap) => updateRequest(overlap.requestId, false)));
       const updatedRequests = await getRequests(profile!.id);
       setRequests(updatedRequests);
       setLoading(false);
@@ -284,9 +279,6 @@ export default function SearchScreen() {
       console.error("Error rejecting request:", error);
     }
   };
-
-  // const handleAcceptRequest = handleUpdateRequest(true);
-  // const handleRejectRequest = handleUpdateRequest(false);
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -348,77 +340,79 @@ export default function SearchScreen() {
                   <Card.Content>
                     <View style={styles.requestHeader}>
                       <View style={styles.requestInfo}>
-                      <Text style={styles.clientName}>{request.appointment.profile?.name}</Text>
-                      <Text style={styles.requestDateTime}>
-                        {new Date(request.appointment.startTime).toLocaleDateString("en-GB", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })}{" "}
-                        • {getStartTime(request.appointment)}
-                      </Text>
-                    </View>
-                    {/* <Chip
+                        <Text style={styles.clientName}>{request.appointment.profile?.name}</Text>
+                        <Text style={styles.requestDateTime}>
+                          {new Date(request.appointment.startTime).toLocaleDateString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })}{" "}
+                          • {getStartTime(request.appointment)}
+                        </Text>
+                      </View>
+                      {/* <Chip
                         style={{ backgroundColor: getStatusChipColor(request.status) }}
                         textStyle={{ color: 'white', fontSize: 12 }}
                       >
                         {request.status}
                       </Chip> */}
-                  </View>
+                    </View>
 
-                  <View style={styles.detailsContainer}>
-                    <View style={styles.requestDetailRow}>
-                      <MaterialCommunityIcons name="email-outline" size={18} color="#666" />
-                      <Text style={styles.requestDetailText} selectable>
-                        {request.appointment.profile?.email}
-                      </Text>
-                    </View>
-                    <View style={styles.requestDetailRow}>
-                      <MaterialCommunityIcons name="clock-outline" size={18} color="#666" />
-                      <Text style={styles.requestDetailText}>Duration: {getDuration(request.appointment)}</Text>
-                    </View>
-                    {/* {request.doctorLanguage && (
+                    <View style={styles.detailsContainer}>
+                      <View style={styles.requestDetailRow}>
+                        <MaterialCommunityIcons name="email-outline" size={18} color="#666" />
+                        <Text style={styles.requestDetailText} selectable>
+                          {request.appointment.profile?.email}
+                        </Text>
+                      </View>
+                      <View style={styles.requestDetailRow}>
+                        <MaterialCommunityIcons name="clock-outline" size={18} color="#666" />
+                        <Text style={styles.requestDetailText}>Duration: {getDuration(request.appointment)}</Text>
+                      </View>
+                      {/* {request.doctorLanguage && (
                         <View style={styles.requestDetailRow}>
                           <MaterialCommunityIcons name="translate" size={18} color="#666" />
                           <Text style={styles.requestDetailText}>Doctor's Language: {request.doctorLanguage}</Text>
                         </View>
                       )} */}
-                    <View style={styles.requestDetailRow}>
-                      <MaterialCommunityIcons name="hospital-building" size={18} color="#666" />
-                      <Text style={styles.requestDetailText}>Hospital: {request.appointment.hospitalName}</Text>
+                      <View style={styles.requestDetailRow}>
+                        <MaterialCommunityIcons name="hospital-building" size={18} color="#666" />
+                        <Text style={styles.requestDetailText}>Hospital: {request.appointment.hospitalName}</Text>
+                      </View>
                     </View>
-                  </View>
 
-                  <View style={styles.requestActions}>
-                    <Button
-                      mode="text"
-                      onPress={() => openProfileModal(request.appointment.profile)}
-                      // disabled={request.status === 'Rejected' || request.status === 'Cancelled'}
-                      style={styles.profileTextButton}
-                    >
-                      Profile
-                    </Button>
-                    <Button onPress={() => request.appointment.profile && handleInitiateChat(request.appointment.profile.id)}>Chat</Button>
-                    <Button
-                      mode="outlined"
-                      style={[styles.actionButton, styles.rejectButton]}
-                      textColor="#F44336"
-                      onPress={() => handleRejectRequest(request)}
-                    >
-                      Reject
-                    </Button>
-                    <Button
-                      mode="contained"
-                      style={styles.actionButton}
-                      onPress={() => handleAcceptRequest(request)}
-                    >
-                      Accept
-                    </Button>
-                  </View>
-                </Card.Content>
-              </Card>
-            ))
-          )}
+                    <View style={styles.requestActions}>
+                      <Button
+                        mode="text"
+                        onPress={() => openProfileModal(request.appointment.profile)}
+                        // disabled={request.status === 'Rejected' || request.status === 'Cancelled'}
+                        style={styles.profileTextButton}
+                      >
+                        Profile
+                      </Button>
+                      <Button
+                        onPress={() =>
+                          request.appointment.profile && handleInitiateChat(request.appointment.profile.id)
+                        }
+                      >
+                        Chat
+                      </Button>
+                      <Button
+                        mode="outlined"
+                        style={[styles.actionButton, styles.rejectButton]}
+                        textColor="#F44336"
+                        onPress={() => handleRejectRequest(request)}
+                      >
+                        Reject
+                      </Button>
+                      <Button mode="contained" style={styles.actionButton} onPress={() => handleAcceptRequest(request)}>
+                        Accept
+                      </Button>
+                    </View>
+                  </Card.Content>
+                </Card>
+              ))
+            )}
           </View>
         </ScrollView>
 
@@ -466,19 +460,31 @@ export default function SearchScreen() {
               <View style={styles.dateTimeField}>
                 <Text style={styles.filterLabel}>Appointment Date</Text>
                 <DatePickerInput
-                  label=""
-                  value={appointmentDate}
-                  onChange={setAppointmentDate}
+                  date={appointmentDate}
+                  setDate={setAppointmentDate}
                   style={styles.dateTimeInput}
-                  minDate={new Date()}
+                  validRange={{
+                    startDate: (() => {
+                      const d = new Date();
+                      d.setHours(0, 0, 0, 0);
+                      return d;
+                    })(),
+                    endDate: (() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + 90);
+                      d.setHours(0, 0, 0, 0);
+                      return d;
+                    })(),
+                  }}
                 />
               </View>
               <View style={styles.dateTimeField}>
                 <Text style={styles.filterLabel}>Appointment Time</Text>
                 <TimePickerInput
-                  label=""
-                  value={appointmentTime}
-                  onChange={setAppointmentTime}
+                  hours={hours}
+                  setHours={setHours}
+                  minutes={minutes}
+                  setMinutes={setMinutes}
                   style={styles.dateTimeInput}
                 />
               </View>
@@ -651,91 +657,94 @@ export default function SearchScreen() {
 
       {/* --- SEARCH RESULT --- */}
 
-      {loading ? <ActivityIndicator style={{ marginTop: 20 }} /> :
-      hasSearched && (
-        <View style={styles.section}>
-          {displayedInterpreters.length > 0 ? (
-            <>
-              <Text style={styles.sectionTitle}>Top Matches</Text>
+      {loading ? (
+        <ActivityIndicator style={{ marginTop: 20 }} />
+      ) : (
+        hasSearched && (
+          <View style={styles.section}>
+            {displayedInterpreters.length > 0 ? (
+              <>
+                <Text style={styles.sectionTitle}>Top Matches</Text>
 
-              {displayedInterpreters.map((interpreter) => (
-                <Card key={interpreter.id} style={styles.interpreterCard}>
-                  <Card.Content>
-                    <View style={styles.interpreterHeader}>
-                      <Image source={{ uri: interpreter.photo }} style={styles.interpreterAvatar} />
-                      <View style={styles.interpreterInfo}>
-                        <Text style={styles.interpreterName}>{interpreter.name}</Text>
-                        <Text style={styles.interpreterSpecialisation}>
-                          {interpreter.interpreterSpecialisations.map((spec) => SPECIALISATION[spec]).join(", ")}
-                        </Text>
-                        <View style={styles.interpreterMeta}>
-                          <Text style={styles.interpreterRating}>⭐ {interpreter.avgRating}</Text>
-                        </View>
-                        <View style={styles.interpreterTags}>
-                          <Chip style={styles.tag} textStyle={styles.tagText}>
-                            {interpreter.gender}
-                          </Chip>
-                          <Chip style={styles.tag} textStyle={styles.tagText}>
-                            {interpreter.ageRange}
-                          </Chip>
+                {displayedInterpreters.map((interpreter) => (
+                  <Card key={interpreter.id} style={styles.interpreterCard}>
+                    <Card.Content>
+                      <View style={styles.interpreterHeader}>
+                        <Image source={{ uri: interpreter.photo }} style={styles.interpreterAvatar} />
+                        <View style={styles.interpreterInfo}>
+                          <Text style={styles.interpreterName}>{interpreter.name}</Text>
+                          <Text style={styles.interpreterSpecialisation}>
+                            {interpreter.interpreterSpecialisations.map((spec) => SPECIALISATION[spec]).join(", ")}
+                          </Text>
+                          <View style={styles.interpreterMeta}>
+                            <Text style={styles.interpreterRating}>⭐ {interpreter.avgRating}</Text>
+                          </View>
+                          <View style={styles.interpreterTags}>
+                            <Chip style={styles.tag} textStyle={styles.tagText}>
+                              {interpreter.gender}
+                            </Chip>
+                            <Chip style={styles.tag} textStyle={styles.tagText}>
+                              {interpreter.ageRange}
+                            </Chip>
+                          </View>
                         </View>
                       </View>
-                    </View>
 
-                    <View style={styles.interpreterActions}>
-                      <Button onPress={() => handleInitiateChat(interpreter.id)}>Chat</Button>
-                      <Button
-                        mode="outlined"
-                        style={styles.profileButton}
-                        onPress={() => {
-                          router.push({
-                            pathname: "/interpreter/[id]",
-                            params: {
-                              id: interpreter.id,
-                              // date: appointmentDate,
-                              // time: appointmentTime,
-                            },
-                          });
-                        }}
-                      >
-                        Profile
-                      </Button>
-                      <Button
-                        mode="contained"
-                        style={styles.bookButton}
-                        onPress={() => {
-                          if (searchMode === "filter") {
+                      <View style={styles.interpreterActions}>
+                        <Button onPress={() => handleInitiateChat(interpreter.id)}>Chat</Button>
+                        <Button
+                          mode="outlined"
+                          style={styles.profileButton}
+                          onPress={() => {
                             router.push({
-                              pathname: `/interpreter/[id]/book`,
+                              pathname: "/interpreter/[id]",
                               params: {
                                 id: interpreter.id,
                                 // date: appointmentDate,
                                 // time: appointmentTime,
                               },
                             });
-                          } else {
-                            router.push({
-                              pathname: `/interpreter/[id]/book`,
-                              params: {
-                                id: interpreter.id,
-                              },
-                            });
-                          }
-                        }}
-                      >
-                        Book Now
-                      </Button>
-                    </View>
-                  </Card.Content>
-                </Card>
-              ))}
-            </>
-          ) : (
-            <Text style={{ textAlign: "center", color: "#666", marginTop: 20 }}>
-              No interpreters found matching your criteria.
-            </Text>
-          )}
-        </View>
+                          }}
+                        >
+                          Profile
+                        </Button>
+                        <Button
+                          mode="contained"
+                          style={styles.bookButton}
+                          onPress={() => {
+                            if (searchMode === "filter") {
+                              router.push({
+                                pathname: `/interpreter/[id]/book`,
+                                params: {
+                                  id: interpreter.id,
+                                  // date: appointmentDate,
+                                  // time: appointmentTime,
+                                },
+                              });
+                            } else {
+                              router.push({
+                                pathname: `/interpreter/[id]/book`,
+                                params: {
+                                  id: interpreter.id,
+                                },
+                              });
+                            }
+                          }}
+                        >
+                          Book Now
+                        </Button>
+                      </View>
+                    </Card.Content>
+                  </Card>
+                ))}
+              </>
+            ) : (
+              <Text style={{ textAlign: "center", color: "#666", marginTop: 20 }}>
+                No interpreters found matching your criteria.
+              </Text>
+            )}
+          </View>
+        )
       )}
     </ScrollView>
   );
@@ -751,7 +760,7 @@ const createStyles = (theme: MD3Theme) =>
     header: {
       backgroundColor: theme.colors.primary,
       height: 130, // Fixed height for consistency
-      justifyContent: 'flex-start', // Aligns content to the top
+      justifyContent: "flex-start", // Aligns content to the top
       paddingHorizontal: 24,
       paddingTop: 80, // Space for the floating nav bar
     },

@@ -8,7 +8,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { Calendar, DateData } from "react-native-calendars";
 import { ActivityIndicator, Button, Card, IconButton, MD3Theme, Modal, Portal, Text } from "react-native-paper";
-import TimePickerInput from "../../components/TimePickerInput";
+import TimePickerInput from "@/components/inputs/TimePickerInput";
 
 type WeeklyAvailability = {
   day_id: number;

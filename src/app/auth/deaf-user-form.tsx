@@ -1,24 +1,23 @@
-'use client';
+"use client";
 
-import { STATES } from '@/constants/data';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Menu, Text, TextInput } from 'react-native-paper';
-import DatePickerInput from '../../components/DatePickerInput';
-import { useAuth } from '../../contexts/AuthContext';
-import { useAppTheme } from '../../hooks/useAppTheme';
-import { showError, showSuccess, showValidationError } from '../../utils/alert';
-import { supabase } from '@/utils/supabase';
-import { parseDate } from '@/utils/helper';
+import { STATES } from "@/constants/data";
+import { supabase } from "@/utils/supabase";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Button, Menu, Text, TextInput } from "react-native-paper";
+import DatePickerInput from "../../components/inputs/DatePickerInput";
+import { useAuth } from "../../contexts/AuthContext";
+import { useAppTheme } from "../../hooks/useAppTheme";
+import { showError, showSuccess, showValidationError } from "../../utils/alert";
 
 export default function DeafUserFormScreen() {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    dateOfBirth: '',
-    gender: '',
-    location: '',
+    name: "",
+    email: "",
+    dateOfBirth: undefined as Date | undefined,
+    gender: "",
+    location: "",
   });
   const [genderMenuVisible, setGenderMenuVisible] = useState(false);
   const [stateMenuVisible, setStateMenuVisible] = useState(false);
@@ -30,19 +29,19 @@ export default function DeafUserFormScreen() {
   const handleSignUp = async () => {
     const validateForm = () => {
       if (!formData.name.trim()) {
-        showValidationError('Please enter your name');
+        showValidationError("Please enter your name");
         return false;
       }
-      if (!formData.dateOfBirth) {
-        showValidationError('Please select your date of birth');
+      if (formData.dateOfBirth === undefined) {
+        showValidationError("Please select your date of birth");
         return false;
       }
       if (!formData.gender) {
-        showValidationError('Please select your gender');
+        showValidationError("Please select your gender");
         return false;
       }
       if (!formData.location) {
-        showValidationError('Please select your state');
+        showValidationError("Please select your state");
         return false;
       }
       return true;
@@ -50,7 +49,7 @@ export default function DeafUserFormScreen() {
 
     try {
       setIsSubmitting(true);
-      
+
       if (!validateForm()) {
         setIsSubmitting(false);
         return;
@@ -60,18 +59,18 @@ export default function DeafUserFormScreen() {
         id: session!.user.id,
         name: formData.name,
         email: session!.user.email!,
-        date_of_birth: parseDate(formData.dateOfBirth).toISOString(),
+        date_of_birth: formData.dateOfBirth!.toISOString(),
         gender: formData.gender,
         location: formData.location,
         photo: session!.user.user_metadata.avatar_url,
       };
 
-      const { error } = await supabase.from('profile').insert(profileData);
-      if (error) throw error
-      showSuccess('Account created successfully!');
-      router.replace('/auth/callback');
+      const { error } = await supabase.from("profile").insert(profileData);
+      if (error) throw error;
+      showSuccess("Account created successfully!");
+      router.replace("/auth/callback");
     } catch (error: any) {
-      showError(error.message || 'Failed to create account with Google. Please try again.');
+      showError(error.message || "Failed to create account with Google. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -93,10 +92,11 @@ export default function DeafUserFormScreen() {
         style={styles.input}
       />
       <DatePickerInput
-        label="Date of Birth"
-        value={formData.dateOfBirth}
-        onChange={(dateString) => setFormData({ ...formData, dateOfBirth: dateString })}
-        placeholder="Select your date of birth"
+        date={formData.dateOfBirth}
+        setDate={(date) => {
+          setFormData({ ...formData, dateOfBirth: date });
+        }}
+        placeholder="Date of Birth"
         style={styles.input}
       />
       <Menu
@@ -120,14 +120,14 @@ export default function DeafUserFormScreen() {
       >
         <Menu.Item
           onPress={() => {
-            setFormData({ ...formData, gender: 'Male' });
+            setFormData({ ...formData, gender: "Male" });
             setGenderMenuVisible(false);
           }}
           title="Male"
         />
         <Menu.Item
           onPress={() => {
-            setFormData({ ...formData, gender: 'Female' });
+            setFormData({ ...formData, gender: "Female" });
             setGenderMenuVisible(false);
           }}
           title="Female"
@@ -171,7 +171,7 @@ export default function DeafUserFormScreen() {
         loading={isSubmitting}
         disabled={isSubmitting}
       >
-        {isSubmitting ? 'Creating Account...' : 'Continue with Google'}
+        {isSubmitting ? "Creating Account..." : "Continue with Google"}
       </Button>
     </ScrollView>
   );
@@ -181,21 +181,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 10,
-    color: '#2196F3',
+    color: "#2196F3",
     marginTop: 40,
   },
   subtitle: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 30,
-    color: '#666',
+    color: "#666",
   },
   input: {
     marginBottom: 15,
