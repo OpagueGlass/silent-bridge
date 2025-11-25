@@ -5,8 +5,8 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { ActivityIndicator, Card, List, MD3Theme, Text } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
-import { Appointment, getHistoryAppointments } from "../../utils/query";
 import { getTimeRange } from "../../utils/helper";
+import { Appointment, getHistoryAppointments } from "../../utils/query";
 
 const HistoryCard = ({ item }: { item: Appointment }) => {
   const theme = useAppTheme();

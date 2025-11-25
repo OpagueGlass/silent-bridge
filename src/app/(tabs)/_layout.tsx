@@ -1,21 +1,20 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Redirect, Tabs, useRouter } from "expo-router";
 import { BottomTabBar } from "@react-navigation/bottom-tabs";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Platform,
-  useWindowDimensions,
-  Pressable,
-  Modal,
-  TouchableOpacity,
-} from "react-native";
-import { MD3Theme } from "react-native-paper";
+import { Redirect, Tabs, useRouter } from "expo-router";
 import { useState } from "react";
-import LoadingScreen from "../../components/LoadingScreen";
+import {
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import LoadingScreen from "../../components/sections/LoadingScreen";
 
 type MaterialIconName =
   | "home"

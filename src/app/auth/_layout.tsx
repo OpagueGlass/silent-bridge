@@ -1,6 +1,6 @@
+import LoadingScreen from "@/components/sections/LoadingScreen";
 import { Redirect, Stack, usePathname } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
-import LoadingScreen from "@/components/LoadingScreen";
 
 export default function AuthLayout() {
   const { authState, session } = useAuth();

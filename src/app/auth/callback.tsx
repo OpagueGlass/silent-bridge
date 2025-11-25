@@ -1,9 +1,8 @@
+import { supabase } from "@/utils/supabase";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
-import { supabase } from "@/utils/supabase";
+import LoadingScreen from "../../components/sections/LoadingScreen";
 import { useAuth } from "../../contexts/AuthContext";
-import { useAppTheme } from "../../hooks/useAppTheme";
-import LoadingScreen from "../../components/LoadingScreen";
 
 export default function AuthCallback() {
   const router = useRouter();

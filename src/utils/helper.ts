@@ -21,11 +21,6 @@ export const getMinMaxDOB = (ageStart: number, ageEnd: number) => {
   return { minDOB, maxDOB };
 };
 
-export const parseDate = (dateString: string) => {
-  const [day, month, year] = dateString.split("/").map((num) => parseInt(num, 10));
-  return new Date(year, month - 1, day);
-};
-
 export const getDuration = (appointment: Appointment) => {
   const diffMs = new Date(appointment.endTime).getTime() - new Date(appointment.startTime).getTime();
   const diffMins = Math.floor(diffMs / (1000 * 60));

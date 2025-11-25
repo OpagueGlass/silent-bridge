@@ -1,16 +1,15 @@
-import { useState, useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, Pressable, Image } from "react-native";
-import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { MD3Theme } from "react-native-paper";
-import { useAppTheme } from "../../../hooks/useAppTheme";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { getInterpreterProfile, InterpreterProfile } from "@/utils/query";
 import { SPECIALISATION } from "@/constants/data";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getDate, getStartTime } from "@/utils/helper";
-import LoadingScreen from "../../../components/LoadingScreen";
-import InterpreterNotFoundScreen from "../../../components/InterpreterNotFoundScreen";
+import { getInterpreterProfile, InterpreterProfile } from "@/utils/query";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
+import { Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { MD3Theme } from "react-native-paper";
+import InterpreterNotFoundScreen from "../../../components/sections/InterpreterNotFoundScreen";
+import LoadingScreen from "../../../components/sections/LoadingScreen";
+import { useAppTheme } from "../../../hooks/useAppTheme";
 
 export default function BookingSuccessScreen() {
   const router = useRouter();

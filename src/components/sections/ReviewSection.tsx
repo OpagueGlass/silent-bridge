@@ -1,13 +1,12 @@
-import { useState, useEffect, Dispatch, SetStateAction } from "react";
-import { View, StyleSheet, TouchableOpacity, FlatList } from "react-native";
-import { Modal, Portal, Text, Button, TextInput, Card } from "react-native-paper";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDisclosure } from "@/hooks/useDisclosure";
-import { Appointment, Profile } from "@/utils/query";
-import ReviewCard from "./ReviewCard";
-import { useRouter } from "expo-router";
-import { submitRating } from "@/utils/query";
 import { getDate } from "@/utils/helper";
+import { Appointment, Profile, submitRating } from "@/utils/query";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { FlatList, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Button, Card, Modal, Portal, Text, TextInput } from "react-native-paper";
+import ReviewCard from "../cards/ReviewCard";
 
 // interface ReviewModalProps {
 //   visible: boolean;

@@ -1,19 +1,16 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from "react-native";
-import { useLocalSearchParams, Stack, useRouter } from "expo-router";
-import { TextInput, MD3Theme } from "react-native-paper";
-import { useAppTheme } from "../../../hooks/useAppTheme";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import DatePickerInput from "../../../components/DatePickerInput";
-import TimePickerInput from "../../../components/TimePickerInput";
-import { getInterpreterProfile, InterpreterProfile, createAppointment, createRequest } from "@/utils/query";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SPECIALISATION } from "@/constants/data";
 import { showConfirmAlert } from "@/utils/alert";
 import { getDate, getStartTime } from "@/utils/helper";
-import LoadingScreen from "../../../components/LoadingScreen";
-import InterpreterNotFoundScreen from "../../../components/InterpreterNotFoundScreen";
+import { createAppointment, createRequest, getInterpreterProfile, InterpreterProfile } from "@/utils/query";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { MD3Theme, TextInput } from "react-native-paper";
+import InterpreterNotFoundScreen from "../../../components/sections/InterpreterNotFoundScreen";
+import LoadingScreen from "../../../components/sections/LoadingScreen";
+import { useAppTheme } from "../../../hooks/useAppTheme";
 
 export default function BookingScreen() {
   const router = useRouter();

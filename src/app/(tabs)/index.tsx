@@ -1,21 +1,20 @@
 "use client";
 
+import AppointmentCard from "@/components/cards/AppointmentCard";
+import ReviewSection from "@/components/sections/ReviewSection";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
-import { Button, IconButton, Text, TextInput } from "react-native-paper";
-import AppointmentCard from "@/components/AppointmentCard";
+import { Button, MD3Theme, Text, TextInput } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
-import { MD3Theme } from "react-native-paper";
 import {
   Appointment,
-  getReviewUserAppointments,
-  getUpcomingUserAppointments,
   getReviewInterpreterAppointments,
+  getReviewUserAppointments,
   getUpcomingInterpreterAppointments,
+  getUpcomingUserAppointments,
 } from "../../utils/query";
-import ReviewSection from "@/components/ReviewSection";
 
 export default function HomeScreen() {
   const { profile, isInterpreter } = useAuth();

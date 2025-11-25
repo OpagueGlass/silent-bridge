@@ -1,14 +1,13 @@
 import { LANGUAGES, SPECIALISATION } from "@/constants/data";
 import { getInterpreterProfile, getRatings, InterpreterProfile, Rating } from "@/utils/query";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Card, Chip, MD3Theme } from "react-native-paper";
+import InterpreterNotFoundScreen from "../../../components/sections/InterpreterNotFoundScreen";
+import LoadingScreen from "../../../components/sections/LoadingScreen";
 import { useAppTheme } from "../../../hooks/useAppTheme";
-import LoadingScreen from "../../../components/LoadingScreen";
-import InterpreterNotFoundScreen from "../../../components/InterpreterNotFoundScreen";
 
 export default function InterpreterDetailScreen() {
   const router = useRouter();

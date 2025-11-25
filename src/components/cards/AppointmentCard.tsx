@@ -1,11 +1,11 @@
+import { ClickableProfileImage } from "@/components/images/ProfileImage";
 import { theme } from "@/theme/theme";
 import { getDate, getStartTime } from "@/utils/helper";
 import { Appointment } from "@/utils/query";
 import { openURL } from "expo-linking";
+import { useRouter } from "expo-router";
 import { View } from "react-native";
 import { Button, Card, Chip, Icon, Text } from "react-native-paper";
-import { useRouter } from "expo-router";
-import { ClickableProfileImage } from "./ProfileImage";
 
 const joinAppointment = (appointment: Appointment) => {
   if (appointment.meetingUrl) {
