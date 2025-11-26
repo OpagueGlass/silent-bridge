@@ -1,36 +1,21 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { MaterialIcons } from "@expo/vector-icons";
-import { BottomTabBar } from "@react-navigation/bottom-tabs";
-import { Redirect, Tabs, useRouter } from "expo-router";
+import { Redirect, Stack, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
-  useWindowDimensions,
-  View,
+  View
 } from "react-native";
 import LoadingScreen from "../../components/sections/LoadingScreen";
-
-type MaterialIconName =
-  | "home"
-  | "history" // Add this line
-  | "search"
-  | "assignment"
-  | "chat"
-  | "sign-language"
-  | "settings";
 
 export default function TabLayout() {
   const theme = useAppTheme();
   const { authState, isInterpreter, profile } = useAuth();
-  const isWeb = Platform.OS === "web";
-  const { width } = useWindowDimensions();
-  const isMobile = width < 768;
   const [menuVisible, setMenuVisible] = useState(false);
   const router = useRouter();
 
@@ -42,166 +27,91 @@ export default function TabLayout() {
     return <Redirect href="/auth" />;
   }
 
-  const tabs: {
-    name: string;
-    title: string;
-    icon: MaterialIconName;
-  }[] = [
-    { name: "index", title: "Home", icon: "home" },
-    { name: "history", title: "History", icon: "history" }, 
-    {
-      name: "search",
-      title: isInterpreter ? "Requests" : "Search",
-      icon: isInterpreter ? "assignment" : "search",
-    },
-    { name: "chat", title: "Chat", icon: "chat" },
-    { name: "sign", title: "Signs", icon: "sign-language" },
-    { name: "settings", title: "Settings", icon: "settings" },
-  ];
+  const menuItems = isInterpreter
+    ? [
+        { name: "index", title: "Home", icon: "home" },
+        { name: "search", title: "Requests", icon: "inbox" },
+        { name: "history", title: "History", icon: "history" },
+        { name: "availability", title: "Availability", icon: "calendar-today" },
+        { name: "settings", title: "Settings", icon: "settings" },
+      ]
+    : [
+        { name: "index", title: "Home", icon: "home" },
+        { name: "search", title: "Search", icon: "search" },
+        { name: "sign", title: "Sign", icon: "sign-language" },
+        { name: "history", title: "History", icon: "history" },
+        { name: "settings", title: "Settings", icon: "settings" },
+      ];
 
   return (
-    <Tabs
-      tabBar={(props) => (
-        <View style={styles.tabBarWrapper}>
-          <View style={styles.left}>
-            <Text style={styles.brand}>SILENT BRIDGE</Text>
-          </View>
+    <>
+      <View style={styles.hamburgerWrapper}>
+        <Pressable
+          onPress={() => setMenuVisible(true)}
+          style={styles.hamburger}
+          accessibilityLabel="Open menu"
+          accessibilityHint="Opens navigation menu"
+        >
+          <MaterialIcons name="menu" size={28} color={theme.colors.outline} />
+        </Pressable>
 
-          {isMobile ? (
-            <>
-              <Pressable
-                onPress={() => setMenuVisible(true)}
-                style={styles.hamburger}
-                accessibilityLabel="Open menu"
-                accessibilityHint="Opens navigation menu"
-              >
-                <MaterialIcons name="menu" size={28} color="#000" />
-              </Pressable>
-
-              <Modal
-                visible={menuVisible}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setMenuVisible(false)}
-              >
-                <Pressable
-                  style={styles.overlay}
-                  onPress={() => setMenuVisible(false)}
+        <Modal
+          visible={menuVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setMenuVisible(false)}
+        >
+          <Pressable style={styles.overlay} onPress={() => setMenuVisible(false)}>
+            <View style={styles.menu}>
+              {menuItems.map(({ name, title, icon }) => (
+                <TouchableOpacity
+                  key={name}
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setMenuVisible(false);
+                    const route =
+                      name === "index"
+                        ? "/(tabs)"
+                        : name === "search"
+                        ? "/(tabs)/search"
+                        : name === "sign"
+                        ? "/(tabs)/sign"
+                        : name === "history"
+                        ? "/(tabs)/history"
+                        : name === "availability"
+                        ? "/(tabs)/availability"
+                        : "/(tabs)/settings";
+                    router.push(route as any);
+                  }}
                 >
-                  <View style={styles.menu}>
-                    {tabs.map(({ name, title, icon }) => (
-                      <TouchableOpacity
-                        key={name}
-                        style={styles.menuItem}
-                        onPress={() => {
-                          setMenuVisible(false);
-                          router.push(
-                            name === "index"
-                              ? "/"
-                              : name === "history" 
-                              ? "/(tabs)/history"
-                              : name === "chat"
-                              ? "/(tabs)/chat"
-                              : name === "search"
-                              ? "/(tabs)/search"
-                              : name === "sign"
-                              ? "/(tabs)/sign"
-                              : name === "settings"
-                              ? "/(tabs)/settings"
-                              : "/"
-                          );
-                        }}
-                      >
-                        <MaterialIcons name={icon} size={20} color={theme.colors.primary} />
-                        <Text
-                          style={[
-                            styles.menuItemText,
-                            { color: theme.colors.onSurface },
-                          ]}
-                        >
-                          {title}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </Pressable>
-              </Modal>
-            </>
-          ) : (
-            <View style={styles.right}>
-              <BottomTabBar {...props} />
+                  <MaterialIcons name={icon as any} size={20} color={theme.colors.primary} />
+                  <Text style={[styles.menuItemText, { color: theme.colors.onSurface }]}>{title}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          )}
-        </View>
-      )}
-      screenOptions={{
-        tabBarPosition: "top",
-        headerShown: false,
-        tabBarActiveTintColor: theme.colors.tertiary,
-        tabBarInactiveTintColor: theme.colors.onSurface,
-        tabBarLabelStyle: {
-          fontSize: 14,
-          fontWeight: "600",
-          textTransform: "none",
-          flexShrink: 0,
-        },
-        tabBarItemStyle: {
-          minWidth: 100,
-          alignItems: "center",
-        },
-        tabBarStyle: {
-          backgroundColor: "transparent",
-          elevation: 0,
-          borderBottomWidth: 0,
-        },
-        tabBarIconStyle: {
-          marginRight: 4,
-        },
-      }}
-    >
-      {tabs.map(({ name, title, icon }) => (
-        <Tabs.Screen
-          key={name}
-          name={name}
-          options={{
-            title,
-            tabBarIcon: ({ color, size }) => (
-              <MaterialIcons name={icon} size={size} color={color} />
-            ),
-            href: name === "chat" ? null : undefined,
-          }}
-        />
-      ))}
-    </Tabs>
+          </Pressable>
+        </Modal>
+      </View>
+
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="search" />
+        <Stack.Screen name="history" />
+        <Stack.Screen name="sign" />
+        <Stack.Screen name="settings" />
+        <Stack.Screen name="availability" />
+      </Stack>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  tabBarWrapper: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    backgroundColor: "transparent", // Make background see-through
-    borderBottomWidth: 0,           // Remove the bottom border line
-    position: 'absolute',           // Make the bar float on top of screen content
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1,                      // Ensure it stays on top
-  },
-  left: {
-    flex: 1,
-  },
-  right: {
-    flex: 1,
-    alignItems: "flex-end",
-  },
-  brand: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#F0B429",
+  hamburgerWrapper: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    zIndex: 1,
+    backgroundColor: "transparent",
   },
   hamburger: {
     padding: 8,
@@ -210,26 +120,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-start",
-    alignItems: "flex-end",
+    alignItems: "flex-start",
   },
   menu: {
     backgroundColor: "#fff",
-    width: 220,
+    width: 240,
     paddingVertical: 16,
-    borderRadius: 6,
+    borderRadius: 8,
     marginTop: 60,
-    marginRight: 16,
-    elevation: 6,
+    marginLeft: 16,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    gap: 16,
   },
   menuItemText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "500",
   },
 });

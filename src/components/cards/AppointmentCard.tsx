@@ -3,9 +3,9 @@ import { theme } from "@/theme/theme";
 import { getDate, getStartTime } from "@/utils/helper";
 import { Appointment } from "@/utils/query";
 import { openURL } from "expo-linking";
-import { useRouter } from "expo-router";
 import { View } from "react-native";
 import { Button, Card, Chip, Icon, Text } from "react-native-paper";
+import MessageButton from "./MessageButton";
 
 const joinAppointment = (appointment: Appointment) => {
   if (appointment.meetingUrl) {
@@ -16,47 +16,54 @@ const joinAppointment = (appointment: Appointment) => {
   }
 };
 
-export const statusColors: Record<Appointment["status"], string> = {
-  Approved: theme.colors.success,
-  Pending: theme.colors.warning,
-  Completed: theme.colors.info,
-  Rejected: theme.colors.error,
-  Cancelled: theme.colors.disabled,
+export const statusColors: Record<
+  Appointment["status"],
+  { color: string; backgroundColor: string; borderColor: string }
+> = {
+  Approved: { color: "#005B26", backgroundColor: "#2ECC7114", borderColor: "#208e4f33" },
+  Pending: { color: "#793200", backgroundColor: "#F39C1214", borderColor: "#aa6d0c33" },
+  Completed: { color: "#024675", backgroundColor: "#3498db14", borderColor: "#246a9933" },
+  Rejected: { color: "#970751", backgroundColor: "#f7279214", borderColor: "#ac1b6633" },
+  Cancelled: { color: "#7A7A7A", backgroundColor: "#B3B3B314", borderColor: "#8c8c8c33" },
 };
 
-export function AppointmentCardContent(
-  {appointment,
+export function AppointmentCardContent({
+  appointment,
   isInterpreter,
-  router}: {appointment: Appointment, isInterpreter: boolean, router: ReturnType<typeof useRouter>}
-) {
+}: {
+  appointment: Appointment;
+  isInterpreter: boolean;
+}) {
+  const statusColor = statusColors[appointment.status];
   return (
     <>
       <Chip
         style={{
-          backgroundColor: statusColors[appointment.status],
+          backgroundColor: statusColor.backgroundColor,
+          borderColor: statusColor.borderColor,
+          borderWidth: 1,
           position: "absolute",
-          top: 8,
-          right: 8,
+          top: 6,
+          right: 6,
           zIndex: 1,
         }}
-        textStyle={{ color: "#fff" }}
+        textStyle={{ color: statusColor.color }}
       >
         {appointment.status}
       </Chip>
-      <Card.Content style={{ flexDirection: "row", marginTop: 16 }}>
+      <Card.Content style={{ flexDirection: "row", marginTop: 12 }}>
         <ClickableProfileImage
           profile={appointment.profile}
           size={72}
           borderRadius={16}
           isClickable={!isInterpreter}
-          router={router}
           style={{ marginRight: 16 }}
         />
         <View>
           <View
             style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}
           >
-            <Text variant="titleMedium" style={{ paddingRight: 12, fontWeight: "bold" }}>
+            <Text variant="titleMedium" style={{ fontWeight: "bold" }}>
               {appointment.profile?.name}
             </Text>
           </View>
@@ -77,19 +84,15 @@ export function AppointmentCardContent(
 export default function AppointmentCard({
   appointment,
   isInterpreter = false,
-  router,
 }: {
   appointment: Appointment;
   isInterpreter?: boolean;
-  router: ReturnType<typeof useRouter>;
 }) {
   return (
     <Card onPress={() => {}}>
-      <AppointmentCardContent appointment={appointment} isInterpreter={isInterpreter} router={router} />
-      <Card.Actions style={{ flexDirection: "row", justifyContent: "space-between", paddingRight: 16 }}>
-        <Button icon="message" style={{ flex: 1 }} contentStyle={{ justifyContent: "center" }} mode="contained-tonal">
-          Message
-        </Button>
+      <AppointmentCardContent appointment={appointment} isInterpreter={isInterpreter} />
+      <Card.Actions style={{ flexDirection: "row", justifyContent: "space-between" }}>
+        <MessageButton recipientId={appointment.profile?.id || ""} />
         <Button
           icon="video"
           style={{ flex: 1 }}

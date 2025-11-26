@@ -1,7 +1,7 @@
 import { useDisclosure } from "@/hooks/useDisclosure";
 import { useCallback } from "react";
 import { TouchableHighlight } from "react-native";
-import { TextInput } from "react-native-paper";
+import { IconButton, TextInput } from "react-native-paper";
 import { DatePickerModal } from "react-native-paper-dates";
 import { CalendarDate } from "react-native-paper-dates/lib/typescript/Date/Calendar";
 
@@ -12,6 +12,55 @@ const formatDate = (date: Date) => {
     year: "numeric",
   });
 };
+
+export const getValidRange: () => { startDate: Date; endDate: Date } = () => {
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 90);
+    endDate.setHours(0, 0, 0, 0);
+    return { startDate, endDate };
+};
+
+export function DateRangePickerInput({
+  dateRange,
+  setDateRange,
+  validRange,
+  placeholder,
+  ...props
+}: {
+  dateRange: { startDate: Date | undefined; endDate: Date | undefined };
+  setDateRange: React.Dispatch<React.SetStateAction<{ startDate: Date | undefined; endDate: Date | undefined }>>;
+  validRange?: { startDate: Date | undefined; endDate: Date | undefined };
+  [key: string]: any;
+}) {
+  const { isOpen, open, close } = useDisclosure();
+  const onConfirm = useCallback(
+    ({ startDate, endDate }: { startDate: CalendarDate; endDate?: CalendarDate }) => {
+      endDate?.setHours(23, 59, 59, 999);
+      setDateRange({ startDate, endDate });
+      close();
+    },
+    [close, setDateRange]
+  );
+  return (
+    <>
+      <IconButton mode="outlined" onPress={open} icon="calendar-range" {...props} />
+      <DatePickerModal
+        mode="range"
+        locale="en-GB"
+        label={placeholder ? `Select ${placeholder.toLowerCase()}` : "Select date range"}
+        visible={isOpen}
+        validRange={validRange}
+        onDismiss={close}
+        startDate={dateRange.startDate}
+        endDate={dateRange.endDate}
+        onConfirm={onConfirm}
+        saveLabel="Save"
+      />
+    </>
+  );
+}
 
 export default function DatePickerInput({
   date,
@@ -43,7 +92,7 @@ export default function DatePickerInput({
           mode="outlined"
           value={date ? formatDate(date) : ""}
           right={<TextInput.Icon icon="calendar" onPress={open} />}
-          placeholder={placeholder ?? "Select a date"}
+          placeholder={placeholder ?? "Select date"}
           style={{ pointerEvents: "none" }}
         ></TextInput>
       </TouchableHighlight>

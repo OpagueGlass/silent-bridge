@@ -5,18 +5,14 @@ import { TextInput } from "react-native-paper";
 import { TimePickerModal } from "react-native-paper-dates";
 
 export default function TimePickerInput({
-  hours,
-  setHours,
-  minutes,
-  setMinutes,
+  time,
+  setTime,
   validRange,
   placeholder,
   ...props
 }: {
-  hours: number | undefined;
-  setHours: (hours: number | undefined) => void;
-  minutes: number | undefined;
-  setMinutes: (minutes: number | undefined) => void;
+  time: { hours: number | undefined; minutes: number | undefined };
+  setTime: (time: { hours: number; minutes: number }) => void;
   validRange?: { startDate: Date | undefined; endDate: Date | undefined };
   placeholder?: string;
   [key: string]: any;
@@ -25,11 +21,10 @@ export default function TimePickerInput({
 
   const onConfirm = useCallback(
     ({ hours, minutes }: { hours: number; minutes: number }) => {
-      setHours(hours);
-      setMinutes(minutes);
+      setTime({ hours, minutes });
       close();
     },
-    [close, setHours, setMinutes]
+    [close, setTime]
   );
 
   return (
@@ -38,12 +33,15 @@ export default function TimePickerInput({
         <TextInput
           mode="outlined"
           value={
-            hours === undefined || minutes === undefined
+            time.hours === undefined || time.minutes === undefined
               ? ""
-              : new Date(0, 0, 0, hours, minutes).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              : new Date(0, 0, 0, time.hours, time.minutes).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
           }
           right={<TextInput.Icon icon="clock" onPress={open} />}
-          placeholder={placeholder ?? "Select a time"}
+          placeholder={placeholder ?? "Select time"}
           style={{ pointerEvents: "none" }}
         ></TextInput>
       </TouchableHighlight>
@@ -52,8 +50,8 @@ export default function TimePickerInput({
         label={placeholder ? `Select ${placeholder.toLowerCase()}` : "Select time"}
         visible={isOpen}
         onDismiss={close}
-        hours={hours}
-        minutes={minutes}
+        hours={time.hours}
+        minutes={time.minutes ?? 0}
         onConfirm={onConfirm}
       />
     </>

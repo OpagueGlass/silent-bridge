@@ -35,7 +35,7 @@ export const getDate = (appointment: { startTime: string }) => {
     weekday: "short",
     day: "2-digit",
     month: "short",
-    year: "numeric"
+    year: "numeric",
   });
 };
 
@@ -44,10 +44,22 @@ export const getStartTime = (appointment: { startTime: string }) => {
   return startTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
 
-
 export const getTimeRange = (appointment: { startTime: string; endTime: string }) => {
   const endTime = new Date(appointment.endTime);
-  return `${getStartTime(appointment)} - ${endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  return `${getStartTime(appointment)} – ${endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+};
+
+export const toTimeString = (tz: string): string => {
+  const [hours, minutes, seconds] = tz.split(":").map(Number);
+  const date = new Date();
+  date.setHours(hours, minutes, seconds || 0, 0);
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
+
+export const toTimeRange = (startTz: string, endTz: string): string => {
+  const startTime = toTimeString(startTz);
+  const endTime = toTimeString(endTz);
+  return `${startTime} - ${endTime}`;
 };
 
 export const getMeetLink = async (providerToken: string, startTime: string, endTime: string, profile: Profile) => {
@@ -78,4 +90,3 @@ export const getMeetLink = async (providerToken: string, startTime: string, endT
   const meetLink = result.conferenceData?.entryPoints?.find((ep: any) => ep.entryPointType === "video")?.uri;
   return meetLink;
 };
-

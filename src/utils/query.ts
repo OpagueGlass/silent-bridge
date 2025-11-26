@@ -20,6 +20,14 @@ export interface InterpreterProfile extends Profile {
   interpreterLanguages: number[];
 }
 
+export interface InterpreterResults extends InterpreterProfile {
+  interpreterAvailability: {
+    day_id: number;
+    start_time: string;
+    end_time: string;
+  };
+}
+
 export interface Appointment {
   id: number;
   status: "Approved" | "Pending" | "Completed" | "Rejected" | "Cancelled";
@@ -202,8 +210,8 @@ export const searchInterpreters = async (
   startTime: Date,
   endTime: Date,
   minRating: number = 0,
-  gender: string | undefined = undefined
-): Promise<InterpreterProfile[]> => {
+  gender: string | null = null
+): Promise<InterpreterResults[]> => {
   const { minDOB, maxDOB } = getMinMaxDOB(ageStart, ageEnd);
   const day = startTime.getDay() === 0 ? 7 : startTime.getDay();
   const start_time = toTimetz(startTime);
@@ -237,9 +245,16 @@ export const searchInterpreters = async (
       interpreter_specialisation: row.specialisations as Tables<"interpreter_specialisation">[],
       interpreter_language: row.languages as Tables<"interpreter_language">[],
     };
-    return convertToInterpreterProfile(formattedData);
-  });
+    const availability = row.availability as Tables<"availability">;
+    const { day_id, start_time, end_time } = availability;
 
+    const convertedProfiles = convertToInterpreterProfile(formattedData);
+    return {
+      ...convertedProfiles,
+      interpreterAvailability: { day_id, start_time, end_time },
+    };
+  });
+  console.log(interpreterProfiles);
   return interpreterProfiles;
 };
 
@@ -457,7 +472,7 @@ export const getReviewUserAppointments = async (user_id: string) => {
 
   return data
     .map(({ interpreter_profile, ...rest }) => convertToAppointment(rest, interpreter_profile?.profile || null))
-    .map((appointment) => ({ ...appointment, status: "Completed" }) as Appointment);
+    .map((appointment) => ({ ...appointment, status: "Completed" } as Appointment));
 };
 
 /**

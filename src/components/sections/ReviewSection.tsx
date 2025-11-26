@@ -5,8 +5,11 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { FlatList, StyleSheet, TouchableOpacity, View } from "react-native";
-import { Button, Card, Modal, Portal, Text, TextInput } from "react-native-paper";
+import { Button, Card, Modal, Portal, Surface, Text, TextInput } from "react-native-paper";
 import ReviewCard from "../cards/ReviewCard";
+import RatingInput from "../inputs/RatingInput";
+import { theme } from "@/theme/theme";
+import { useAppTheme } from "@/hooks/useAppTheme";
 
 // interface ReviewModalProps {
 //   visible: boolean;
@@ -107,17 +110,7 @@ function ReviewModal({ appointment, profile, isOpen, setReviewAppointments, onDi
             </Text>
 
             <Text style={styles.label}>Rating</Text>
-            <View style={styles.starsContainer}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity key={star} onPress={() => setRating(star)}>
-                  <MaterialCommunityIcons
-                    name={star <= rating ? "star" : "star-outline"}
-                    size={32}
-                    color={star <= rating ? "#FFC107" : "#BDBDBD"}
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
+            <RatingInput rating={rating} onChange={setRating} />
 
             <Text style={styles.label}>Comments</Text>
             <TextInput
@@ -129,7 +122,6 @@ function ReviewModal({ appointment, profile, isOpen, setReviewAppointments, onDi
               numberOfLines={4}
               style={styles.textInput}
             />
-            
 
             <View style={styles.buttonContainer}>
               <Button onPress={onDismiss} style={styles.button}>
@@ -165,7 +157,6 @@ type ReviewSectionProps = {
   isInterpreter: boolean;
   reviewAppointments: Appointment[];
   setReviewAppointments: Dispatch<SetStateAction<Appointment[]>>;
-  router: ReturnType<typeof useRouter>;
 };
 
 export default function ReviewSection({
@@ -173,36 +164,50 @@ export default function ReviewSection({
   isInterpreter,
   reviewAppointments,
   setReviewAppointments,
-  router,
 }: ReviewSectionProps) {
   const [index, setIndex] = useState(0);
   const { isOpen, open: openModal, close: closeModal } = useDisclosure(false);
-
+  const theme = useAppTheme();
   if (reviewAppointments.length === 0) {
-    return <Text>No recent sessions to review.</Text>;
+    return (
+      <Surface
+        mode="flat"
+        style={{
+          height: 164,
+          justifyContent: "center",
+          alignItems: "center",
+          paddingHorizontal: theme.spacing.xs,
+          borderRadius: theme.roundness,
+        }}
+      >
+        <Text style={{color: theme.colors.onSurfaceVariant}}>No recent sessions to review</Text>
+      </Surface>
+    );
   } else {
     return (
-    <>
-      <FlatList
-        data={reviewAppointments}
-        horizontal
-        keyExtractor={(a) => String(a.id)}
-        showsHorizontalScrollIndicator={true}
-        contentContainerStyle={{ paddingVertical: 2, paddingHorizontal: 2 }}
-        renderItem={({ item, index }) => (
-          <View style={{ marginRight: 12, width: 320 }}>
-            <ReviewCard
-              appointment={item}
-              isInterpreter={isInterpreter}
-              router={router}
-              onPress={() => {
-                setIndex(index);
-                openModal();
-              }}
-            />
-          </View>
-        )}
-      />
+      <Surface
+        mode="flat"
+        style={{ paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.sm, borderRadius: theme.roundness }}
+      >
+        <FlatList
+          data={reviewAppointments}
+          horizontal
+          keyExtractor={(a) => String(a.id)}
+          showsHorizontalScrollIndicator={true}
+          contentContainerStyle={{ paddingVertical: 2, paddingHorizontal: 2 }}
+          renderItem={({ item, index }) => (
+            <View style={{ marginRight: 12, width: 320 }}>
+              <ReviewCard
+                appointment={item}
+                isInterpreter={isInterpreter}
+                onPress={() => {
+                  setIndex(index);
+                  openModal();
+                }}
+              />
+            </View>
+          )}
+        />
         <ReviewModal
           appointment={reviewAppointments[index]}
           profile={profile}
@@ -212,10 +217,9 @@ export default function ReviewSection({
             closeModal();
           }}
         />
-      </>
+      </Surface>
     );
   }
-
 }
 
 const styles = StyleSheet.create({
