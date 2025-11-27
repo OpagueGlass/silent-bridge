@@ -26,16 +26,17 @@ import { ActivityIndicator, Button, Card, Chip, MD3Theme, Menu, Text, TextInput 
 import { showConfirmAlert, showValidationError } from "../../utils/alert";
 import LabelledInput from "@/components/inputs/LabelledInput";
 import SearchScreen from "@/components/sections/SearchScreen";
+import RequestScreen from "@/components/sections/RequestScreen";
 
 
 export default function Discovery() {
   const { isInterpreter, profile, getValidProviderToken } = useAuth();
-  const router = useRouter();
-  const theme = useAppTheme();
 
   if (!isInterpreter) {
-    return <SearchScreen/>
-  };
+    return <SearchScreen profile={profile} />
+  } else {
+    return <RequestScreen profile={profile} getToken={getValidProviderToken} />;
+  }
 
 }
 

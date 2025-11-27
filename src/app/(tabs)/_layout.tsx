@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Redirect, Stack, useRouter } from "expo-router";
+import { Redirect, Stack, Tabs, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Modal,
@@ -93,14 +93,14 @@ export default function TabLayout() {
         </Modal>
       </View>
 
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="search" />
-        <Stack.Screen name="history" />
-        <Stack.Screen name="sign" />
-        <Stack.Screen name="settings" />
-        <Stack.Screen name="availability" />
-      </Stack>
+      <Tabs screenOptions={{ headerShown: false }} tabBar={() => null}>
+        <Tabs.Screen name="index"/>
+        <Tabs.Screen name="search" />
+        <Tabs.Screen name="history" />
+        <Tabs.Screen name="sign" />
+        <Tabs.Screen name="settings" />
+        {isInterpreter && <Tabs.Screen name="availability" />}
+      </Tabs>
     </>
   );
 }

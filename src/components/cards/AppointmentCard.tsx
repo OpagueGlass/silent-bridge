@@ -99,7 +99,7 @@ export default function AppointmentCard({
           contentStyle={{ justifyContent: "center" }}
           mode="contained"
           onPress={() => joinAppointment(appointment)}
-          disabled={new Date(appointment.startTime).getTime() - 10 * 60 * 1000 > Date.now()}
+          disabled={new Date(appointment.startTime).getTime() - 60 * 60 * 1000 > Date.now()}
         >
           Join Meet
         </Button>

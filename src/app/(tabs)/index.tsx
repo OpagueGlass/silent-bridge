@@ -6,9 +6,10 @@ import { DropdownInput } from "@/components/inputs/DropdownInput";
 import ReviewSection from "@/components/sections/ReviewSection";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { Searchbar, Surface, Text } from "react-native-paper";
 import {
   Appointment,
@@ -17,6 +18,7 @@ import {
   getUpcomingInterpreterAppointments,
   getUpcomingUserAppointments,
 } from "../../utils/query";
+
 
 function NameDropdown({
   nameOptions,
@@ -29,6 +31,7 @@ function NameDropdown({
 }) {
   return <DropdownInput container={nameOptions.map((opt) => opt.label)} option={option} setOption={setOption} />;
 }
+
 
 export default function HomeScreen() {
   const { profile, isInterpreter } = useAuth();
@@ -44,41 +47,62 @@ export default function HomeScreen() {
   });
   const [nameOptions, setNameOptions] = useState<{ id: string; label: string }[]>([{ id: "0", label: "All" }]);
 
-  useEffect(() => {
-    if (profile?.id) {
-      const fetchAppointments = async () => {
-        setIsLoading(true);
-        try {
-          const [reviewData, upcomingData] = isInterpreter
-            ? await Promise.all([
-                getReviewInterpreterAppointments(profile.id),
-                getUpcomingInterpreterAppointments(profile.id),
-              ])
-            : await Promise.all([getReviewUserAppointments(profile.id), getUpcomingUserAppointments(profile.id)]);
-          setReviewAppointments(reviewData);
-          setUpcomingAppointments(upcomingData);
-          setNameOptions([
-            { id: "0", label: "All" },
-            ...upcomingData.map((appointment) => ({
-              id: appointment.profile!.id,
-              label: appointment.profile!.name,
-            })),
-          ]);
-        } catch (error) {
-          console.error("Failed to fetch appointments:", error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
+  const fetchAppointments = useCallback(async () => {
+    if (!profile?.id) {
+      setIsLoading(false);
+      return;
+    }
 
-      fetchAppointments();
-    } else {
+    setIsLoading(true);
+    try {
+      const [reviewData, upcomingData] = isInterpreter
+        ? await Promise.all([
+            getReviewInterpreterAppointments(profile.id),
+            getUpcomingInterpreterAppointments(profile.id),
+          ])
+        : await Promise.all([getReviewUserAppointments(profile.id), getUpcomingUserAppointments(profile.id)]);
+      setReviewAppointments(reviewData);
+      setUpcomingAppointments(upcomingData);
+      setNameOptions([
+        { id: "0", label: "All" },
+        ...upcomingData.map((appointment) => ({
+          id: appointment.profile!.id,
+          label: appointment.profile!.name,
+        })),
+      ]);
+    } catch (error) {
+      console.error("Failed to fetch appointments:", error);
+    } finally {
       setIsLoading(false);
     }
   }, [profile?.id, isInterpreter]);
 
+  // Initial fetch on mount
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
+
+  // Fetch appointments when the tab comes into focus only if a request was accepted
+  useFocusEffect(
+    useCallback(() => {
+      const checkAndRefresh = async () => {
+        const requestAccepted = await AsyncStorage.getItem("requestAccepted");
+        if (requestAccepted === "true") {
+          await AsyncStorage.removeItem("requestAccepted");
+          await fetchAppointments();
+        }
+      };
+      checkAndRefresh();
+    }, [fetchAppointments])
+  );
+
   return (
-    <ScrollView style={{ backgroundColor: theme.colors.background }}>
+    <ScrollView 
+      style={{ backgroundColor: theme.colors.background }} 
+      refreshControl={
+        <RefreshControl refreshing={isLoading} onRefresh={fetchAppointments} />
+      }
+    >
       {/* --- HEADER WITH CURVED BACKGROUND --- */}
       <View style={[styles.curvedHeader, { backgroundColor: theme.colors.primary }]}>
         {isInterpreter ? (

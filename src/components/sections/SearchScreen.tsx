@@ -53,7 +53,7 @@ const defaultParams = {
 } as SearchParams;
 
 
-const handleSearch = (
+function handleSearch(
   profile: Profile | null,
   date: Date | undefined,
   time: { hours: number | undefined; minutes: number | undefined },
@@ -61,7 +61,7 @@ const handleSearch = (
   setLoading: React.Dispatch<React.SetStateAction<boolean>>,
   setHasSearched: React.Dispatch<React.SetStateAction<boolean>>,
   setDisplayedInterpreters: React.Dispatch<React.SetStateAction<InterpreterResults[]>>
-) => {
+) {
   const { duration, selectedLanguage, selectedSpecialisation, selectedGender, ageRange, minRating } = searchParams;
   if (!date) {
     showValidationError("Please select an appointment date.");
@@ -103,12 +103,11 @@ const handleSearch = (
     setDisplayedInterpreters(results);
   });
   setLoading(false);
-};
+}
 
 
 function SearchModal({
   profile,
-  styles,
   setLoading,
   setHasSearched,
   setSearchResults,
@@ -116,7 +115,6 @@ function SearchModal({
   onDismiss,
 }: {
   profile: Profile | null;
-  styles: any;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setHasSearched: React.Dispatch<React.SetStateAction<boolean>>;
   setSearchResults: React.Dispatch<React.SetStateAction<InterpreterResults[]>>;
@@ -234,6 +232,7 @@ function SearchModal({
   );
 }
 
+
 function SearchResults({
   loading,
   hasSearched,
@@ -244,7 +243,7 @@ function SearchResults({
   searchResults: InterpreterResults[];
 }) {
   const theme = useAppTheme();
-  
+
   if (loading) {
     return <ActivityIndicator style={{ marginTop: 40 }} />;
   }
@@ -263,17 +262,16 @@ function SearchResults({
   return null;
 }
 
-export default function SearchScreen() {
-  const { profile } = useAuth();
-  const theme = useAppTheme();
 
+export default function SearchScreen({ profile }: { profile: Profile | null }) {
+  const theme = useAppTheme();
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchResults, setSearchResults] = useState<InterpreterResults[]>([]);
-  const {isOpen, open, close} = useDisclosure(true);
+  const { isOpen, open, close } = useDisclosure(true);
 
   return (
-    <ScrollView style={{ backgroundColor: theme.colors.background }}>
+    <ScrollView style={{ backgroundColor: theme.colors.elevation.level1 }}>
       <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={open} style={{ flex: 1 }}>
@@ -284,7 +282,6 @@ export default function SearchScreen() {
 
       <SearchModal
         profile={profile}
-        styles={styles}
         setLoading={setLoading}
         setHasSearched={setHasSearched}
         setSearchResults={setSearchResults}
@@ -296,6 +293,7 @@ export default function SearchScreen() {
     </ScrollView>
   );
 }
+
 
 const styles = StyleSheet.create({
   header: {
