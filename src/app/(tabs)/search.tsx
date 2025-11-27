@@ -32,6 +32,9 @@ import RequestScreen from "@/components/sections/RequestScreen";
 export default function Discovery() {
   const { isInterpreter, profile, getValidProviderToken } = useAuth();
 
+  
+
+
   if (!isInterpreter) {
     return <SearchScreen profile={profile} />
   } else {

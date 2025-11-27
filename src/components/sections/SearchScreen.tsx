@@ -4,11 +4,10 @@ import DatePickerInput, { getValidRange } from "@/components/inputs/DatePickerIn
 import LabelledInput from "@/components/inputs/LabelledInput";
 import TimePickerInput from "@/components/inputs/TimePickerInput";
 import { LANGUAGES, SPECIALISATION } from "@/constants/data";
-import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { InterpreterResults, Profile, searchInterpreters } from "@/utils/query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useState } from "react";
+import { useState, useCallback, Dispatch, SetStateAction } from "react";
 import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import {
   ActivityIndicator,
@@ -25,6 +24,7 @@ import ResultCard from "../cards/ResultCard";
 import LabelledDropdownInput from "../inputs/DropdownInput";
 import RatingInput from "../inputs/RatingInput";
 import { useDisclosure } from "@/hooks/useDisclosure";
+import { useFocusEffect } from "expo-router";
 
 const durationOptions = ["00:15", "00:30", "00:45", "01:00", "01:15", "01:30", "01:45", "02:00"];
 const ageRangeOptions = [
@@ -52,15 +52,14 @@ const defaultParams = {
   minRating: 0,
 } as SearchParams;
 
-
 function handleSearch(
   profile: Profile | null,
   date: Date | undefined,
   time: { hours: number | undefined; minutes: number | undefined },
   searchParams: SearchParams,
-  setLoading: React.Dispatch<React.SetStateAction<boolean>>,
-  setHasSearched: React.Dispatch<React.SetStateAction<boolean>>,
-  setDisplayedInterpreters: React.Dispatch<React.SetStateAction<InterpreterResults[]>>
+  setLoading: Dispatch<SetStateAction<boolean>>,
+  setHasSearched: Dispatch<SetStateAction<boolean>>,
+  setDisplayedInterpreters: Dispatch<SetStateAction<InterpreterResults[]>>
 ) {
   const { duration, selectedLanguage, selectedSpecialisation, selectedGender, ageRange, minRating } = searchParams;
   if (!date) {
@@ -105,7 +104,6 @@ function handleSearch(
   setLoading(false);
 }
 
-
 function SearchModal({
   profile,
   setLoading,
@@ -115,9 +113,9 @@ function SearchModal({
   onDismiss,
 }: {
   profile: Profile | null;
-  setLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  setHasSearched: React.Dispatch<React.SetStateAction<boolean>>;
-  setSearchResults: React.Dispatch<React.SetStateAction<InterpreterResults[]>>;
+  setLoading: Dispatch<SetStateAction<boolean>>;
+  setHasSearched: Dispatch<SetStateAction<boolean>>;
+  setSearchResults: Dispatch<SetStateAction<InterpreterResults[]>>;
   visible: boolean;
   onDismiss: () => void;
 }) {
@@ -232,7 +230,6 @@ function SearchModal({
   );
 }
 
-
 function SearchResults({
   loading,
   hasSearched,
@@ -262,13 +259,25 @@ function SearchResults({
   return null;
 }
 
-
 export default function SearchScreen({ profile }: { profile: Profile | null }) {
   const theme = useAppTheme();
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchResults, setSearchResults] = useState<InterpreterResults[]>([]);
-  const { isOpen, open, close } = useDisclosure(true);
+  const { isOpen, open, close } = useDisclosure(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      const checkAndRefresh = async () => {
+        const quickSearch = await AsyncStorage.getItem("quickSearch");
+        if (quickSearch === "true") {
+          await AsyncStorage.removeItem("quickSearch");
+          open();
+        }
+      };
+      checkAndRefresh();
+    }, [open])
+  );
 
   return (
     <ScrollView style={{ backgroundColor: theme.colors.elevation.level1 }}>
@@ -293,7 +302,6 @@ export default function SearchScreen({ profile }: { profile: Profile | null }) {
     </ScrollView>
   );
 }
-
 
 const styles = StyleSheet.create({
   header: {

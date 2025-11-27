@@ -89,7 +89,7 @@ export default function AppointmentCard({
   isInterpreter?: boolean;
 }) {
   return (
-    <Card onPress={() => {}}>
+    <Card onPress={() => {}} style={{ marginBottom: 8 }}>
       <AppointmentCardContent appointment={appointment} isInterpreter={isInterpreter} />
       <Card.Actions style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <MessageButton recipientId={appointment.profile?.id || ""} />

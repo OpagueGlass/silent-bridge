@@ -18,8 +18,7 @@ import {
   getReviewUserAppointments,
   getUpcomingInterpreterAppointments,
   getUpcomingUserAppointments,
-} from "../../utils/query";
-
+} from "@/utils/query";
 
 function NameDropdown({
   nameOptions,
@@ -32,7 +31,6 @@ function NameDropdown({
 }) {
   return <DropdownInput container={nameOptions.map((opt) => opt.label)} option={option} setOption={setOption} />;
 }
-
 
 export default function HomeScreen() {
   const { profile, isInterpreter } = useAuth();
@@ -63,7 +61,7 @@ export default function HomeScreen() {
           ])
         : await Promise.all([getReviewUserAppointments(profile.id), getUpcomingUserAppointments(profile.id)]);
       setReviewAppointments(reviewData);
-      setUpcomingAppointments(upcomingData);
+      setUpcomingAppointments(upcomingData.concat(upcomingData).concat(upcomingData));
       setNameOptions([
         { id: "0", label: "All" },
         ...upcomingData.map((appointment) => ({
@@ -98,11 +96,9 @@ export default function HomeScreen() {
   );
 
   return (
-    <ScrollView 
-      style={{ backgroundColor: theme.colors.background }} 
-      refreshControl={
-        <RefreshControl refreshing={isLoading} onRefresh={fetchAppointments} />
-      }
+    <ScrollView
+      style={{ backgroundColor: theme.colors.background }}
+      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchAppointments} />}
     >
       {/* --- HEADER WITH CURVED BACKGROUND --- */}
       <LinearGradient
@@ -111,22 +107,31 @@ export default function HomeScreen() {
         end={{ x: 1, y: 1 }}
         style={styles.curvedHeader}
       >
-          {isInterpreter ? (
-            <TouchableOpacity onPress={() => router.push("/availability")}>
-              <Searchbar
-                value={""}
-                placeholder="Manage Availability"
-                style={styles.searchbar}
-                pointerEvents="none"
-                icon="calendar-clock"
-              />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity onPress={() => router.push("/search")}>
-              <Searchbar value={""} placeholder="Start your search" style={styles.searchbar} pointerEvents="none" />
-            </TouchableOpacity>
-          )}
-        </LinearGradient>
+        {isInterpreter ? (
+          <TouchableOpacity
+            onPress={() => {
+              router.push("/availability");
+            }}
+          >
+            <Searchbar
+              value={""}
+              placeholder="Manage Availability"
+              style={styles.searchbar}
+              pointerEvents="none"
+              icon="calendar-clock"
+            />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={() => {
+              AsyncStorage.setItem("quickSearch", "true");
+              router.push("/search");
+            }}
+          >
+            <Searchbar value={""} placeholder="Start your search" style={styles.searchbar} pointerEvents="none" />
+          </TouchableOpacity>
+        )}
+      </LinearGradient>
 
       {isLoading ? (
         <ActivityIndicator animating={true} style={{ marginTop: theme.spacing.md }} />
@@ -160,7 +165,7 @@ export default function HomeScreen() {
               <Surface
                 mode="flat"
                 style={{
-                  paddingVertical: theme.spacing.sm,
+                  paddingTop: theme.spacing.sm,
                   paddingHorizontal: theme.spacing.sm,
                   borderRadius: theme.roundness,
                 }}
