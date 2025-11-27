@@ -1,26 +1,16 @@
 "use client";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { getDuration, getMeetLink, getStartTime } from "@/utils/helper";
 import {
-  addAppointmentMeetingURL,
   getRequests,
-  initiateChat,
-  InterpreterProfile,
   Profile,
   Request,
-  searchInterpreters,
-  updateRequest,
 } from "@/utils/query";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
-import { ActivityIndicator, Button, Card, MD3Theme, Menu, Text } from "react-native-paper";
-import { showConfirmAlert, showValidationError } from "../../utils/alert";
+import { useCallback, useEffect, useState } from "react";
+import { RefreshControl, ScrollView, StyleSheet,  View } from "react-native";
+import { ActivityIndicator, Text } from "react-native-paper";
 import RequestCard, { handleRequest } from "@/components/cards/RequestCard";
 
 import { theme } from "@/theme/theme";
-
 
 export default function RequestScreen({
   profile,
@@ -29,7 +19,6 @@ export default function RequestScreen({
   profile: Profile | null;
   getToken: () => Promise<string | null>;
 }) {
-  const router = useRouter();
   const theme = useAppTheme();
 
   const [loading, setLoading] = useState(false);
@@ -51,10 +40,29 @@ export default function RequestScreen({
     fetchRequests();
   }, [profile]);
 
+  const fetchRequests = useCallback(async () => {
+    if (profile) {
+      try {
+        const id = profile.id;
+        const requests = await getRequests(id);
+        setRequests(requests);
+      } catch (error) {
+        console.error("Error fetching requests:", error);
+      }
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
+
   const { acceptRequest, rejectRequest } = handleRequest(profile, getToken, setLoading, setRequests);
 
   return (
-    <ScrollView style={{ backgroundColor: theme.colors.elevation.level1 }}>
+    <ScrollView
+      style={{ backgroundColor: theme.colors.elevation.level1 }}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchRequests} />}
+    >
       <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
         <View style={styles.headerContent}>
           <Text variant="titleLarge" style={styles.title}>

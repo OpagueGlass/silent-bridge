@@ -7,6 +7,7 @@ import ReviewSection from "@/components/sections/ReviewSection";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
@@ -104,23 +105,28 @@ export default function HomeScreen() {
       }
     >
       {/* --- HEADER WITH CURVED BACKGROUND --- */}
-      <View style={[styles.curvedHeader, { backgroundColor: theme.colors.primary }]}>
-        {isInterpreter ? (
-          <TouchableOpacity onPress={() => router.push("/availability")}>
-            <Searchbar
-              value={""}
-              placeholder="Manage Availability"
-              style={styles.searchbar}
-              pointerEvents="none"
-              icon="calendar-clock"
-            />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={() => router.push("/search")}>
-            <Searchbar value={""} placeholder="Start your search" style={styles.searchbar} pointerEvents="none" />
-          </TouchableOpacity>
-        )}
-      </View>
+      <LinearGradient
+        colors={[theme.colors.primary, theme.colors.tertiary]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.curvedHeader}
+      >
+          {isInterpreter ? (
+            <TouchableOpacity onPress={() => router.push("/availability")}>
+              <Searchbar
+                value={""}
+                placeholder="Manage Availability"
+                style={styles.searchbar}
+                pointerEvents="none"
+                icon="calendar-clock"
+              />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => router.push("/search")}>
+              <Searchbar value={""} placeholder="Start your search" style={styles.searchbar} pointerEvents="none" />
+            </TouchableOpacity>
+          )}
+        </LinearGradient>
 
       {isLoading ? (
         <ActivityIndicator animating={true} style={{ marginTop: theme.spacing.md }} />
@@ -201,6 +207,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
+  },
+  gradientOverlay: {
+    paddingTop: 60,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
   },
   searchbar: {
     borderRadius: 12,
