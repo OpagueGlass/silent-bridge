@@ -1,16 +1,9 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Redirect, Stack, Tabs, useRouter } from "expo-router";
+import { Redirect, Tabs, useRouter } from "expo-router";
 import { useState } from "react";
-import {
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
-} from "react-native";
+import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import LoadingScreen from "../../components/sections/LoadingScreen";
 
 export default function TabLayout() {
@@ -55,12 +48,7 @@ export default function TabLayout() {
           <MaterialIcons name="menu" size={28} color={theme.colors.outline} />
         </Pressable>
 
-        <Modal
-          visible={menuVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setMenuVisible(false)}
-        >
+        <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
           <Pressable style={styles.overlay} onPress={() => setMenuVisible(false)}>
             <View style={styles.menu}>
               {menuItems.map(({ name, title, icon }) => (
@@ -94,12 +82,14 @@ export default function TabLayout() {
       </View>
 
       <Tabs screenOptions={{ headerShown: false }} tabBar={() => null}>
-        <Tabs.Screen name="index"/>
-        <Tabs.Screen name="search" />
-        <Tabs.Screen name="history" />
-        <Tabs.Screen name="sign" />
-        <Tabs.Screen name="settings" />
-        {isInterpreter && <Tabs.Screen name="availability" />}
+        <Tabs.Screen name="index" options={{ title: "Home"}} />
+        <Tabs.Screen name="search" options={{ title: isInterpreter ? "Requests" : "Search" }} />
+        <Tabs.Screen name="history" options={{ title: "History" }} />
+        <Tabs.Screen name="sign" options={{ title: "Sign" }} />
+        <Tabs.Screen name="settings" options={{ title: "Settings" }} />
+        {isInterpreter && (
+          <Tabs.Screen name="availability" options={{ title: "Manage Availability" }} />
+        )}
       </Tabs>
     </>
   );
