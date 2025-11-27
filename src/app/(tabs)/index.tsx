@@ -62,11 +62,20 @@ export default function HomeScreen() {
         : await Promise.all([getReviewUserAppointments(profile.id), getUpcomingUserAppointments(profile.id)]);
       setReviewAppointments(reviewData);
       setUpcomingAppointments(upcomingData);
+      
+      // Get unique profiles and sort by name
+      const uniqueProfiles = Array.from(
+        new Map(
+          upcomingData
+            .map((appointment) => [appointment.profile!.id, appointment.profile!])
+        ).values()
+      ).sort((a, b) => a.name.localeCompare(b.name));
+      
       setNameOptions([
         { id: "0", label: "All" },
-        ...upcomingData.map((appointment) => ({
-          id: appointment.profile!.id,
-          label: appointment.profile!.name,
+        ...uniqueProfiles.map((profile) => ({
+          id: profile.id,
+          label: profile.name,
         })),
       ]);
     } catch (error) {

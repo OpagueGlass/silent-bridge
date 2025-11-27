@@ -4,7 +4,7 @@ import { getDate, getStartTime } from "@/utils/helper";
 import { createAppointment, createRequest, getInterpreterProfile, InterpreterProfile } from "@/utils/query";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MD3Theme, TextInput } from "react-native-paper";
@@ -38,9 +38,8 @@ export default function BookingScreen() {
       setAppointmentDetails(storedDetails ? JSON.parse(storedDetails) : null);
       setIsLoading(false);
     };
-
     fetchInterpreterProfile();
-  }, [id, profile, appointmentDetails]);
+  }, [id]);
 
   const handleBooking = async () => {
     // const confirmed = await showConfirmAlert("Create Booking", "Are you sure you want to create this booking?");
@@ -96,7 +95,7 @@ export default function BookingScreen() {
 
   return (
     <ScrollView style={styles.screen}>
-      <Stack.Screen options={{ headerShown: false }} />
+      {/* <Stack.Screen options={{ headerShown: false }} /> */}
 
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
