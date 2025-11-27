@@ -6,10 +6,10 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Button, Menu, Text, TextInput } from "react-native-paper";
-import DatePickerInput from "../../components/inputs/DatePickerInput";
+import DatePickerInput, { getToday } from "../../components/inputs/DatePickerInput";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
-import { showError, showSuccess, showValidationError } from "../../utils/alert";
+import WarningDialog from "@/components/modals/WarningDialog";
 
 export default function DeafUserFormScreen() {
   const [formData, setFormData] = useState({
@@ -22,6 +22,9 @@ export default function DeafUserFormScreen() {
   const [genderMenuVisible, setGenderMenuVisible] = useState(false);
   const [stateMenuVisible, setStateMenuVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<{ title: string; message: string } | null>(null);
+  const [success, showSuccess] = useState(false);
+
   const router = useRouter();
   const theme = useAppTheme();
   const { session } = useAuth();
@@ -29,19 +32,19 @@ export default function DeafUserFormScreen() {
   const handleSignUp = async () => {
     const validateForm = () => {
       if (!formData.name.trim()) {
-        showValidationError("Please enter your name");
+        setError({ title: "Invalid Name", message: "Please enter your name" });
         return false;
       }
       if (formData.dateOfBirth === undefined) {
-        showValidationError("Please select your date of birth");
+        setError({ title: "Invalid Date of Birth", message: "Please select your date of birth" });
         return false;
       }
       if (!formData.gender) {
-        showValidationError("Please select your gender");
+        setError({ title: "Invalid Gender", message: "Please select your gender" });
         return false;
       }
       if (!formData.location) {
-        showValidationError("Please select your state");
+        setError({ title: "Invalid State", message: "Please select your state" });
         return false;
       }
       return true;
@@ -67,10 +70,12 @@ export default function DeafUserFormScreen() {
 
       const { error } = await supabase.from("profile").insert(profileData);
       if (error) throw error;
-      showSuccess("Account created successfully!");
-      router.replace("/auth/callback");
+      showSuccess(true);
     } catch (error: any) {
-      showError(error.message || "Failed to create account with Google. Please try again.");
+      setError({
+        title: "Registration Error",
+        message: error.message || "Failed to create account with Google. Please try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -93,9 +98,8 @@ export default function DeafUserFormScreen() {
       />
       <DatePickerInput
         date={formData.dateOfBirth}
-        setDate={(date) => {
-          setFormData({ ...formData, dateOfBirth: date });
-        }}
+        setDate={(date) => setFormData({ ...formData, dateOfBirth: date })}
+        validRange={{ startDate: undefined, endDate: getToday() }}
         placeholder="Date of Birth"
         style={styles.input}
       />
@@ -173,6 +177,26 @@ export default function DeafUserFormScreen() {
       >
         {isSubmitting ? "Creating Account..." : "Continue with Google"}
       </Button>
+      <WarningDialog
+        visible={error !== null}
+        onConfirm={() => setError(null)}
+        onDismiss={() => setError(null)}
+        title={error?.title || ""}
+        message={error?.message || ""}
+      />
+      <WarningDialog
+        visible={success}
+        onConfirm={() => {
+          showSuccess(false);
+          router.replace("/auth/callback");
+        }}
+        onDismiss={() => {
+          showSuccess(false);
+          router.replace("/auth/callback");
+        }}
+        title={"Registration Successful"}
+        message={"Account created successfully!"}
+      />
     </ScrollView>
   );
 }

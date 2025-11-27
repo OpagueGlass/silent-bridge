@@ -15,9 +15,9 @@ export default function AuthLayout() {
     return <Redirect href="/auth" />;
   }
 
-  if (session && profile) {
-    return <Redirect href="/" />;
-  }
+  // if (session && profile) {
+  //   return <Redirect href="/" />;
+  // }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

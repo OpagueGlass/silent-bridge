@@ -13,9 +13,14 @@ const formatDate = (date: Date) => {
   });
 };
 
+export const getToday: () => Date = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+};
+
 export const getValidRange: () => { startDate: Date; endDate: Date } = () => {
-    const startDate = new Date();
-    startDate.setHours(0, 0, 0, 0);
+    const startDate = getToday();
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + 90);
     endDate.setHours(0, 0, 0, 0);

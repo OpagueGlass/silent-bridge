@@ -1,7 +1,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { showError, showSuccess, showValidationError } from "@/utils/alert";
+// import { showError, showSuccess, showValidationError } from "@/utils/alert";
 import { deleteAvailability, getAvailability, setAvailability } from "@/utils/query";
 import { Stack, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
@@ -60,7 +60,7 @@ export default function ManageAvailabilityScreen() {
         const data = await getAvailability(profile.id);
         setWeeklyAvailability(data);
       } catch (error) {
-        showError("Could not load existing availability.");
+        // showError("Could not load existing availability.");
       }
     };
     fetchAvailability();
@@ -135,13 +135,13 @@ export default function ManageAvailabilityScreen() {
     setIsLoading(true);
     try {
       await deleteAvailability(profile.id, selectedDayInfo.dayId);
-      showSuccess("Availability removed");
+      // showSuccess("Availability removed");
       const data = await getAvailability(profile.id);
       setWeeklyAvailability(data);
       setIsModalVisible(false);
     } catch (error) {
       console.error("Failed to delete availability:", error);
-      showError("An error occurred while deleting availability.");
+      // showError("An error occurred while deleting availability.");
     } finally {
       setIsLoading(false);
     }
@@ -154,14 +154,14 @@ export default function ManageAvailabilityScreen() {
     setIsLoading(true);
     try {
       await setAvailability(profile.id, selectedDayInfo.dayId, `${editStartTime}:00`, `${editEndTime}:00`);
-      showSuccess("Availability updated");
+      // showSuccess("Availability updated");
       const data = await getAvailability(profile.id);
       setWeeklyAvailability(data);
       setIsEditMode(false);
       setIsModalVisible(false);
     } catch (error) {
       console.error("Failed to update availability:", error);
-      showError("An error occurred while updating availability.");
+      // showError("An error occurred while updating availability.");
     } finally {
       setIsLoading(false);
     }
@@ -170,11 +170,11 @@ export default function ManageAvailabilityScreen() {
   // Save availability to database
   const handleApplyAvailability = async () => {
     if (!profile?.id) {
-        showError("You must be logged in to set availability.");
+        // showError("You must be logged in to set availability.");
         return;
       }
       if (selectedDays.length === 0) {
-        showValidationError("Please select at least one day to repeat on.");
+        // showValidationError("Please select at least one day to repeat on.");
         return;
       }
   
@@ -184,13 +184,13 @@ export default function ManageAvailabilityScreen() {
           setAvailability(profile.id, dayId, `${startTime}:00`, `${endTime}:00`)
         );
         await Promise.all(updatePromises);
-        showSuccess("Availability updated");
+        // showSuccess("Availability updated");
         const data = await getAvailability(profile.id);
         setWeeklyAvailability(data);
         setSelectedDays([]);
       } catch (error) {
         console.error("Failed to set availability:", error);
-        showError("An error occurred while saving your availability.");
+        // showError("An error occurred while saving your availability.");
       } finally {
         setIsLoading(false);
       }

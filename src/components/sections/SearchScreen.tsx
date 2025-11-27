@@ -1,13 +1,18 @@
 "use client";
 
+import ResultCard from "@/components/cards/ResultCard";
 import DatePickerInput, { getValidRange } from "@/components/inputs/DatePickerInput";
 import LabelledInput from "@/components/inputs/LabelledInput";
+import RatingInput from "@/components/inputs/RatingInput";
 import TimePickerInput from "@/components/inputs/TimePickerInput";
+import Gradient from "@/components/ui/Gradient";
 import { LANGUAGES, SPECIALISATION } from "@/constants/data";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import { useDisclosure } from "@/hooks/useDisclosure";
 import { InterpreterResults, Profile, searchInterpreters } from "@/utils/query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useState, useCallback, Dispatch, SetStateAction } from "react";
+import { useFocusEffect } from "expo-router";
+import { Dispatch, SetStateAction, useCallback, useState } from "react";
 import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import {
   ActivityIndicator,
@@ -19,12 +24,8 @@ import {
   SegmentedButtons,
   Text,
 } from "react-native-paper";
-import { showValidationError } from "../../utils/alert";
-import ResultCard from "../cards/ResultCard";
 import LabelledDropdownInput from "../inputs/DropdownInput";
-import RatingInput from "../inputs/RatingInput";
-import { useDisclosure } from "@/hooks/useDisclosure";
-import { useFocusEffect } from "expo-router";
+import WarningDialog from "../modals/WarningDialog";
 
 const durationOptions = ["00:15", "00:30", "00:45", "01:00", "01:15", "01:30", "01:45", "02:00"];
 const ageRangeOptions = [
@@ -57,17 +58,19 @@ function handleSearch(
   date: Date | undefined,
   time: { hours: number | undefined; minutes: number | undefined },
   searchParams: SearchParams,
+  onDismiss: () => void,
   setLoading: Dispatch<SetStateAction<boolean>>,
+  setValidationError: Dispatch<SetStateAction<{ title: string; message: string } | null>>,
   setHasSearched: Dispatch<SetStateAction<boolean>>,
   setDisplayedInterpreters: Dispatch<SetStateAction<InterpreterResults[]>>
 ) {
   const { duration, selectedLanguage, selectedSpecialisation, selectedGender, ageRange, minRating } = searchParams;
   if (!date) {
-    showValidationError("Please select an appointment date.");
+    setValidationError({ title: "Invalid Date", message: "Please select an appointment date." });
     return;
   }
   if (time.hours === undefined || time.minutes === undefined) {
-    showValidationError("Please select an appointment time.");
+    setValidationError({ title: "Invalid Time", message: "Please select an appointment time." });
     return;
   }
 
@@ -102,6 +105,7 @@ function handleSearch(
     setDisplayedInterpreters(results);
   });
   setLoading(false);
+  onDismiss();
 }
 
 function SearchModal({
@@ -125,13 +129,8 @@ function SearchModal({
     hours: undefined,
     minutes: undefined,
   });
-
   const [searchParams, setSearchParams] = useState(defaultParams);
-
-  const handleSearchAndClose = () => {
-    handleSearch(profile, date, time, searchParams, setLoading, setHasSearched, setSearchResults);
-    onDismiss();
-  };
+  const [validationError, setValidationError] = useState<{ title: string; message: string } | null>(null);
 
   const handleClear = () => {
     setDate(undefined);
@@ -140,93 +139,121 @@ function SearchModal({
   };
 
   return (
-    <Portal>
-      <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={styles.modalContainer}>
-        <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: theme.colors.outlineVariant }]}>
-            <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: "bold" }}>
-              Interpreter Discovery
-            </Text>
-            <IconButton icon="close" size={24} onPress={onDismiss} iconColor={theme.colors.onSurface} />
+    <>
+      <Portal>
+        <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={styles.modalContainer}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: theme.colors.outlineVariant }]}>
+              <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: "bold" }}>
+                Interpreter Discovery
+              </Text>
+              <IconButton icon="close" size={24} onPress={onDismiss} iconColor={theme.colors.onSurface} />
+            </View>
+            <ScrollView style={styles.modalBody} contentContainerStyle={{ paddingBottom: 20 }}>
+              <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
+                <LabelledInput label="Date" style={{ flex: 1 }}>
+                  <DatePickerInput date={date} setDate={(date) => setDate(date)} validRange={getValidRange()} />
+                </LabelledInput>
+                <LabelledInput label="Time" style={{ flex: 1 }}>
+                  <TimePickerInput time={time} setTime={setTime} />
+                </LabelledInput>
+              </View>
+              <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
+                <LabelledDropdownInput
+                  label="Duration"
+                  container={durationOptions}
+                  option={searchParams.duration}
+                  setOption={(option) => setSearchParams({ ...searchParams, duration: option })}
+                  style={{ flex: 1 }}
+                />
+                <LabelledDropdownInput
+                  label="Doctor's Language"
+                  container={LANGUAGES}
+                  option={searchParams.selectedLanguage}
+                  setOption={(option) => setSearchParams({ ...searchParams, selectedLanguage: option })}
+                  style={{ flex: 1 }}
+                />
+              </View>
+              <View style={{ marginBottom: 12 }}>
+                <LabelledDropdownInput
+                  label="Specialisation"
+                  container={SPECIALISATION}
+                  option={searchParams.selectedSpecialisation}
+                  setOption={(option) => setSearchParams({ ...searchParams, selectedSpecialisation: option })}
+                />
+              </View>
+
+              <LabelledInput label="Gender" style={{ marginBottom: 12 }}>
+                <SegmentedButtons
+                  value={searchParams.selectedGender}
+                  onValueChange={(value) => setSearchParams({ ...searchParams, selectedGender: value })}
+                  buttons={[
+                    { value: "Any", label: "Any", icon: "account-group" },
+                    { value: "Male", label: "Male", icon: "face-man" },
+                    { value: "Female", label: "Female", icon: "face-woman" },
+                  ]}
+                />
+              </LabelledInput>
+              <LabelledInput label="Age Range" style={{ marginBottom: 12 }}>
+                <SegmentedButtons
+                  value={ageRangeOptions[searchParams.ageRange].value}
+                  onValueChange={(value) => {
+                    const index = ageRangeOptions.findIndex((option) => option.value === value);
+                    setSearchParams({ ...searchParams, ageRange: index });
+                  }}
+                  buttons={ageRangeOptions.map((option) => ({
+                    value: option.value,
+                    label: option.label,
+                  }))}
+                />
+              </LabelledInput>
+
+              <LabelledInput label="Rating" style={{ marginBottom: 16 }}>
+                <RatingInput
+                  rating={searchParams.minRating}
+                  onChange={(rating: number) => setSearchParams({ ...searchParams, minRating: rating })}
+                />
+              </LabelledInput>
+
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                <Button mode="outlined" icon="close" onPress={handleClear} style={{ flex: 1 }}>
+                  Clear
+                </Button>
+                <Button
+                  mode="contained"
+                  icon="magnify"
+                  onPress={() =>
+                    handleSearch(
+                      profile,
+                      date,
+                      time,
+                      searchParams,
+                      onDismiss,
+                      setLoading,
+                      setValidationError,
+                      setHasSearched,
+                      setSearchResults
+                    )
+                  }
+                  style={{ flex: 1 }}
+                >
+                  Search
+                </Button>
+              </View>
+            </ScrollView>
           </View>
-          <ScrollView style={styles.modalBody} contentContainerStyle={{ paddingBottom: 20 }}>
-            <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
-              <LabelledInput label="Date" style={{ flex: 1 }}>
-                <DatePickerInput date={date} setDate={(date) => setDate(date)} validRange={getValidRange()} />
-              </LabelledInput>
-              <LabelledInput label="Time" style={{ flex: 1 }}>
-                <TimePickerInput time={time} setTime={setTime} />
-              </LabelledInput>
-            </View>
-            <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
-              <LabelledDropdownInput
-                label="Duration"
-                container={durationOptions}
-                option={searchParams.duration}
-                setOption={(option) => setSearchParams({ ...searchParams, duration: option })}
-                style={{ flex: 1 }}
-              />
-              <LabelledDropdownInput
-                label="Doctor's Language"
-                container={LANGUAGES}
-                option={searchParams.selectedLanguage}
-                setOption={(option) => setSearchParams({ ...searchParams, selectedLanguage: option })}
-                style={{ flex: 1 }}
-              />
-            </View>
-            <View style={{ marginBottom: 12 }}>
-              <LabelledDropdownInput
-                label="Specialisation"
-                container={SPECIALISATION}
-                option={searchParams.selectedSpecialisation}
-                setOption={(option) => setSearchParams({ ...searchParams, selectedSpecialisation: option })}
-              />
-            </View>
-
-            <LabelledInput label="Gender" style={{ marginBottom: 12 }}>
-              <SegmentedButtons
-                value={searchParams.selectedGender}
-                onValueChange={(value) => setSearchParams({ ...searchParams, selectedGender: value })}
-                buttons={[
-                  { value: "Any", label: "Any", icon: "account-group" },
-                  { value: "Male", label: "Male", icon: "face-man" },
-                  { value: "Female", label: "Female", icon: "face-woman" },
-                ]}
-              />
-            </LabelledInput>
-            <LabelledInput label="Age Range" style={{ marginBottom: 12 }}>
-              <SegmentedButtons
-                value={ageRangeOptions[searchParams.ageRange].value}
-                onValueChange={(value) => {
-                  const index = ageRangeOptions.findIndex((option) => option.value === value);
-                  setSearchParams({ ...searchParams, ageRange: index });
-                }}
-                buttons={ageRangeOptions.map((option) => ({
-                  value: option.value,
-                  label: option.label,
-                }))}
-              />
-            </LabelledInput>
-
-            <LabelledInput label="Rating" style={{ marginBottom: 16 }}>
-              <RatingInput
-                rating={searchParams.minRating}
-                onChange={(rating: number) => setSearchParams({ ...searchParams, minRating: rating })}
-              />
-            </LabelledInput>
-
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              <Button mode="outlined" icon="close" onPress={handleClear} style={{ flex: 1 }}>
-                Clear
-              </Button>
-              <Button mode="contained" icon="magnify" onPress={handleSearchAndClose} style={{ flex: 1 }}>
-                Search
-              </Button>
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
-    </Portal>
+        </Modal>
+      </Portal>
+      <WarningDialog
+        visible={validationError !== null}
+        title={validationError?.title || ""}
+        message={validationError?.message || ""}
+        onDismiss={() => setValidationError(null)}
+        onConfirm={() => {
+          setValidationError(null);
+        }}
+      />
+    </>
   );
 }
 
@@ -281,13 +308,13 @@ export default function SearchScreen({ profile }: { profile: Profile | null }) {
 
   return (
     <ScrollView style={{ backgroundColor: theme.colors.elevation.level1 }}>
-      <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
+      <Gradient style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={open} style={{ flex: 1 }}>
             <Searchbar value={""} placeholder="Search interpreters" style={styles.searchbar} pointerEvents="none" />
           </TouchableOpacity>
         </View>
-      </View>
+      </Gradient>
 
       <SearchModal
         profile={profile}
@@ -305,8 +332,7 @@ export default function SearchScreen({ profile }: { profile: Profile | null }) {
 
 const styles = StyleSheet.create({
   header: {
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingVertical: 12,
     paddingHorizontal: 8,
   },
   headerContent: {
@@ -315,7 +341,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   searchbar: {
-    marginLeft: 56,
+    marginHorizontal: 12,
     borderRadius: 12,
   },
   modalContainer: {

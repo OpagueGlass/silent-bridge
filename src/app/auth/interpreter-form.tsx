@@ -6,10 +6,11 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button, Card, Checkbox, Menu, TextInput } from "react-native-paper";
-import DatePickerInput from "../../components/inputs/DatePickerInput";
+import DatePickerInput, { getToday } from "../../components/inputs/DatePickerInput";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
-import { showError, showSuccess, showValidationError } from "../../utils/alert";
+import WarningDialog from "@/components/modals/WarningDialog";
+import { theme } from "@/theme/theme";
 
 export default function InterpreterFormScreen() {
   const { session } = useAuth();
@@ -27,33 +28,35 @@ export default function InterpreterFormScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const theme = useAppTheme();
+  const [error, setError] = useState<{ title: string; message: string } | null>(null);
+  const [success, showSuccess] = useState(false);
 
   const handleSignUp = async () => {
     const validateForm = () => {
       if (!formData.name.trim()) {
-        showValidationError("Please enter your name");
+        setError({ title: "Invalid Name", message: "Please enter your name" });
         return false;
       }
       if (!formData.dateOfBirth) {
-        showValidationError("Please select your date of birth");
+        setError({ title: "Invalid Date of Birth", message: "Please select your date of birth" });
         return false;
       }
       if (!formData.gender) {
-        showValidationError("Please select your gender");
+        setError({ title: "Invalid Gender", message: "Please select your gender" });
         return false;
       }
       if (!formData.location) {
-        showValidationError("Please select your state");
+        setError({ title: "Invalid State", message: "Please select your state" });
         return false;
       }
 
       if (!formData.specialisations.some((spec) => spec)) {
-        showValidationError("Please select at least one specialisation");
+        setError({ title: "Invalid Specialisation", message: "Please select at least one specialisation" });
         return false;
       }
 
       if (!formData.languages.some((lang) => lang)) {
-        showValidationError("Please select at least one language");
+        setError({ title: "Invalid Language", message: "Please select at least one language" });
         return false;
       }
 
@@ -105,10 +108,12 @@ export default function InterpreterFormScreen() {
         .insert(interpreterSpecialisationData);
       if (specialisationError) throw specialisationError;
 
-      showSuccess("Account created successfully!");
-      router.replace("/auth/callback");
+      showSuccess(true);
     } catch (error: any) {
-      showError(error.message || "Failed to create account with Google. Please try again.");
+      setError({
+        title: "Registration Error",
+        message: error.message || "Failed to create account with Google. Please try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -130,6 +135,7 @@ export default function InterpreterFormScreen() {
         setDate={(date) => {
           setFormData({ ...formData, dateOfBirth: date });
         }}
+        validRange={{ startDate: undefined, endDate: getToday() }}
         placeholder="Date of Birth"
         style={styles.input}
       />
@@ -255,6 +261,26 @@ export default function InterpreterFormScreen() {
       >
         {isSubmitting ? "Creating Account..." : "Continue with Google"}
       </Button>
+      <WarningDialog
+        visible={error !== null}
+        onConfirm={() => setError(null)}
+        onDismiss={() => setError(null)}
+        title={error?.title || ""}
+        message={error?.message || ""}
+      />
+      <WarningDialog
+        visible={success}
+        onConfirm={() => {
+          showSuccess(false);
+          router.replace("/auth/callback");
+        }}
+        onDismiss={() => {
+          showSuccess(false);
+          router.replace("/auth/callback");
+        }}
+        title={"Registration Successful"}
+        message={"Account created successfully!"}
+      />
     </ScrollView>
   );
 }
@@ -296,7 +322,8 @@ const styles = StyleSheet.create({
   },
   checkboxCard: {
     marginBottom: 20,
-    backgroundColor: "#f1f5f9",
+    backgroundColor: theme.colors.surface,
+    // backgroundColor: "#f1f5f9",
     // elevation: 0,
     shadowColor: "#000",
     shadowOffset: {

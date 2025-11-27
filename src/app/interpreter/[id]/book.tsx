@@ -1,5 +1,5 @@
 import { SPECIALISATION } from "@/constants/data";
-import { showConfirmAlert } from "@/utils/alert";
+// import { showConfirmAlert } from "@/utils/alert";
 import { getDate, getStartTime } from "@/utils/helper";
 import { createAppointment, createRequest, getInterpreterProfile, InterpreterProfile } from "@/utils/query";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -43,8 +43,8 @@ export default function BookingScreen() {
   }, [id, profile, appointmentDetails]);
 
   const handleBooking = async () => {
-    const confirmed = await showConfirmAlert("Create Booking", "Are you sure you want to create this booking?");
-    if (!confirmed) return;
+    // const confirmed = await showConfirmAlert("Create Booking", "Are you sure you want to create this booking?");
+    // if (!confirmed) return;
 
     try {
       if (appointmentDetails) {

@@ -6,7 +6,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button, Card, List, Switch, MD3Theme  } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
-import { showConfirmAlert } from "../../utils/alert";
+// import { showConfirmAlert } from "../../utils/alert";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -19,12 +19,11 @@ export default function SettingsScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const handleSignOut = async () => {
-    const confirmed = await showConfirmAlert("Sign Out", "Are you sure you want to sign out?");
+    // const confirmed = await showConfirmAlert("Sign Out", "Are you sure you want to sign out?");
 
-    if (confirmed) {
+    //if (confirmed) {
       await signOut();
       router.replace("/auth");
-    }
   };
 
   return (

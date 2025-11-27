@@ -1,4 +1,5 @@
 "use client";
+import RequestCard, { handleRequest } from "@/components/cards/RequestCard";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import {
   getRequests,
@@ -6,11 +7,39 @@ import {
   Request,
 } from "@/utils/query";
 import { useCallback, useEffect, useState } from "react";
-import { RefreshControl, ScrollView, StyleSheet,  View } from "react-native";
-import { ActivityIndicator, Text } from "react-native-paper";
-import RequestCard, { handleRequest } from "@/components/cards/RequestCard";
+import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Surface, Text } from "react-native-paper";
 
+import { useDisclosure } from "@/hooks/useDisclosure";
 import { theme } from "@/theme/theme";
+import WarningDialog from "../modals/WarningDialog";
+
+function getOverlappingDetails(request: Request) {
+  let confirmMessage = `Are you sure you want to accept this request?`;
+
+
+  if (request.hasOverlap && request.overlappingAppointments && request.overlappingAppointments.length > 0) {
+      const overlapDetails = request.overlappingAppointments
+        .map((overlap) => {
+          const startTime = new Date(overlap.startTime).toLocaleString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          const endTime = new Date(overlap.endTime).toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          return `\n• ${overlap.userName} (${startTime} - ${endTime})`;
+        })
+        .join("");
+
+      confirmMessage = `Are you sure you want to accept this request?\n\nThis will automatically reject ${request.overlappingAppointments.length} overlapping request(s):${overlapDetails}`;
+    }
+    return confirmMessage;
+  }
+
 
 export default function RequestScreen({
   profile,
@@ -23,6 +52,19 @@ export default function RequestScreen({
 
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState<Request[]>([]);
+  const {isOpen: acceptDialog, open: openAcceptDialog, close: closeAcceptDialog} = useDisclosure();
+  const {isOpen: rejectDialog, open: openRejectDialog, close: closeRejectDialog} = useDisclosure();
+  const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
+
+  const openAccept = (request: Request) => {
+    setSelectedRequest(request);
+    openAcceptDialog();
+  }
+
+  const openReject = (request: Request) => {
+    setSelectedRequest(request);
+    openRejectDialog();
+  };
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -63,12 +105,10 @@ export default function RequestScreen({
       style={{ backgroundColor: theme.colors.elevation.level1 }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchRequests} />}
     >
-      <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
-        <View style={styles.headerContent}>
-          <Text variant="titleLarge" style={styles.title}>
-            Requests
-          </Text>
-        </View>
+      <View style={styles.header}>
+        <Text variant="titleLarge" style={styles.title}>
+          Requests
+        </Text>
       </View>
 
       <View style={styles.content}>
@@ -79,39 +119,52 @@ export default function RequestScreen({
             <RequestCard
               key={request.id}
               request={request}
-              acceptRequest={acceptRequest}
-              rejectRequest={rejectRequest}
+              acceptRequest={() => openAccept(request)}
+              rejectRequest={() => openReject(request)}
             />
           ))
         ) : (
-          <Text style={{ textAlign: "center", color: theme.colors.onSurface, marginTop: 40 }}>
-            No pending requests at this time
-          </Text>
+          <Surface style={styles.emptyState}>
+            <Text style={{ textAlign: "center", color: theme.colors.onSurface}}>
+              No pending requests at this time
+            </Text>
+          </Surface>
         )}
       </View>
+      <WarningDialog
+        visible={acceptDialog}
+        title="Accept Request"
+        message={selectedRequest ? getOverlappingDetails(selectedRequest) : "Are you sure you want to accept this request?"}
+        onConfirm={() => acceptRequest(selectedRequest!)}
+        onDismiss={closeAcceptDialog}
+      />
+      <WarningDialog
+        visible={rejectDialog}
+        title="Reject Request"
+        message="Are you sure you want to reject this request?"
+        onConfirm={() => rejectRequest(selectedRequest!)}
+        onDismiss={closeRejectDialog}
+      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    paddingTop: 8,
-    paddingBottom: 8,
-    paddingHorizontal: 8,
-  },
-  headerContent: {
-    flexDirection: "row",
-    alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   title: {
-    color: theme.colors.onPrimary,
-    fontWeight: "bold",
-    marginLeft: 42,
+    color: theme.colors.onBackground,
   },
   content: {
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: 16,
+  },
+  emptyState: {
+    height: 144,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

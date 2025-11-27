@@ -5,7 +5,7 @@ import { StyleSheet, View } from "react-native";
 import { Button, Text } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
-import { showError } from "../../utils/alert";
+// import { showError } from "../../utils/alert";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -15,10 +15,10 @@ export default function LoginScreen() {
     try {
       await signIn();
       if (authState.error) {
-        showError(authState.error);
+        // showError(authState.error);
       }
     } catch (error) {
-      showError("Failed to sign in with Google");
+      // showError("Failed to sign in with Google");
     }
   };
 

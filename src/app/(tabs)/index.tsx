@@ -4,14 +4,9 @@ import AppointmentCard from "@/components/cards/AppointmentCard";
 import { DateRangePickerInput, getValidRange } from "@/components/inputs/DatePickerInput";
 import { DropdownInput } from "@/components/inputs/DropdownInput";
 import ReviewSection from "@/components/sections/ReviewSection";
+import Gradient from "@/components/ui/Gradient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
-import { Searchbar, Surface, Text } from "react-native-paper";
 import {
   Appointment,
   getReviewInterpreterAppointments,
@@ -19,6 +14,11 @@ import {
   getUpcomingInterpreterAppointments,
   getUpcomingUserAppointments,
 } from "@/utils/query";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Searchbar, Surface, Text } from "react-native-paper";
 
 function NameDropdown({
   nameOptions,
@@ -61,7 +61,7 @@ export default function HomeScreen() {
           ])
         : await Promise.all([getReviewUserAppointments(profile.id), getUpcomingUserAppointments(profile.id)]);
       setReviewAppointments(reviewData);
-      setUpcomingAppointments(upcomingData.concat(upcomingData).concat(upcomingData));
+      setUpcomingAppointments(upcomingData);
       setNameOptions([
         { id: "0", label: "All" },
         ...upcomingData.map((appointment) => ({
@@ -101,12 +101,7 @@ export default function HomeScreen() {
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchAppointments} />}
     >
       {/* --- HEADER WITH CURVED BACKGROUND --- */}
-      <LinearGradient
-        colors={[theme.colors.primary, theme.colors.tertiary]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.curvedHeader}
-      >
+      <Gradient style={styles.curvedHeader}>
         {isInterpreter ? (
           <TouchableOpacity
             onPress={() => {
@@ -131,7 +126,7 @@ export default function HomeScreen() {
             <Searchbar value={""} placeholder="Start your search" style={styles.searchbar} pointerEvents="none" />
           </TouchableOpacity>
         )}
-      </LinearGradient>
+      </Gradient>
 
       {isLoading ? (
         <ActivityIndicator animating={true} style={{ marginTop: theme.spacing.md }} />
@@ -207,7 +202,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   curvedHeader: {
-    paddingTop: 60,
+    paddingTop: 12,
     paddingBottom: 40,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 30,
