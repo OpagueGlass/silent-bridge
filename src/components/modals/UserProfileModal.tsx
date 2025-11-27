@@ -1,11 +1,10 @@
+import { useAppTheme } from '@/hooks/useAppTheme';
+import { Profile, initiateChat } from '@/utils/query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card, MD3Theme } from 'react-native-paper';
-import { useRouter } from 'expo-router'; 
-import { interpreterAppointments } from '@/app/data/mockBookingsDeaf';
-import { useAppTheme } from '@/hooks/useAppTheme';
-import { Profile, initiateChat } from '@/utils/query';
 
 interface UserProfileModalProps {
   visible: boolean;

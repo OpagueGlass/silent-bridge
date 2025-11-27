@@ -1,7 +1,7 @@
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
-import { Animated, StyleSheet, View } from "react-native";
+import { Animated, Platform, StyleSheet, View } from "react-native";
 import { Avatar, Drawer, Text } from "react-native-paper";
 import Gradient from "../ui/Gradient";
 
@@ -35,12 +35,12 @@ export default function AppDrawer({ visible, onClose, profile, menuItems }: AppD
         Animated.timing(slideAnim, {
           toValue: 0,
           duration: 300,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }),
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 300,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }),
       ]).start();
     } else {
@@ -48,12 +48,12 @@ export default function AppDrawer({ visible, onClose, profile, menuItems }: AppD
         Animated.timing(slideAnim, {
           toValue: -280,
           duration: 250,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }),
         Animated.timing(fadeAnim, {
           toValue: 0,
           duration: 250,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }),
       ]).start();
     }

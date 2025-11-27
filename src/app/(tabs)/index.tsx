@@ -214,6 +214,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   searchbar: {
-    borderRadius: 12,
+    borderRadius: 12
   },
 });

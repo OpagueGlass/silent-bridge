@@ -12,7 +12,7 @@ import {
 import { Card, MD3Theme, TextInput } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAppTheme } from "../../hooks/useAppTheme";
-import { signCategories as allSignCategories } from "../data/signLanguageData";
+import { signCategories as allSignCategories } from "@/constants/data/signLanguageData";
 
 const originalCategories = allSignCategories.map((cat) => cat.title);
 const categories = ["All", "Favorites", ...originalCategories];
