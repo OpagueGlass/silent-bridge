@@ -206,7 +206,7 @@ export default function AvailabilityScreen() {
             weekStartsOn={1}
             hideNowIndicator={true}
             weekEndsOn={0}
-            onPressCell={handleCellPress(setSelectedDate, availabilities, setStartTime, setEndTime, open)}
+            onPressCell={handleCellPress(setSelectedDate, availabilities, setStartTime, setEndTime, openModal)}
             theme={{
               palette: {
                 primary: {
