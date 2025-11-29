@@ -17,6 +17,16 @@ const getDayKey = (date: Date) => {
   return date.getDay() || 7;
 };
 
+const getCurrentWeekStart = () => {
+  const today = new Date();
+  const day = today.getDay();
+  const diff = day === 0 ? -6 : 1 - day; // Calculate Monday
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diff);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+};
+
 const createEvent = (
   date: Date,
   startTime: { hours: number; minutes: number },
@@ -154,18 +164,9 @@ export default function AvailabilityScreen() {
     minutes: undefined,
   });
   const [validationError, setValidationError] = useState<{ title: string; message: string } | null>(null);
-  const {isOpen: confirmDialog, open: openConfirmDialog, close: closeConfirmDialog} = useDisclosure();
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
-    const today = new Date();
-    const day = today.getDay();
-    const diff = day === 0 ? -6 : 1 - day; // Calculate Monday
-    const monday = new Date(today);
-    monday.setDate(today.getDate() + diff);
-    monday.setHours(0, 0, 0, 0);
-    return monday;
-  });
+  const { isOpen: confirmDialog, open: openConfirmDialog, close: closeConfirmDialog } = useDisclosure();
 
-  const fetchAvailabilities = async () => {
+  const fetchAvailabilities = useCallback(async () => {
     if (profile) {
       const data = await getAvailabilities(profile.id);
       const formattedData = data.map((availability) => ({
@@ -174,8 +175,8 @@ export default function AvailabilityScreen() {
         end_time: toTime(availability.end_time),
       }));
       const events = formattedData.map((availability) => {
-        const date = new Date(currentWeekStart);
-        date.setDate(currentWeekStart.getDate() + availability.day_id - 1); // day_id: 1 (Mon) to 7 (Sun)
+        const date = getCurrentWeekStart();
+        date.setDate(date.getDate() + availability.day_id - 1); // day_id: 1 (Mon) to 7 (Sun)
         return createEvent(
           date,
           { hours: availability.start_time.getHours(), minutes: availability.start_time.getMinutes() },
@@ -190,11 +191,11 @@ export default function AvailabilityScreen() {
         }, {} as { [key: number]: { start: Date; end: Date } })
       );
     }
-  };
+  }, [profile]);
 
   useEffect(() => {
     fetchAvailabilities();
-  }, [currentWeekStart]);
+  }, [fetchAvailabilities]);
 
   return (
     <View style={{ backgroundColor: theme.colors.background, flex: 1 }}>
@@ -322,12 +323,7 @@ export default function AvailabilityScreen() {
           <Button mode="outlined" icon="close" onPress={() => router.push("/(tabs)")} style={{ flex: 1 }}>
             Cancel
           </Button>
-          <Button
-            mode="contained"
-            icon="check"
-            onPress={openConfirmDialog}
-            style={{ flex: 1 }}
-          >
+          <Button mode="contained" icon="check" onPress={openConfirmDialog} style={{ flex: 1 }}>
             Confirm
           </Button>
         </View>
