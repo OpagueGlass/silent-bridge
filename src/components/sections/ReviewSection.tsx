@@ -7,51 +7,7 @@ import { FlatList, StyleSheet, View } from "react-native";
 import { Button, Card, Modal, Portal, Surface, Text, TextInput } from "react-native-paper";
 import ReviewCard from "../cards/ReviewCard";
 import RatingInput from "../inputs/RatingInput";
-
-// interface ReviewModalProps {
-//   visible: boolean;
-//   onDismiss: () => void;
-//   onSubmit: (rating: number, comment: string) => void;
-//   targetName: string;
-//   sessionDate: string;
-//   placeholderText: string;
-// }
-
-// const handleSubmitReview = async (
-//   appointments: Appointment[],
-//   selectedAppointment: number,
-//   profile: Profile,
-//   rating: number,
-//   comment: string
-// ) => {
-//   if (rating < 1 || rating > 5) {
-//     // showAlert("Invalid Rating", "Please provide a rating between 1 and 5 stars.");
-//     return;
-//   }
-//   await submitRating(selectedAppointment.id, profile!.id, selectedAppointment.profile!.id, rating, comment).catch(
-//     (error) => {
-//       console.error("Failed to submit review:", error);
-//       // showAlert("Submission Failed", "There was an error submitting your review. Please try again.");
-//     }
-//   );
-//   setCompletedAppointments((prev) => prev.filter((app) => app.id !== selectedAppointment.id));
-
-//   if (selectedAppointment) {
-//     if (rating < 1 || rating > 5) {
-//       showAlert("Invalid Rating", "Please provide a rating between 1 and 5 stars.");
-//       return;
-//     }
-//     await submitRating(selectedAppointment.id, profile!.id, selectedAppointment.profile!.id, rating, comment).catch(
-//       (error) => {
-//         console.error("Failed to submit review:", error);
-//         showAlert("Submission Failed", "There was an error submitting your review. Please try again.");
-//       }
-//     );
-//     setCompletedAppointments((prev) => prev.filter((app) => app.id !== selectedAppointment.id));
-//   }
-//   handleCloseReviewModal();
-//   showAlert("Appointment Reviewed", "Thank you for your review!");
-// };
+import WarningDialog from "../modals/WarningDialog";
 
 async function submitReview(
   appointmentId: number,
@@ -60,13 +16,20 @@ async function submitReview(
   rating: number,
   comment: string,
   setCompletedAppointments: Dispatch<SetStateAction<Appointment[]>>,
-  onClose: () => void
+  onClose: () => void,
+  setError: Dispatch<SetStateAction<{ title: string; message: string } | null>>,
+  onSuccess: () => void
 ) {
   if (rating < 1 || rating > 5) {
+    setError({ title: "Invalid Rating", message: "Please provide a rating between 1 and 5 stars." });
     return;
   }
 
-  await submitRating(appointmentId, profileId, targetId, rating, comment);
+  await submitRating(appointmentId, profileId, targetId, rating, comment).catch((_) => {
+    setError({ title: "Submission Failed", message: "There was an error submitting your review. Please try again." });
+    return;
+  });
+  onSuccess();
   setCompletedAppointments((prev) => prev.filter((app) => app.id !== appointmentId));
   onClose();
 }
@@ -77,9 +40,19 @@ type ReviewModalProps = {
   isOpen: boolean;
   setReviewAppointments: Dispatch<SetStateAction<Appointment[]>>;
   onDismiss: () => void;
+  setError: Dispatch<SetStateAction<{ title: string; message: string } | null>>;
+  onSuccess: () => void;
 };
 
-function ReviewModal({ appointment, profile, isOpen, setReviewAppointments, onDismiss }: ReviewModalProps) {
+function ReviewModal({
+  appointment,
+  profile,
+  isOpen,
+  setReviewAppointments,
+  onDismiss,
+  setError,
+  onSuccess,
+}: ReviewModalProps) {
   if (!appointment || !profile) {
     return null;
   }
@@ -134,7 +107,9 @@ function ReviewModal({ appointment, profile, isOpen, setReviewAppointments, onDi
                     rating,
                     comment,
                     setReviewAppointments,
-                    onDismiss
+                    onDismiss,
+                    setError,
+                    onSuccess
                   )
                 }
                 style={styles.button}
@@ -164,6 +139,9 @@ export default function ReviewSection({
 }: ReviewSectionProps) {
   const [index, setIndex] = useState(0);
   const { isOpen, open: openModal, close: closeModal } = useDisclosure(false);
+  const [error, setError] = useState<{ title: string; message: string } | null>(null);
+  const { isOpen: successOpen, open: openSuccess, close: closeSuccess } = useDisclosure(false);
+
   const theme = useAppTheme();
   if (reviewAppointments.length === 0) {
     return (
@@ -177,14 +155,18 @@ export default function ReviewSection({
           borderRadius: theme.roundness,
         }}
       >
-        <Text style={{color: theme.colors.onSurfaceVariant}}>No recent sessions to review</Text>
+        <Text style={{ color: theme.colors.onSurfaceVariant }}>No recent sessions to review</Text>
       </Surface>
     );
   } else {
     return (
       <Surface
         mode="flat"
-        style={{ paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.sm, borderRadius: theme.roundness }}
+        style={{
+          paddingVertical: theme.spacing.sm,
+          paddingHorizontal: theme.spacing.sm,
+          borderRadius: theme.roundness,
+        }}
       >
         <FlatList
           data={reviewAppointments}
@@ -209,10 +191,24 @@ export default function ReviewSection({
           appointment={reviewAppointments[index]}
           profile={profile}
           isOpen={isOpen}
+          onDismiss={closeModal}
           setReviewAppointments={setReviewAppointments}
-          onDismiss={() => {
-            closeModal();
-          }}
+          setError={setError}
+          onSuccess={openSuccess}
+        />
+        <WarningDialog
+          visible={error !== null}
+          onDismiss={() => setError(null)}
+          onConfirm={() => setError(null)}
+          title={error?.title || "Error"}
+          message={error?.message || "An unexpected error occurred."}
+        />
+        <WarningDialog
+          visible={successOpen}
+          onDismiss={closeSuccess}
+          onConfirm={closeSuccess}
+          title="Review Submitted"
+          message="Thank you for submitting your review."
         />
       </Surface>
     );
