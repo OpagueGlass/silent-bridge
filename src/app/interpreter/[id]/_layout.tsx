@@ -16,9 +16,9 @@ export default function InterpreterLayout() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="[id]/index" />
-      <Stack.Screen name="[id]/book" />
-      <Stack.Screen name="[id]/booking-success" />
+      <Stack.Screen name="index" />
+      <Stack.Screen name="book" />
+      <Stack.Screen name="booking-success" />
     </Stack>
   );
 }

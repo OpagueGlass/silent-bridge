@@ -61,19 +61,8 @@ export default function AppDrawer({ visible, onClose, profile, menuItems }: AppD
 
   const handleNavigate = (name: string) => {
     onClose();
-    const route =
-      name === "index"
-        ? "/(tabs)"
-        : name === "search"
-        ? "/(tabs)/search"
-        : name === "sign"
-        ? "/(tabs)/sign"
-        : name === "history"
-        ? "/(tabs)/history"
-        : name === "availability"
-        ? "/(tabs)/availability"
-        : "/(tabs)/settings";
-    router.push(route as any);
+    const path = name === "index" ? "" : name;
+    router.push(`/${path}` as any);
   };
 
   return (
