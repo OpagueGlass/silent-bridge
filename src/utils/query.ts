@@ -625,7 +625,6 @@ export const updateAvailabilities = async (
   availabilities: { [key: number]: { start: Date; end: Date } }
 ) => {
   await supabase.from("availability").delete().eq("interpreter_id", interpreter_id);
-  console.log(availabilities)
   const availabilityData = Object.entries(availabilities).map(([dayId, { start, end }]) => ({
     interpreter_id,
     day_id: parseInt(dayId),
@@ -668,50 +667,44 @@ export const getAvailabilities = async (interpreter_id: string) => {
 
 
 /**
- * Gets the historical appointments for a user.
+ * Gets the completed appointments for a user.
  * @param user_id The ID of the user
  * @param is_interpreter Whether the user is an interpreter
  * @returns A list of completed appointments for the user
  */
-export const getHistoryAppointments = async (user_id: string, is_interpreter: boolean) => {
-  let query = supabase
+export const getPastAppointments = async (user_id: string, is_interpreter: boolean) => {
+  const { data, error } = await supabase
     .from("appointment")
     .select(
       `
-      id, 
+      id,
       status,
       start_time,
       end_time,
       hospital_name,
       meeting_url,
-      interpreter_profile (
-        profile (*)
-      ),
-      profile!appointment_deaf_user_id_fkey (*)
+      status,
+      ${is_interpreter ? "profile (*)" : "interpreter_profile ( profile (*) )"}
       `
     )
-    .eq("status", "Completed")
+    .eq(is_interpreter ? "interpreter_id" : "deaf_user_id", user_id)
+    .not(is_interpreter ? "profile" : "interpreter_profile", "is", null)
+    .lt("end_time", new Date().toISOString())
     .order("start_time", { ascending: false });
 
-  if (is_interpreter) {
-    query = query.eq("interpreter_id", user_id);
-  } else {
-    query = query.eq("deaf_user_id", user_id);
-  }
-
-  const { data, error } = await query;
-
   if (error) {
-    console.error("Error fetching history appointments:", error);
+    console.error("Error fetching past appointments:", error);
     return [];
   }
 
-  return data.map((item) => {
-    const { interpreter_profile, profile, ...rest } = item;
-    const otherPartyProfile = is_interpreter ? profile : interpreter_profile?.profile || null;
-    return convertToAppointment(rest, otherPartyProfile);
-  });
+  return data
+    .map((row: any) => {
+      const profile = row.interpreter_profile?.profile || row.profile || null;
+      return convertToAppointment(row, profile);
+    })
+    .map((appointment) => ({ ...appointment, status: "Completed" } as Appointment));
 };
+
 export const getOtherParticipant = async (roomId: string): Promise<string | null> => {
   const { data, error } = await supabase.rpc("get_other_participant", { p_room: roomId });
   if (error) {

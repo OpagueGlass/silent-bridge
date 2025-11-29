@@ -12,13 +12,13 @@ import { router } from "expo-router";
 export default function ResultCard({ interpreterResult }: { interpreterResult: InterpreterResults }) {
   const { start_time, end_time } = interpreterResult.interpreterAvailability;
   const timeRange = toTimeRange(start_time, end_time);
-  const specialisationID = interpreterResult.interpreterSpecialisations[0];
-  const specialisation = SPECIALISATION[specialisationID];
+  // const specialisationID = interpreterResult.interpreterSpecialisations[0];
+  // const specialisation = SPECIALISATION[specialisationID];
 
   return (
     <Card onPress={() => router.push(`/interpreter/${interpreterResult.id}`)} style={{ marginHorizontal: 16, marginVertical: 8 }}>
       <Card.Content style={{ flexDirection: "row" }}>
-        <ClickableProfileImage profile={interpreterResult} size={108} borderRadius={16} style={{ marginRight: 16 }} />
+        <ClickableProfileImage profile={interpreterResult} size={80} borderRadius={16} style={{ marginRight: 16 }} />
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
             <Text variant="titleMedium" style={{ fontWeight: "bold" }}>
@@ -28,9 +28,9 @@ export default function ResultCard({ interpreterResult }: { interpreterResult: I
               {interpreterResult.avgRating ? interpreterResult.avgRating.toFixed(1) : "N/A"} ⭐
             </Text>
           </View>
-          <Text variant="titleSmall" style={{ marginBottom: 4, color: "#606F81" }}>
+          {/* <Text variant="titleSmall" style={{ marginBottom: 4, color: "#606F81" }}>
             {specialisation}
-          </Text>
+          </Text> */}
 
             <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
               <Icon size={20} source="clock" />

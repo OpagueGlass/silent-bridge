@@ -1,144 +1,168 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
-import { ActivityIndicator, Card, List, MD3Theme, Text } from "react-native-paper";
-import { useAuth } from "../../contexts/AuthContext";
-import { useAppTheme } from "../../hooks/useAppTheme";
-import { getTimeRange } from "../../utils/helper";
-import { Appointment, getHistoryAppointments } from "../../utils/query";
+import HistoryCard from "@/components/cards/HistoryCard";
+import { DateRangePickerInput, getToday, getValidRange } from "@/components/inputs/DatePickerInput";
+import { DropdownInput } from "@/components/inputs/DropdownInput";
+import Gradient from "@/components/ui/Gradient";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import { Appointment, getPastAppointments } from "@/utils/query";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { Surface, Text } from "react-native-paper";
 
-const HistoryCard = ({ item }: { item: Appointment }) => {
-  const theme = useAppTheme();
-  const appointmentDate = new Date(item.startTime).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-  const timeRange = getTimeRange(item);
-  const { profile: otherParty } = item;
-
+function NameDropdown({
+  nameOptions,
+  option,
+  setOption,
+  colour,
+}: {
+  nameOptions: { id: string; label: string }[];
+  option: number;
+  setOption: (index: number) => void;
+  colour?: string;
+}) {
   return (
-    <Card style={{ marginBottom: 12, backgroundColor: theme.colors.surface }}>
-      <List.Item
-        title={otherParty?.name || "N/A"}
-        description={`${appointmentDate} • ${timeRange}`}
-        titleStyle={{ fontWeight: "bold" }}
-        descriptionStyle={{ color: theme.colors.onSurfaceVariant, fontSize: 14 }}
-        left={(props) => (
-          <List.Icon
-            {...props}
-            icon="check-circle"
-            color={theme.colors.success}
-          />
-        )}
-      />
-    </Card>
+    <DropdownInput
+      container={nameOptions.map((opt) => opt.label)}
+      option={option}
+      setOption={setOption}
+      style={{ backgroundColor: colour }}
+    />
   );
-};
+}
 
 export default function HistoryScreen() {
-  const theme = useAppTheme();
   const { profile, isInterpreter } = useAuth();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const theme = useAppTheme();
+  const [pastAppointments, setPastAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [option, setOption] = useState(0);
+  const [dateRange, setDateRange] = useState<{ startDate: Date | undefined; endDate: Date | undefined }>({
+    startDate: undefined,
+    endDate: undefined,
+  });
+  const [nameOptions, setNameOptions] = useState<{ id: string; label: string }[]>([{ id: "0", label: "All" }]);
+
+  const fetchPastAppointments = useCallback(async () => {
+    if (!profile?.id) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const data = await getPastAppointments(profile.id, isInterpreter);
+      setPastAppointments(data);
+
+      // Get unique profiles and sort by name
+      const uniqueProfiles = Array.from(
+        new Map(
+          data.filter((apt) => apt.profile).map((appointment) => [appointment.profile!.id, appointment.profile!])
+        ).values()
+      ).sort((a, b) => a.name.localeCompare(b.name));
+
+      setNameOptions([
+        { id: "0", label: "All" },
+        ...uniqueProfiles.map((profile) => ({
+          id: profile.id,
+          label: profile.name,
+        })),
+      ]);
+    } catch (error) {
+      console.error("Failed to fetch past appointments:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [profile?.id, isInterpreter]);
 
   useEffect(() => {
-    const fetchHistory = async () => {
-      if (profile?.id) {
-        setIsLoading(true);
-        const history = await getHistoryAppointments(profile.id, isInterpreter);
-        setAppointments(history);
-        setIsLoading(false);
-      }
-    };
-    fetchHistory();
-  }, [profile]);
+    fetchPastAppointments();
+  }, [fetchPastAppointments]);
 
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const filteredAppointments = pastAppointments.filter((appointment) => {
+    // Filter by name dropdown
+    const matchesName = option === 0 || appointment.profile?.id === nameOptions[option].id;
 
-  const groupedAppointments = appointments.reduce((acc, app) => {
-    const month = new Date(app.startTime).toLocaleString("default", { month: "long", year: "numeric" });
-    if (!acc[month]) {
-      acc[month] = [];
-    }
-    acc[month].push(app);
-    return acc;
-  }, {} as Record<string, Appointment[]>);
+    // Filter by date range
+    const { startTime } = appointment;
+    const matchesDateRange =
+      dateRange.startDate && dateRange.endDate
+        ? new Date(startTime) >= dateRange.startDate && new Date(startTime) <= dateRange.endDate
+        : true;
 
-  const sections = Object.keys(groupedAppointments).map((month) => ({
-    title: month,
-    data: groupedAppointments[month],
-  }));
-
-  if (isLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
+    return matchesName && matchesDateRange;
+  });
 
   return (
-    // Changed the root View to a ScrollView for better layout control
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        {/* Added the title text back into the header */}
-        <Text style={styles.title}>History</Text>
-      </View>
-
-      {/* The list is now inside a View, not a FlatList, to work inside a ScrollView */}
-      <View style={styles.listContent}>
-        {sections.length > 0 ? (
-          sections.map((section) => (
-            <View key={section.title}>
-              <Text style={styles.sectionHeader}>{section.title}</Text>
-              {section.data.map((app) => (
-                <HistoryCard key={app.id} item={app} />
-              ))}
-            </View>
-          ))
-        ) : (
-          <View style={styles.centered}>
-            <Text>No completed appointments found.</Text>
+    <ScrollView
+      style={{ backgroundColor: theme.colors.elevation.level1 }}
+      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchPastAppointments} />}
+    >
+      <Gradient style={styles.header}>
+        <View style={styles.headerContent}>
+          <View style={{ flex: 1 }}>
+            <NameDropdown
+              nameOptions={nameOptions}
+              option={option}
+              setOption={setOption}
+              colour={theme.colors.elevation.level3}
+            />
           </View>
+          <DateRangePickerInput
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+            validRange={{ startDate: undefined, endDate: getToday() }}
+          />
+        </View>
+      </Gradient>
+
+      <View style={{ padding: theme.spacing.sm }}>
+        {isLoading ? (
+          <ActivityIndicator animating={true} style={{ marginTop: theme.spacing.md }} />
+        ) : filteredAppointments.length > 0 ? (
+          <Surface
+            mode="flat"
+            style={{
+              paddingTop: theme.spacing.md,
+              paddingHorizontal: theme.spacing.sm,
+              borderRadius: theme.roundness,
+            }}
+          >
+            {filteredAppointments.map((appointment) => (
+              <HistoryCard key={appointment.id} appointment={appointment} isInterpreter={isInterpreter} />
+            ))}
+          </Surface>
+        ) : (
+          <Surface
+            mode="flat"
+            style={{
+              height: 160,
+              justifyContent: "center",
+              alignItems: "center",
+              paddingHorizontal: theme.spacing.xs,
+              borderRadius: theme.roundness,
+            }}
+          >
+            <Text style={{ color: theme.colors.onSurfaceVariant }}>
+              {pastAppointments.length === 0 ? "No past appointments found" : "No appointments match your filters"}
+            </Text>
+          </Surface>
         )}
       </View>
     </ScrollView>
   );
 }
 
-// Updated the styles function with the standard header
-const createStyles = (theme: MD3Theme) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    header: {
-      backgroundColor: theme.colors.primary,
-      height: 130, 
-      justifyContent: 'flex-start',
-      paddingHorizontal: 24,
-      paddingTop: 80,
-    },
-    title: {
-      fontSize: 24,
-      fontWeight: "bold",
-      color: theme.colors.surface, // White text for blue background
-    },
-    listContent: {
-      padding: 20,
-    },
-    sectionHeader: {
-      fontSize: 20,
-      fontWeight: "bold",
-      color: theme.colors.onSurface,
-      marginBottom: 16,
-    },
-    centered: {
-      paddingTop: 50, // Added padding for better centering
-      justifyContent: "center",
-      alignItems: "center",
-    },
-  });
+const styles = StyleSheet.create({
+  header: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  headerContent: {
+    flexDirection: "row",
+    gap: 12,
+    flex: 1,
+    marginHorizontal: 12,
+  },
+});

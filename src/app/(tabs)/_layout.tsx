@@ -21,7 +21,7 @@ export default function TabLayout() {
   const menuItems = isInterpreter
     ? [
         { name: "index", title: "Home", icon: "home" },
-        { name: "request", title: "Request", icon: "inbox" },
+        { name: "request", title: "Requests", icon: "inbox" },
         { name: "chat", title: "Chat", icon: "message" },
         { name: "availability", title: "Manage Availability", icon: "calendar-check" },
         { name: "history", title: "History", icon: "history" },

@@ -155,11 +155,18 @@ export default function AvailabilityScreen() {
   });
   const [validationError, setValidationError] = useState<{ title: string; message: string } | null>(null);
   const {isOpen: confirmDialog, open: openConfirmDialog, close: closeConfirmDialog} = useDisclosure();
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = day === 0 ? -6 : 1 - day; // Calculate Monday
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  });
 
-  const fetchAvailabilities = useCallback(async () => {
+  const fetchAvailabilities = async () => {
     if (profile) {
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - startDate.getDay() + 1); // Set to Monday of current week
       const data = await getAvailabilities(profile.id);
       const formattedData = data.map((availability) => ({
         day_id: availability.day_id,
@@ -167,8 +174,8 @@ export default function AvailabilityScreen() {
         end_time: toTime(availability.end_time),
       }));
       const events = formattedData.map((availability) => {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + availability.day_id - 1); // day_id: 1 (Mon) to 7 (Sun)
+        const date = new Date(currentWeekStart);
+        date.setDate(currentWeekStart.getDate() + availability.day_id - 1); // day_id: 1 (Mon) to 7 (Sun)
         return createEvent(
           date,
           { hours: availability.start_time.getHours(), minutes: availability.start_time.getMinutes() },
@@ -183,11 +190,11 @@ export default function AvailabilityScreen() {
         }, {} as { [key: number]: { start: Date; end: Date } })
       );
     }
-  }, [profile]);
+  };
 
   useEffect(() => {
     fetchAvailabilities();
-  }, [fetchAvailabilities]);
+  }, [currentWeekStart]);
 
   return (
     <View style={{ backgroundColor: theme.colors.background, flex: 1 }}>
@@ -257,7 +264,7 @@ export default function AvailabilityScreen() {
                     mode="outlined"
                     icon="delete"
                     onPress={() =>
-                      deleteEvent(selectedDate, events, setEvents, availabilities, setAvailabilities, close)
+                      deleteEvent(selectedDate, events, setEvents, availabilities, setAvailabilities, closeModal)
                     }
                     style={{ flex: 1 }}
                     buttonColor={theme.colors.errorContainer}

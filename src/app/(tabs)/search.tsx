@@ -275,7 +275,11 @@ function SearchResults({
 
   if (hasSearched) {
     if (searchResults.length > 0) {
-      return searchResults.map((interpreterResult) => ResultCard({ interpreterResult }));
+      return (
+        <View style={{ paddingTop: 16}}>
+          {searchResults.map((interpreterResult) => ResultCard({ interpreterResult }))}
+        </View>
+      );
     } else {
       return (
         <Text style={{ textAlign: "center", color: theme.colors.onSurface, marginTop: 40 }}>

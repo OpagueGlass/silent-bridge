@@ -3,15 +3,18 @@ import { View, Text, TouchableOpacity, TouchableHighlight } from "react-native";
 import { Menu, TextInput } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import LabelledInput from "./LabelledInput";
+import { useAppTheme } from "@/hooks/useAppTheme";
 
 export function DropdownInput({
   container,
   option,
   setOption,
+  ...props
 }: {
   container: readonly string[];
   option: number;
   setOption: (index: number) => void;
+  [key: string]: any;
 }) {
   const { isOpen, open, close } = useDisclosure();
 
@@ -24,10 +27,11 @@ export function DropdownInput({
           <TextInput
             value={container[option]}
             mode="outlined"
-            style={{ pointerEvents: "none" }}
+            style={{ pointerEvents: "none"}}
             right={<TextInput.Icon icon="chevron-down" onPress={open} />}
             showSoftInputOnFocus={false}
             editable={false}
+            {...props}
           />
         </TouchableHighlight>
       }
