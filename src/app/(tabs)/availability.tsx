@@ -235,7 +235,7 @@ export default function AvailabilityScreen() {
                     {selectedDate && selectedDate.toLocaleDateString("en-US", { weekday: "long" })}
                   </Text>
                 </View>
-                <IconButton icon="close" size={24} onPress={close} iconColor={theme.colors.onSurface} />
+                <IconButton icon="close" size={24} onPress={closeModal} iconColor={theme.colors.onSurface} />
               </View>
               <View style={styles.modalBody}>
                 <View style={{ flexDirection: "row", gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
