@@ -1,487 +1,358 @@
+"use client";
 
+import TimePickerInput from "@/components/inputs/TimePickerInput";
+import WarningDialog from "@/components/modals/WarningDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
-// import { showError, showSuccess, showValidationError } from "@/utils/alert";
-import { deleteAvailability, getAvailability, setAvailability } from "@/utils/query";
-import { Stack, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
-import { Calendar, DateData } from "react-native-calendars";
-import { ActivityIndicator, Button, Card, IconButton, MD3Theme, Modal, Portal, Text } from "react-native-paper";
-import TimePickerInput from "@/components/inputs/TimePickerInput";
+import { useDisclosure } from "@/hooks/useDisclosure";
+import { toTime } from "@/utils/helper";
+import { getAvailabilities, updateAvailabilities } from "@/utils/query";
+import { Redirect, useRouter } from "expo-router";
+import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
+import { StyleSheet, View } from "react-native";
+import { Calendar } from "react-native-big-calendar";
+import { Button, IconButton, Modal, Portal, Text } from "react-native-paper";
 
-type WeeklyAvailability = {
-  day_id: number;
-  start_time: string;
-  end_time: string;
+const getDayKey = (date: Date) => {
+  return date.getDay() || 7;
 };
 
-const daysOfWeek = [
-  { label: "Mon", id: 1 }, { label: "Tue", id: 2 },
-  { label: "Wed", id: 3 }, { label: "Thu", id: 4 }, { label: "Fri", id: 5 },
-  { label: "Sat", id: 6 }, { label: "Sun", id: 7 }
-];
+const createEvent = (
+  date: Date,
+  startTime: { hours: number; minutes: number },
+  endTime: { hours: number; minutes: number }
+) => {
+  const start = new Date(date);
+  start.setHours(startTime.hours, startTime.minutes, 0, 0);
+  const end = new Date(date);
+  end.setHours(endTime.hours, endTime.minutes, 0, 0);
+  return { title: "Free", start, end };
+};
 
-export default function ManageAvailabilityScreen() {
-  const theme = useAppTheme();
-  const styles = createStyles(theme);
-  const { profile } = useAuth();
-  const router = useRouter();
+const handleCellPress =
+  (
+    setSelectedDate: Dispatch<SetStateAction<Date | null>>,
+    availabilities: { [key: number]: { start: Date; end: Date } },
+    setStartTime: Dispatch<SetStateAction<{ hours: number | undefined; minutes: number | undefined }>>,
+    setEndTime: Dispatch<SetStateAction<{ hours: number | undefined; minutes: number | undefined }>>,
+    open: () => void
+  ) =>
+  (date: Date) => {
+    setSelectedDate(date);
+    const dayKey = getDayKey(date);
+    const availability = availabilities[dayKey];
 
-  // Data from database
-  const [weeklyAvailability, setWeeklyAvailability] = useState<WeeklyAvailability[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Calendar state
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split("T")[0]
-  );
-
-  // Modal state (popup when click a day)
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [selectedDayInfo, setSelectedDayInfo] = useState<{date: string, dayOfWeek: string, dayId: number, startTime: string, endTime: string} | null>(null);
-
-  // Edit modal state
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editStartTime, setEditStartTime] = useState("09:00");
-  const [editEndTime, setEditEndTime] = useState("17:00");
-
-  // Form inputs - Weekly schedule
-  const [selectedDays, setSelectedDays] = useState<number[]>([]);
-  const [startTime, setStartTime] = useState("09:00");
-  const [endTime, setEndTime] = useState("17:00");
-  
-  // Fetch existing availability from Supabase
-  useEffect(() => {
-    const fetchAvailability = async () => {
-      if (!profile?.id) return;
-      try {
-        const data = await getAvailability(profile.id);
-        setWeeklyAvailability(data);
-      } catch (error) {
-        // showError("Could not load existing availability.");
-      }
-    };
-    fetchAvailability();
-  }, [profile?.id]);
-  
-  // Calculate which dates to mark (highlight) on calendar
-  const markedDates = useMemo(() => {
-    const marks: { [key: string]: any } = {};
-    const availabilityMap = new Map(weeklyAvailability.map(item => [item.day_id, {startTime: item.start_time, endTime: item.end_time}]));
-    
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    for (let i = 1; i <= daysInMonth; i++) {
-      const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-      const date = new Date(dateString + 'T12:00:00');
-      const jsDay = date.getDay();
-      const dayOfWeek = jsDay === 0 ? 7 : jsDay;
-      
-      if (availabilityMap.has(dayOfWeek)) {
-        marks[dateString] = {
-          color: theme.colors.secondary,
-          startingDay: true,
-          endingDay: true,
-          textColor: theme.colors.onPrimaryContainer,
-        };
-      }
-    }
-    return marks;
-  }, [weeklyAvailability, currentMonth, theme.colors]);
-
-  // When user clicks a day on calendar
-  const handleDayPress = (day: DateData) => {
-    setSelectedDate(day.dateString);
-
-    const date = new Date(day.timestamp);
-    const dayOfWeek = date.getUTCDay() === 0 ? 7 : date.getUTCDay();
-    const availabilityForDay = weeklyAvailability.find(a => a.day_id === dayOfWeek);
-
-    if (availabilityForDay) {
-        const startTimeFormatted = availabilityForDay.start_time.substring(0, 5);
-        const endTimeFormatted = availabilityForDay.end_time.substring(0, 5);
-        
-        setSelectedDayInfo({
-            date: date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-            dayOfWeek: date.toLocaleDateString('en-US', { weekday: 'long' }),
-            dayId: dayOfWeek,
-            startTime: startTimeFormatted,
-            endTime: endTimeFormatted,
-        });
-        setEditStartTime(startTimeFormatted);
-        setEditEndTime(endTimeFormatted);
-        setIsEditMode(false);
-        setIsModalVisible(true);
+    if (availability) {
+      setStartTime({ hours: availability.start.getHours(), minutes: availability.start.getMinutes() });
+      setEndTime({ hours: availability.end.getHours(), minutes: availability.end.getMinutes() });
     } else {
-        setSelectedDayInfo(null);
+      setStartTime({ hours: undefined, minutes: undefined });
+      setEndTime({ hours: undefined, minutes: undefined });
     }
-  };
-  
-  // Toggle day selection (Mon, Tue, etc.)
-  const handleDayToggle = (dayId: number) => {
-    setSelectedDays((prev) =>
-      prev.includes(dayId) ? prev.filter((id) => id !== dayId) : [...prev, dayId]
-    );
+    open();
   };
 
-  // Delete availability for a specific day
-  const handleDeleteAvailability = async () => {
-    if (!profile?.id || !selectedDayInfo) return;
-    
-    setIsLoading(true);
-    try {
-      await deleteAvailability(profile.id, selectedDayInfo.dayId);
-      // showSuccess("Availability removed");
-      const data = await getAvailability(profile.id);
-      setWeeklyAvailability(data);
-      setIsModalVisible(false);
-    } catch (error) {
-      console.error("Failed to delete availability:", error);
-      // showError("An error occurred while deleting availability.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+function updateEvent(
+  selectedDate: Date | null,
+  startTime: { hours: number | undefined; minutes: number | undefined },
+  endTime: { hours: number | undefined; minutes: number | undefined },
+  events: Array<{ title: string; start: Date; end: Date }>,
+  setEvents: Dispatch<SetStateAction<Array<{ title: string; start: Date; end: Date }>>>,
+  availabilities: { [key: number]: { start: Date; end: Date } },
+  setAvailabilities: Dispatch<SetStateAction<{ [key: number]: { start: Date; end: Date } }>>,
+  setValidationError: Dispatch<SetStateAction<{ title: string; message: string } | null>>,
+  close: () => void
+) {
+  if (!selectedDate) {
+    return;
+  }
 
-  // Update availability for a specific day
-  const handleUpdateAvailability = async () => {
-    if (!profile?.id || !selectedDayInfo) return;
-    
-    setIsLoading(true);
-    try {
-      await setAvailability(profile.id, selectedDayInfo.dayId, `${editStartTime}:00`, `${editEndTime}:00`);
-      // showSuccess("Availability updated");
-      const data = await getAvailability(profile.id);
-      setWeeklyAvailability(data);
-      setIsEditMode(false);
-      setIsModalVisible(false);
-    } catch (error) {
-      console.error("Failed to update availability:", error);
-      // showError("An error occurred while updating availability.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  if (startTime.hours === undefined || startTime.minutes === undefined) {
+    setValidationError({ title: "Invalid Start Time", message: "Please select a start time for your availability." });
+    return;
+  }
 
-  // Save availability to database
-  const handleApplyAvailability = async () => {
-    if (!profile?.id) {
-        // showError("You must be logged in to set availability.");
-        return;
-      }
-      if (selectedDays.length === 0) {
-        // showValidationError("Please select at least one day to repeat on.");
-        return;
-      }
-  
-      setIsLoading(true);
-      try {
-        const updatePromises = selectedDays.map((dayId) =>
-          setAvailability(profile.id, dayId, `${startTime}:00`, `${endTime}:00`)
+  if (endTime.hours === undefined || endTime.minutes === undefined) {
+    setValidationError({ title: "Invalid End Time", message: "Please select an end time for your availability." });
+    return;
+  }
+
+  const startMinutes = startTime.hours * 60 + startTime.minutes;
+  const endMinutes = endTime.hours * 60 + endTime.minutes;
+
+  if (endMinutes <= startMinutes) {
+    setValidationError({ title: "Invalid Time Range", message: "End time must be after start time." });
+    return;
+  }
+
+  const newEvent = createEvent(
+    selectedDate,
+    startTime as { hours: number; minutes: number },
+    endTime as { hours: number; minutes: number }
+  );
+  const dayKey = getDayKey(selectedDate);
+
+  // Update availability map
+  const newAvailability = { ...availabilities };
+  newAvailability[dayKey] = { start: newEvent.start, end: newEvent.end };
+  setAvailabilities(newAvailability);
+
+  // Update events for calendar display
+  const newEvents = [...events];
+  const index = newEvents.findIndex((event) => getDayKey(event.start) === dayKey);
+
+  if (index !== -1) {
+    // Replace existing event
+    newEvents[index] = newEvent;
+  } else {
+    // Add new event
+    newEvents.push(newEvent);
+  }
+
+  setEvents(newEvents);
+  close();
+}
+
+function deleteEvent(
+  selectedDate: Date | null,
+  events: Array<{ title: string; start: Date; end: Date }>,
+  setEvents: Dispatch<SetStateAction<Array<{ title: string; start: Date; end: Date }>>>,
+  availabilities: { [key: number]: { start: Date; end: Date } },
+  setAvailabilities: Dispatch<SetStateAction<{ [key: number]: { start: Date; end: Date } }>>,
+  close: () => void
+) {
+  if (!selectedDate) return;
+  const dayKey = getDayKey(selectedDate);
+  const newAvailabilities = { ...availabilities };
+  delete newAvailabilities[dayKey];
+  setAvailabilities(newAvailabilities);
+  const newEvents = events.filter((event) => getDayKey(event.start) !== dayKey);
+  setEvents(newEvents);
+  close();
+}
+
+export default function AvailabilityScreen() {
+  const theme = useAppTheme();
+  const router = useRouter();
+  const { profile, isInterpreter } = useAuth();
+
+  // Redirect if not an interpreter
+  if (!isInterpreter) {
+    return <Redirect href="/" />;
+  }
+
+  const [availabilities, setAvailabilities] = useState<{ [key: number]: { start: Date; end: Date } }>({});
+  const [events, setEvents] = useState<Array<{ title: string; start: Date; end: Date }>>([]);
+  const { isOpen: modal, open: openModal, close: closeModal } = useDisclosure();
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [startTime, setStartTime] = useState<{ hours: number | undefined; minutes: number | undefined }>({
+    hours: undefined,
+    minutes: undefined,
+  });
+  const [endTime, setEndTime] = useState<{ hours: number | undefined; minutes: number | undefined }>({
+    hours: undefined,
+    minutes: undefined,
+  });
+  const [validationError, setValidationError] = useState<{ title: string; message: string } | null>(null);
+  const {isOpen: confirmDialog, open: openConfirmDialog, close: closeConfirmDialog} = useDisclosure();
+
+  const fetchAvailabilities = useCallback(async () => {
+    if (profile) {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - startDate.getDay() + 1); // Set to Monday of current week
+      const data = await getAvailabilities(profile.id);
+      const formattedData = data.map((availability) => ({
+        day_id: availability.day_id,
+        start_time: toTime(availability.start_time),
+        end_time: toTime(availability.end_time),
+      }));
+      const events = formattedData.map((availability) => {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + availability.day_id - 1); // day_id: 1 (Mon) to 7 (Sun)
+        return createEvent(
+          date,
+          { hours: availability.start_time.getHours(), minutes: availability.start_time.getMinutes() },
+          { hours: availability.end_time.getHours(), minutes: availability.end_time.getMinutes() }
         );
-        await Promise.all(updatePromises);
-        // showSuccess("Availability updated");
-        const data = await getAvailability(profile.id);
-        setWeeklyAvailability(data);
-        setSelectedDays([]);
-      } catch (error) {
-        console.error("Failed to set availability:", error);
-        // showError("An error occurred while saving your availability.");
-      } finally {
-        setIsLoading(false);
-      }
-  };
-  
+      });
+      setEvents(events);
+      setAvailabilities(
+        formattedData.reduce((acc, curr) => {
+          acc[curr.day_id] = { start: curr.start_time, end: curr.end_time };
+          return acc;
+        }, {} as { [key: number]: { start: Date; end: Date } })
+      );
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    fetchAvailabilities();
+  }, [fetchAvailabilities]);
+
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: "Manage Availability",
-          headerStyle: { backgroundColor: theme.colors.primary },
-          headerTintColor: theme.colors.onPrimary,
-          headerTitleStyle: { color: theme.colors.onPrimary },
-          headerLeft: () => (
-            <IconButton
-              icon="arrow-left"
-              iconColor={theme.colors.onPrimary}
-              onPress={() => router.back()}
-            />
-          ),
-        }}
-      />
-      <ScrollView style={styles.container}>
-        <View style={styles.section}>
+    <View style={{ backgroundColor: theme.colors.background, flex: 1 }}>
+      <View style={{ paddingVertical: theme.spacing.md, paddingBottom: 0, flex: 1 }}>
+        <Text variant="headlineSmall" style={{ marginBottom: theme.spacing.md, paddingHorizontal: theme.spacing.md }}>
+          Manage Availability
+        </Text>
+
+        <View style={{ flex: 1, marginBottom: theme.spacing.md }}>
           <Calendar
-            current={selectedDate}
-            onDayPress={handleDayPress}
-            onMonthChange={(month) => setCurrentMonth(new Date(month.timestamp))}
-            markingType={"period"}
-            markedDates={markedDates}
+            events={events}
+            height={600}
+            mode="week"
+            swipeEnabled={false}
+            showTime={true}
+            weekStartsOn={1}
+            hideNowIndicator={true}
+            weekEndsOn={0}
+            onPressCell={handleCellPress(setSelectedDate, availabilities, setStartTime, setEndTime, open)}
             theme={{
-              backgroundColor: theme.colors.surface,
-              calendarBackground: theme.colors.surface,
-              textSectionTitleColor: theme.colors.onSurfaceVariant,
-              selectedDayBackgroundColor: theme.colors.primary,
-              selectedDayTextColor: theme.colors.onPrimary,
-              todayTextColor: theme.colors.primary,
-              dayTextColor: theme.colors.onSurface,
-              arrowColor: theme.colors.primary,
-              monthTextColor: theme.colors.onSurface,
+              palette: {
+                primary: {
+                  main: theme.colors.primary,
+                  contrastText: theme.colors.onPrimary,
+                },
+                gray: {
+                  "200": theme.colors.surfaceVariant,
+                  "500": theme.colors.onSurface,
+                },
+              },
             }}
-            style={styles.calendar}
+            headerContentStyle={{ height: 11, overflow: "hidden" }}
           />
         </View>
 
-        <View style={styles.card}>
-            <View style={styles.cardSection}>
-                <Text style={styles.label}>Repeat on</Text>
-                <View style={styles.dayToggleContainer}>
-                {daysOfWeek.map(({ label, id }) => {
-                    const isSelected = selectedDays.includes(id);
-                    return (
-                    <TouchableOpacity
-                        key={id}
-                        style={[styles.dayButton, isSelected && styles.dayButtonSelected]}
-                        onPress={() => handleDayToggle(id)}
-                    >
-                        <Text style={[styles.dayButtonText, isSelected && styles.dayButtonTextSelected]}>
-                        {label}
-                        </Text>
-                    </TouchableOpacity>
-                    );
-                })}
-                </View>
-            </View>
-            <View style={styles.cardSection}>
-                <View style={styles.timePickerRow}>
-                  <View style={styles.timePickerWrapper}>
-                      <Text style={styles.label}>Start time</Text>
-                      <TimePickerInput label="" value={startTime} onChange={setStartTime} />
-                  </View>
-                  <View style={styles.timePickerWrapper}>
-                      <Text style={styles.label}>End time</Text>
-                      <TimePickerInput label="" value={endTime} onChange={setEndTime} />
-                  </View>
-                </View>
-            </View>
-            <View style={styles.buttonContainer}>
-                {isLoading ? (
-                <ActivityIndicator />
-                ) : (
-                <>
-                    <Button mode="contained" onPress={handleApplyAvailability} style={styles.applyButton}>
-                    Apply Availability
-                    </Button>
-                </>
-                )}
-            </View>
-            <Text style={styles.infoText}>
-                Your selection repeats every chosen weekday from today forward.
-            </Text>
-        </View>
-      </ScrollView>
-
-      <Portal>
-        <Modal visible={isModalVisible} onDismiss={() => setIsModalVisible(false)} contentContainerStyle={styles.modalContainer}>
-          <Card style={styles.modalCard}>
-            <Card.Title
-              title={selectedDayInfo?.date}
-              subtitle={selectedDayInfo?.dayOfWeek}
-              titleStyle={styles.modalTitle}
-              right={(props) => (
-                <IconButton
-                  icon={isEditMode ? "close" : "pencil"}
-                  onPress={() => setIsEditMode(!isEditMode)}
-                />
-              )}
-            />
-            <Card.Content>
-              {isEditMode ? (
-                <View>
-                  <View style={styles.modalTimePickerRow}>
-                    <View style={styles.modalTimePickerWrapper}>
-                      <Text style={styles.modalLabel}>Start time</Text>
-                      <TimePickerInput label="" value={editStartTime} onChange={setEditStartTime} />
-                    </View>
-                    <View style={styles.modalTimePickerWrapper}>
-                      <Text style={styles.modalLabel}>End time</Text>
-                      <TimePickerInput label="" value={editEndTime} onChange={setEditEndTime} />
-                    </View>
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.modalTimeContainer}>
-                  <Text variant="bodyLarge" style={styles.modalTimeText}>
-                    {selectedDayInfo?.startTime} - {selectedDayInfo?.endTime}
+        <Portal>
+          <Modal visible={modal} onDismiss={closeModal} contentContainerStyle={styles.modalContainer}>
+            <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+              <View style={[styles.modalHeader, { borderBottomColor: theme.colors.outlineVariant }]}>
+                <View style={{ flex: 1 }}>
+                  <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: "bold" }}>
+                    Set Availability
+                  </Text>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                    {selectedDate && selectedDate.toLocaleDateString("en-US", { weekday: "long" })}
                   </Text>
                 </View>
-              )}
-            </Card.Content>
-            <Card.Actions style={styles.modalActions}>
-              {isEditMode ? (
-                <>
-                  <Button 
-                    mode="outlined" 
-                    onPress={() => setIsEditMode(false)}
-                    disabled={isLoading}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    mode="contained" 
-                    onPress={handleUpdateAvailability}
-                    loading={isLoading}
-                    disabled={isLoading}
-                  >
-                    Save
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button 
-                    mode="outlined" 
-                    textColor={theme.colors.error}
-                    onPress={handleDeleteAvailability}
-                    loading={isLoading}
-                    disabled={isLoading}
+                <IconButton icon="close" size={24} onPress={close} iconColor={theme.colors.onSurface} />
+              </View>
+              <View style={styles.modalBody}>
+                <View style={{ flexDirection: "row", gap: theme.spacing.md, marginBottom: theme.spacing.md }}>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="labelLarge" style={{ marginBottom: theme.spacing.xs }}>
+                      Start Time
+                    </Text>
+                    <TimePickerInput time={startTime} setTime={setStartTime} placeholder="Start time" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="labelLarge" style={{ marginBottom: theme.spacing.xs }}>
+                      End Time
+                    </Text>
+                    <TimePickerInput time={endTime} setTime={setEndTime} placeholder="End time" />
+                  </View>
+                </View>
+                <View style={{ flexDirection: "row", gap: 12 }}>
+                  <Button
+                    mode="outlined"
+                    icon="delete"
+                    onPress={() =>
+                      deleteEvent(selectedDate, events, setEvents, availabilities, setAvailabilities, close)
+                    }
+                    style={{ flex: 1 }}
+                    buttonColor={theme.colors.errorContainer}
+                    textColor={theme.colors.onErrorContainer}
                   >
                     Delete
                   </Button>
-                  <Button onPress={() => setIsModalVisible(false)}>Close</Button>
-                </>
-              )}
-            </Card.Actions>
-          </Card>
-        </Modal>
-      </Portal>
-    </>
+                  <Button
+                    mode="contained"
+                    icon="check"
+                    onPress={() =>
+                      updateEvent(
+                        selectedDate,
+                        startTime,
+                        endTime,
+                        events,
+                        setEvents,
+                        availabilities,
+                        setAvailabilities,
+                        setValidationError,
+                        closeModal
+                      )
+                    }
+                    style={{ flex: 1 }}
+                  >
+                    Save
+                  </Button>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        </Portal>
+
+        <WarningDialog
+          visible={validationError !== null}
+          title={validationError?.title || ""}
+          message={validationError?.message || ""}
+          onDismiss={() => setValidationError(null)}
+          onConfirm={() => setValidationError(null)}
+        />
+
+        <WarningDialog
+          visible={confirmDialog}
+          title="Confirm Availability"
+          message={`Are you sure you want to save these availability changes?`}
+          onDismiss={closeConfirmDialog}
+          onConfirm={() => {
+            updateAvailabilities(profile!.id, availabilities);
+            closeConfirmDialog();
+            router.push("/(tabs)");
+          }}
+        />
+
+        <View style={{ padding: theme.spacing.md, paddingTop: 0, flexDirection: "row", gap: theme.spacing.md }}>
+          <Button mode="outlined" icon="close" onPress={() => router.push("/(tabs)")} style={{ flex: 1 }}>
+            Cancel
+          </Button>
+          <Button
+            mode="contained"
+            icon="check"
+            onPress={openConfirmDialog}
+            style={{ flex: 1 }}
+          >
+            Confirm
+          </Button>
+        </View>
+      </View>
+    </View>
   );
 }
 
-const createStyles = (theme: MD3Theme) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    card: {
-      marginHorizontal: 20,
-      marginBottom: 20,
-      padding: 20,
-      backgroundColor: theme.colors.surface,
-      borderRadius: theme.roundness * 2,
-    },
-    calendar: {
-      borderRadius: theme.roundness * 2,
-      overflow: "hidden",
-      marginBottom: 20, 
-    },
-    section: {
-      paddingHorizontal: 20,
-      paddingTop: 20,
-    },
-    modalContainer: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    modalCard: {
-        width: '100%',
-        maxWidth: 400,
-        padding: 8,
-    },
-    modalTitle: {
-        fontWeight: 'bold',
-    },
-    modalTimeContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: theme.colors.surfaceVariant,
-        padding: 12,
-        borderRadius: theme.roundness,
-        marginTop: 8,
-    },
-    modalTimeText: {
-        fontWeight: '500',
-    },
-    modalTimePickerRow: {
-        flexDirection: 'row',
-        gap: 16,
-        marginTop: 8,
-    },
-    modalTimePickerWrapper: {
-        flex: 1,
-    },
-    modalLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        marginBottom: 8,
-        color: theme.colors.onSurface,
-    },
-    modalActions: {
-        justifyContent: 'flex-end',
-        paddingHorizontal: 8,
-    },
-    cardSection: {
-        marginBottom: 24,
-    },
-    label: {
-      fontSize: 16,
-      fontWeight: "bold",
-      marginBottom: 12,
-      color: theme.colors.onSurface,
-    },
-    dayToggleContainer: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-      },
-      dayButton: {
-        flex: 1,
-        paddingVertical: 12,
-        marginHorizontal: 4,
-        borderRadius: theme.roundness,
-        borderWidth: 1,
-        borderColor: theme.colors.outline,
-        alignItems: "center",
-        justifyContent: "center",
-      },
-      dayButtonSelected: {
-        backgroundColor: theme.colors.primary,
-        borderColor: theme.colors.primary,
-      },
-      dayButtonText: {
-        color: theme.colors.onSurfaceVariant,
-      },
-      dayButtonTextSelected: {
-        color: theme.colors.onPrimary,
-        fontWeight: "bold",
-      },
-      timePickerRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        gap: 16,
-      },
-      timePickerWrapper: {
-        flex: 1,
-      },
-      buttonContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "flex-end",
-        marginTop: 8,
-      },
-      applyButton: {
-        marginRight: 8,
-      },
-      infoText: {
-        marginTop: 24,
-        textAlign: "center",
-        color: theme.colors.onSurfaceVariant,
-        fontSize: 12,
-      },
-  });
+const styles = StyleSheet.create({
+  modalContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+    boxShadow: "0",
+  },
+  modalContent: {
+    borderRadius: 12,
+    width: "100%",
+    maxWidth: 500,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+  },
+  modalBody: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
+  },
+});

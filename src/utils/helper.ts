@@ -1,7 +1,5 @@
-import { AgeRange, AGE_RANGE, Spec, Language, State } from "@/constants/data";
+import { AgeRange, AGE_RANGE } from "@/constants/data";
 import { Appointment, Profile } from "./query";
-import { Linking } from "react-native";
-import { showAlert } from "./alert";
 
 export const getAgeRangeFromDOB = (dateOfBirth: string): AgeRange => {
   const age = Math.floor((Date.now() - new Date(dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365));
@@ -49,10 +47,16 @@ export const getTimeRange = (appointment: { startTime: string; endTime: string }
   return `${getStartTime(appointment)} – ${endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 };
 
-export const toTimeString = (tz: string): string => {
-  const [hours, minutes, seconds] = tz.split(":").map(Number);
+export const toTime = (tz: string): Date => {
+  const [hours, minutes, secondsTZ] = tz.split(":");
+  const [seconds, TZ] = secondsTZ.split("+").map(Number);
   const date = new Date();
-  date.setHours(hours, minutes, seconds || 0, 0);
+  date.setUTCHours(Number(hours) - TZ, Number(minutes), seconds, 0);
+  return date;
+};
+
+export const toTimeString = (tz: string): string => {
+  const date = toTime(tz);
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
 

@@ -254,7 +254,6 @@ export const searchInterpreters = async (
       interpreterAvailability: { day_id, start_time, end_time },
     };
   });
-  console.log(interpreterProfiles);
   return interpreterProfiles;
 };
 
@@ -621,15 +620,20 @@ export const getRatings = async (rated_user_id: string): Promise<Rating[]> => {
  * @param start_time The start time of the availability in timetz format
  * @param end_time The end time of the availability in timetz format
  */
-export const setAvailability = async (interpreter_id: string, day_id: number, start_time: string, end_time: string) => {
-  const { error } = await supabase.from("availability").upsert([
-    {
-      interpreter_id,
-      day_id,
-      start_time,
-      end_time,
-    },
-  ]);
+export const updateAvailabilities = async (
+  interpreter_id: string,
+  availabilities: { [key: number]: { start: Date; end: Date } }
+) => {
+  await supabase.from("availability").delete().eq("interpreter_id", interpreter_id);
+  console.log(availabilities)
+  const availabilityData = Object.entries(availabilities).map(([dayId, { start, end }]) => ({
+    interpreter_id,
+    day_id: parseInt(dayId),
+    start_time: toTimetz(start),
+    end_time: toTimetz(end),
+  }));
+
+  const { error } = await supabase.from("availability").upsert(availabilityData);
 
   if (error) {
     console.error("Error setting availability:", error);
@@ -642,7 +646,7 @@ export const setAvailability = async (interpreter_id: string, day_id: number, st
  * @param interpreter_id The ID of the interpreter
  * @returns A list of availability objects, each containing day_id, start_time, and end_time
  */
-export const getAvailability = async (interpreter_id: string) => {
+export const getAvailabilities = async (interpreter_id: string) => {
   const { data, error } = await supabase
     .from("availability")
     .select(
@@ -659,27 +663,9 @@ export const getAvailability = async (interpreter_id: string) => {
     throw error;
   }
 
-  return data || [];
+  return data;
 };
 
-/**
- * Deletes the availability of an interpreter for a particular day.
- *
- * @param interpreter_id The ID of the interpreter
- * @param day_id The ID of the day (1=Monday, 7=Sunday)
- */
-export const deleteAvailability = async (interpreter_id: string, day_id: number) => {
-  const { error } = await supabase
-    .from("availability")
-    .delete()
-    .eq("interpreter_id", interpreter_id)
-    .eq("day_id", day_id);
-
-  if (error) {
-    console.error("Error deleting availability:", error);
-    throw error;
-  }
-};
 
 /**
  * Gets the historical appointments for a user.
