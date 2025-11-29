@@ -1,7 +1,7 @@
 "use client";
 
 import HistoryCard from "@/components/cards/HistoryCard";
-import { DateRangePickerInput, getToday, getValidRange } from "@/components/inputs/DatePickerInput";
+import { DateRangePickerInput, getToday } from "@/components/inputs/DatePickerInput";
 import { DropdownInput } from "@/components/inputs/DropdownInput";
 import Gradient from "@/components/ui/Gradient";
 import { useAuth } from "@/contexts/AuthContext";
