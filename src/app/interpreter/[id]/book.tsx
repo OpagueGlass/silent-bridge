@@ -30,25 +30,25 @@ async function confirmBooking(
     if (appointmentDetails) {
       const { startTime, endTime, id: appointment_id, deaf_user_id, hospital_name } = appointmentDetails;
       if (appointment_id) {
-        // await createRequest(appointment_id, profile!.id, notes);
+        await createRequest(appointment_id, profile!.id, notes);
         onCreate();
       } else {
-        // const appointment_id = await createAppointment(
-        //   deaf_user_id,
-        //   new Date(startTime),
-        //   new Date(endTime),
-        //   hospital_name
-        // );
-        // if (appointment_id >= 0) {
-        //   AsyncStorage.setItem(
-        //     "appointmentDetails",
-        //     JSON.stringify({
-        //       ...appointmentDetails,
-        //       id: appointment_id,
-        //     })
-        //   );
-        // }
-        // await createRequest(appointment_id, profile!.id, notes);
+        const appointment_id = await createAppointment(
+          deaf_user_id,
+          new Date(startTime),
+          new Date(endTime),
+          hospital_name
+        );
+        if (appointment_id >= 0) {
+          AsyncStorage.setItem(
+            "appointmentDetails",
+            JSON.stringify({
+              ...appointmentDetails,
+              id: appointment_id,
+            })
+          );
+        }
+        await createRequest(appointment_id, profile!.id, notes);
         onCreate();
       }
     }
