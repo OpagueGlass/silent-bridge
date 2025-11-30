@@ -9,12 +9,12 @@ import InfoChips from "@/components/ui/InfoChips";
 import { LANGUAGES, SPECIALISATION } from "@/constants/data";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { toTimeRange } from "@/utils/helper";
-import { InterpreterProfile, Rating, getAvailabilities, getInterpreterProfile, getRatings } from "@/utils/query";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
-import { Avatar, Button, DataTable, Text } from "react-native-paper";
+import { Avatar, Button, DataTable, IconButton, Text } from "react-native-paper";
 import { TabScreen, Tabs, TabsProvider } from "react-native-paper-tabs";
+import { BackButton, useInterpreter } from "./_layout";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -110,35 +110,7 @@ export default function InterpreterProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useAppTheme();
   const router = useRouter();
-  const [interpreter, setInterpreter] = useState<InterpreterProfile | null>(null);
-  const [availability, setAvailability] = useState<{ day_id: number; start_time: string; end_time: string }[]>([]);
-  const [ratings, setRatings] = useState<Rating[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const fetchInterpreterData = useCallback(async () => {
-    if (!id) return;
-
-    setIsLoading(true);
-    try {
-      const [profileData, availabilityData, ratingsData] = await Promise.all([
-        getInterpreterProfile(id),
-        getAvailabilities(id),
-        getRatings(id),
-      ]);
-
-      setInterpreter(profileData);
-      setAvailability(availabilityData);
-      setRatings(ratingsData);
-    } catch (error) {
-      console.error("Failed to fetch interpreter data:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    fetchInterpreterData();
-  }, [fetchInterpreterData]);
+  const { interpreter, availability, ratings, isLoading } = useInterpreter();
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -150,6 +122,7 @@ export default function InterpreterProfileScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.elevation.level1 }}>
+      <BackButton />
       <ScrollView>
         <Gradient style={styles.header}>
           <View style={styles.headerContent}>
@@ -236,7 +209,6 @@ export default function InterpreterProfileScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    paddingTop: 24,
     paddingBottom: 12,
     paddingHorizontal: 16,
   },

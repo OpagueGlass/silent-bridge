@@ -19,7 +19,7 @@ export const getMinMaxDOB = (ageStart: number, ageEnd: number) => {
   return { minDOB, maxDOB };
 };
 
-export const getDuration = (appointment: Appointment) => {
+export const getDuration = (appointment: { startTime: string; endTime: string }) => {
   const diffMs = new Date(appointment.endTime).getTime() - new Date(appointment.startTime).getTime();
   const diffMins = Math.floor(diffMs / (1000 * 60));
   const hours = Math.floor(diffMins / 60);

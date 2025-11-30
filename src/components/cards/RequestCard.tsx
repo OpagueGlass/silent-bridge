@@ -79,7 +79,7 @@ export default function RequestCard({
   const theme = useAppTheme();
 
   return (
-    <Card>
+    <Card style={{ marginBottom: 16}}>
       <AppointmentCardContent appointment={request.appointment} isInterpreter={false} />
       <Card.Actions style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <Button
