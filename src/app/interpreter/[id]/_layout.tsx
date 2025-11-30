@@ -8,16 +8,6 @@ export default function InterpreterLayout() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
-  const handleMessagePress = async () => {
-    if (!id) return;
-    const roomId = await initiateChat(id);
-    if (roomId) {
-      router.push({ pathname: "/(tabs)/chat/[id]", params: { id: roomId } });
-    } else {
-      console.error("Could not initiate chat.");
-    }
-  };
-
   if (authState.isLoading) {
     return <LoadingScreen />;
   }
