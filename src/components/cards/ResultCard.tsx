@@ -8,6 +8,7 @@ import MessageButton from "./MessageButton";
 import { SPECIALISATION } from "@/constants/data";
 import { InterpreterResults } from "@/utils/query";
 import { router } from "expo-router";
+import { InfoChip } from "../ui/InfoChips";
 
 export default function ResultCard({ interpreterResult }: { interpreterResult: InterpreterResults }) {
   const { start_time, end_time } = interpreterResult.interpreterAvailability;
@@ -16,7 +17,10 @@ export default function ResultCard({ interpreterResult }: { interpreterResult: I
   // const specialisation = SPECIALISATION[specialisationID];
 
   return (
-    <Card onPress={() => router.push(`/interpreter/${interpreterResult.id}`)} style={{ marginHorizontal: 16, marginVertical: 8 }}>
+    <Card
+      onPress={() => router.push(`/interpreter/${interpreterResult.id}`)}
+      style={{ marginHorizontal: 16, marginVertical: 8 }}
+    >
       <Card.Content style={{ flexDirection: "row" }}>
         <ClickableProfileImage profile={interpreterResult} size={80} borderRadius={16} style={{ marginRight: 16 }} />
         <View style={{ flex: 1 }}>
@@ -32,13 +36,13 @@ export default function ResultCard({ interpreterResult }: { interpreterResult: I
             {specialisation}
           </Text> */}
 
-            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
-              <Icon size={20} source="clock" />
-              <Text style={{ marginLeft: 8 }}>{timeRange}</Text>
-            </View>
-            <View style={{ flexDirection: "row", marginBottom: 4 }}>
-              <Chip style={{ marginRight: 16 }}>{interpreterResult.gender}</Chip>
-              <Chip>{interpreterResult.ageRange}</Chip>
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+            <Icon size={20} source="clock" />
+            <Text style={{ marginLeft: 8 }}>{timeRange}</Text>
+          </View>
+          <View style={{ flexDirection: "row", marginBottom: 4 }}>
+            <InfoChip>{interpreterResult.gender}</InfoChip>
+            <InfoChip>{interpreterResult.ageRange}</InfoChip>
           </View>
         </View>
       </Card.Content>
