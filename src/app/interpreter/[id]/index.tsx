@@ -1,363 +1,251 @@
+"use client";
+
+import { launchChat } from "@/components/cards/MessageButton";
+import RatingCard from "@/components/cards/RatingCard";
+import InterpreterNotFoundScreen from "@/components/sections/InterpreterNotFoundScreen";
+import LoadingScreen from "@/components/sections/LoadingScreen";
+import Gradient from "@/components/ui/Gradient";
+import InfoChips from "@/components/ui/InfoChips";
 import { LANGUAGES, SPECIALISATION } from "@/constants/data";
-import { getInterpreterProfile, getRatings, InterpreterProfile, Rating } from "@/utils/query";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Card, Chip, MD3Theme } from "react-native-paper";
-import InterpreterNotFoundScreen from "../../../components/sections/InterpreterNotFoundScreen";
-import LoadingScreen from "../../../components/sections/LoadingScreen";
-import { useAppTheme } from "../../../hooks/useAppTheme";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import { toTimeRange } from "@/utils/helper";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { Avatar, Button, DataTable, Text } from "react-native-paper";
+import { TabScreen, Tabs, TabsProvider } from "react-native-paper-tabs";
+import { BackButton, useInterpreter } from "./_layout";
 
-export default function InterpreterDetailScreen() {
-  const router = useRouter();
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-  const { id, date, time } = useLocalSearchParams();
-
-  const [profile, setProfile] = useState<InterpreterProfile | null>(null);
-  const [ratings, setRatings] = useState<Rating[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const theme = useAppTheme();
-  const styles = createStyles(theme);
-
-  useEffect(() => {
-    const fetchInterpreterData = async () => {
-      const interpreterProfile = await getInterpreterProfile(id.toString());
-      const interpreterRatings = await getRatings(id.toString());
-      setProfile(interpreterProfile);
-      setRatings(interpreterRatings);
-      setIsLoading(false);
-    };
-
-    fetchInterpreterData();
-  }, [id]);
-
-  if (isLoading) {
-    return <LoadingScreen />;
-  } else if (!profile) {
-    return <InterpreterNotFoundScreen />;
-  }
-
-  const initials = profile.name
-    .split(" ")
-    .map((word) => word[0])
-    .slice(0, 2)
-    .join("");
-  const fullStars = Math.floor(profile.avgRating ?? 0);
-
+function InfoChipsSection({ container, title }: { container: string[]; title: string }) {
   return (
-    <ScrollView style={styles.screen}>
-      <Stack.Screen options={{ headerShown: false }} />
-
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color={theme.colors.onSurface} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Interpreter Profile</Text>
-      </View>
-
-      <View style={styles.contentContainer}>
-        {/* --- Profile Section --- */}
-        <View style={styles.profileSection}>
-          {/* <LinearGradient colors={[theme.colors.primary, theme.colors.secondary]} style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </LinearGradient> */}
-          <Image
-            source={{
-              uri: profile.photo,
-            }}
-            style={styles.avatarContainer}
-          />
-
-          <Text style={styles.name}>{profile.name}</Text>
-
-          {/* --- Personal Info (Gender & Age) --- */}
-          <View style={styles.personalInfoContainer}>
-            <Text style={styles.subtitle}>{profile.gender}</Text>
-            <Text style={styles.subtitle}>•</Text>
-            <Text style={styles.subtitle}>{profile.ageRange}</Text>
-          </View>
-
-          {/* --- Rating --- */}
-          <View style={styles.ratingContainer}>
-            <View style={styles.starsContainer}>
-              {[...Array(5)].map((_, i) => (
-                <MaterialCommunityIcons
-                  key={i}
-                  name={i < fullStars ? "star" : "star-outline"}
-                  size={20}
-                  color="#FBBF24"
-                />
-              ))}
-            </View>
-            <Text style={styles.reviewText}>{profile.avgRating} (reviews)</Text>
-          </View>
-
-          {/* --- Mock Availability Status --- */}
-          <View style={styles.availabilityContainer}>
-            <View style={styles.availabilityDot} />
-            <Text style={styles.availabilityText}>Available Now</Text>
-          </View>
-        </View>
-
-        {/* --- Specialisations Section --- */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Specialisations</Text>
-          <View style={styles.chipContainer}>
-            {profile.interpreterSpecialisations.map((spec) => (
-              <Chip key={spec} style={styles.chip} textStyle={styles.chipText}>
-                {SPECIALISATION[spec]}
-              </Chip>
-            ))}
-          </View>
-        </View>
-
-        {/* --- Languages Section --- */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Languages</Text>
-          <View style={styles.chipContainer}>
-            {profile.interpreterLanguages.map((lang) => (
-              <Chip key={lang} style={styles.chip} textStyle={styles.chipText}>
-                {LANGUAGES[lang]}
-              </Chip>
-            ))}
-          </View>
-        </View>
-
-        {/* --- Mock About Section --- */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
-          {/* <Text style={styles.aboutText}>Certified interpreter with 8+ years of experience...</Text> */}
-          <Text style={styles.aboutText}>Location: {profile.location}</Text>
-          <Text style={styles.aboutText}>Email: {profile.email}</Text>
-        </View>
-
-        {/* --- Mock Recent Reviews Section --- */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Reviews</Text>
-          {ratings.map((rating, index) => (
-            <Card key={index} style={styles.reviewCard}>
-              <Card.Content style={styles.reviewCardContent}>
-                <View style={styles.reviewHeader}>
-                  <Image
-                    source={{
-                      uri: rating.photo,
-                    }}
-                    style={styles.reviewAvatar}
-                  />
-                  <Text style={styles.reviewName}>{rating.name}</Text>
-                  <View style={styles.starsContainer}>
-                    {[...Array(rating.score)].map((_, i) => (
-                      <MaterialCommunityIcons key={i} name="star" size={14} color="#FBBF24" />
-                    ))}
-                  </View>
-                </View>
-                {rating.message && <Text style={styles.reviewBody}>{rating.message}</Text>}
-              </Card.Content>
-            </Card>
-          ))}
-        </View>
-
-        {/* --- Action Buttons Section --- */}
-        <View style={styles.buttonSection}>
-          <TouchableOpacity
-            style={[styles.button, styles.buttonPrimary, { marginBottom: 12 }]}
-            onPress={() =>
-              router.push({
-                pathname: `/interpreter/[id]/book`,
-                params: {
-                  id: profile.id,
-                  date,
-                  time,
-                },
-              })
-            }
-          >
-            <Text style={[styles.buttonText, styles.buttonTextPrimary]}>Book Session</Text>
-          </TouchableOpacity>
-
-          {/* <TouchableOpacity style={[styles.button, styles.buttonSecondary]}>
-            <Text style={[styles.buttonText, styles.buttonTextSecondary]}>
-              Start Chat
-            </Text>
-          </TouchableOpacity> */}
-        </View>
-      </View>
-    </ScrollView>
+    <View style={styles.section}>
+      <Text variant="titleMedium" style={styles.sectionTitle}>
+        {title}
+      </Text>
+      <InfoChips items={container} />
+    </View>
   );
 }
 
-const createStyles = (theme: MD3Theme) =>
-  StyleSheet.create({
-    // Styles for the main page layout and structure
-    screen: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    header: {
-      backgroundColor: theme.colors.surface,
-      paddingHorizontal: 24,
-      paddingVertical: 16,
-      flexDirection: "row",
-      alignItems: "center",
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.outlineVariant,
-    },
-    backButton: {
-      marginRight: 16,
-    },
-    headerTitle: {
-      fontSize: 18,
-      fontWeight: "600",
-      color: theme.colors.onSurface,
-    },
-    contentContainer: {
-      padding: 24,
-    }, // Styles for the interpreter's main profile section
-    profileSection: {
-      alignItems: "center",
-      marginBottom: 24,
-    },
-    avatarContainer: {
-      width: 128,
-      height: 128,
-      borderRadius: 64,
-      justifyContent: "center",
-      alignItems: "center",
-      marginBottom: 16,
-    },
-    avatarText: {
-      color: theme.colors.onPrimary,
-      fontSize: 48,
-      fontWeight: "bold",
-    },
-    name: {
-      fontSize: 24,
-      fontWeight: "bold",
-      color: theme.colors.onSurface,
-      marginBottom: 8,
-    },
-    personalInfoContainer: {
-      flexDirection: "row",
-      gap: 8,
-      marginBottom: 16,
-    },
-    subtitle: {
-      color: theme.colors.onSurfaceVariant,
-      marginBottom: 8,
-    },
-    ratingContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 16,
-    },
-    starsContainer: {
-      flexDirection: "row",
-    },
-    reviewText: {
-      color: theme.colors.onSurfaceVariant,
-      marginLeft: 8,
-    },
-    availabilityContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    availabilityDot: {
-      width: 12,
-      height: 12,
-      backgroundColor: theme.colors.primary,
-      borderRadius: 6,
-      marginRight: 8,
-    },
-    availabilityText: {
-      color: theme.colors.primary,
-      fontWeight: "500",
-    }, // Styles for the sections (Specializations, About, Reviews)
-    section: {
-      marginBottom: 24,
-    },
-    sectionTitle: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: theme.colors.onSurface,
-      marginBottom: 12,
-    },
-    chipContainer: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-    },
-    chip: {
-      marginRight: 8,
-      marginBottom: 8,
-      backgroundColor: theme.colors.secondaryContainer,
-    },
-    chipText: {
-      color: theme.colors.onSecondaryContainer,
-    },
-    aboutText: {
-      color: theme.colors.onSurfaceVariant,
-      lineHeight: 22,
-    },
-    reviewCard: {
-      borderRadius: 12,
-      backgroundColor: theme.colors.surface,
-      marginBottom: 12,
-    },
-    reviewCardContent: {
-      padding: 16,
-    },
-    reviewHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 8,
-    },
-    reviewAvatar: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: theme.colors.surfaceVariant,
-      marginRight: 12,
-    },
-    reviewName: {
-      fontWeight: "500",
-      color: theme.colors.onSurface,
-    },
-    reviewBody: {
-      color: theme.colors.onSurfaceVariant,
-      fontSize: 14,
-    }, // Styles for the action buttons at the bottom
-    buttonSection: {
-      gap: 12,
-    },
-    button: {
-      width: "100%",
-      paddingVertical: 16,
-      borderRadius: 999,
-      alignItems: "center",
-    },
-    buttonPrimary: {
-      backgroundColor: theme.colors.primary,
-    },
-    buttonText: {
-      fontSize: 18,
-      fontWeight: "600",
-    },
-    buttonTextPrimary: {
-      color: theme.colors.onPrimary,
-    },
-    buttonSecondary: {
-      borderWidth: 2,
-      borderColor: theme.colors.primary,
-    },
-    buttonTextSecondary: {
-      color: theme.colors.primary,
-    }, // Default styles for the container when not found
-    container: {
-      flex: 1,
-      padding: 20,
-      backgroundColor: "#f5f5f5",
-      justifyContent: "center",
-      alignItems: "center",
-    },
+function AvailabilityTable({
+  availability,
+}: {
+  availability: { day_id: number; start_time: string; end_time: string }[];
+}) {
+  const theme = useAppTheme();
+  const [sortBy, setSortBy] = useState<"day" | "time">("day");
+  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("ascending");
+
+  const handleSort = (column: "day" | "time") => {
+    if (sortBy === column) {
+      setSortDirection(sortDirection === "ascending" ? "descending" : "ascending");
+    } else {
+      setSortBy(column);
+      setSortDirection("ascending");
+    }
+  };
+
+  const sortedAvailability = [...availability].sort((a, b) => {
+    let comparison = 0;
+    if (sortBy === "day") {
+      comparison = a.day_id - b.day_id;
+    } else {
+      comparison = a.start_time.localeCompare(b.start_time);
+    }
+    return sortDirection === "ascending" ? comparison : -comparison;
   });
+
+  return (
+    <View style={styles.section}>
+      <Text variant="titleMedium" style={styles.sectionTitle}>
+        Availability
+      </Text>
+      {availability.length > 0 ? (
+        <View style={{ borderRadius: 12, overflow: "hidden" }}>
+          <DataTable>
+            <DataTable.Header style={{ backgroundColor: theme.colors.primaryContainer, height: 48 }}>
+              <DataTable.Title
+                sortDirection={sortBy === "day" ? sortDirection : undefined}
+                onPress={() => handleSort("day")}
+                textStyle={{ fontWeight: "bold", color: theme.colors.onPrimaryContainer, fontSize: 14 }}
+              >
+                Day
+              </DataTable.Title>
+              <DataTable.Title
+                sortDirection={sortBy === "time" ? sortDirection : undefined}
+                onPress={() => handleSort("time")}
+                textStyle={{ fontWeight: "bold", color: theme.colors.onPrimaryContainer, fontSize: 14 }}
+              >
+                Time
+              </DataTable.Title>
+            </DataTable.Header>
+            {sortedAvailability.map((slot, index) => (
+              <DataTable.Row
+                key={slot.day_id}
+                style={{
+                  backgroundColor: index % 2 === 0 ? theme.colors.surface : theme.colors.elevation.level2,
+                  minHeight: 52,
+                }}
+              >
+                <DataTable.Cell textStyle={{ fontSize: 14, fontWeight: "500" }}>{DAYS[slot.day_id - 1]}</DataTable.Cell>
+                <DataTable.Cell textStyle={{ fontSize: 14 }}>
+                  {toTimeRange(slot.start_time, slot.end_time)}
+                </DataTable.Cell>
+              </DataTable.Row>
+            ))}
+          </DataTable>
+        </View>
+      ) : (
+        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+          No availability set
+        </Text>
+      )}
+    </View>
+  );
+}
+
+export default function InterpreterProfileScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const theme = useAppTheme();
+  const router = useRouter();
+  const { interpreter, availability, ratings, isLoading } = useInterpreter();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!interpreter) {
+    return <InterpreterNotFoundScreen />;
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.colors.elevation.level1 }}>
+      <BackButton />
+      <ScrollView>
+        <Gradient style={styles.header}>
+          <View style={styles.headerContent}>
+            <Avatar.Image size={80} source={{ uri: interpreter.photo }} />
+            <View style={{ flex: 1, marginLeft: theme.spacing.md }}>
+              <Text variant="headlineSmall" style={{ color: theme.colors.surface, fontWeight: "bold" }}>
+                {interpreter.name}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
+                <Text variant="bodyMedium" style={{ color: theme.colors.surface }}>
+                  {interpreter.avgRating
+                    ? `⭐ ${interpreter.avgRating.toFixed(1)} (${ratings.length} reviews)`
+                    : "No ratings yet"}
+                </Text>
+              </View>
+              <Text variant="bodySmall" style={{ color: theme.colors.surface, marginTop: 4 }}>
+                {interpreter.gender} • {interpreter.ageRange} • {interpreter.location}
+              </Text>
+            </View>
+          </View>
+          <View style={{ marginTop: theme.spacing.md }}>
+            <Button
+              mode="contained-tonal"
+              icon="message"
+              onPress={() => launchChat(id!)}
+              style={{ backgroundColor: theme.colors.surface, borderRadius: 12 }}
+            >
+              Message
+            </Button>
+          </View>
+        </Gradient>
+
+        <TabsProvider defaultIndex={0}>
+          <Tabs style={{ backgroundColor: theme.colors.surface }}>
+            <TabScreen label="Details" icon="information">
+              <View style={{ paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.md }}>
+                <InfoChipsSection
+                  container={interpreter.interpreterSpecialisations.map((specIndex) => SPECIALISATION[specIndex])}
+                  title="Specialisations"
+                />
+                <InfoChipsSection
+                  container={interpreter.interpreterLanguages.map((langIndex) => LANGUAGES[langIndex])}
+                  title="Languages"
+                />
+                <AvailabilityTable availability={availability} />
+              </View>
+            </TabScreen>
+
+            <TabScreen label="Reviews" icon="star">
+              <View
+                style={{
+                  paddingHorizontal: theme.spacing.md,
+                  paddingTop: theme.spacing.md,
+                  paddingBottom: theme.spacing.sm,
+                }}
+              >
+                {ratings.length > 0 ? (
+                  ratings.map((rating, index) => <RatingCard key={index} rating={rating} index={index} />)
+                ) : (
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                    No reviews yet
+                  </Text>
+                )}
+              </View>
+            </TabScreen>
+          </Tabs>
+        </TabsProvider>
+      </ScrollView>
+
+      {/* Book Appointment Button */}
+      <View style={{ padding: theme.spacing.md, backgroundColor: theme.colors.surface }}>
+        <Button
+          mode="contained"
+          icon="calendar-check"
+          onPress={() => router.push(`/interpreter/${id}/book`)}
+          contentStyle={{ paddingVertical: 8 }}
+        >
+          Book Appointment
+        </Button>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  header: {
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+  },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  section: {
+    padding: 0,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    // marginBottom: 16,
+  },
+  sectionTitle: {
+    // fontWeight: "bold",
+    marginBottom: 8,
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  // infoLabel: {
+  //   color: "#616161",
+  // },
+  chipsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  availabilityRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  dayLabel: {
+    fontWeight: "500",
+    width: 100,
+  },
+});

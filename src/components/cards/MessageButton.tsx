@@ -2,7 +2,7 @@ import { Button } from "react-native-paper";
 import { router } from "expo-router";
 import { initiateChat } from "@/utils/query";
 
-const launchChat = async (recipientId: string) => {
+export const launchChat = async (recipientId: string) => {
   if (!recipientId) return;
   const roomId = await initiateChat(recipientId);
   if (roomId) {

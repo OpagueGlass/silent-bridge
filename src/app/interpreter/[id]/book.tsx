@@ -1,27 +1,70 @@
-import { SPECIALISATION } from "@/constants/data";
-// import { showConfirmAlert } from "@/utils/alert";
-import { getDate, getStartTime } from "@/utils/helper";
-import { createAppointment, createRequest, getInterpreterProfile, InterpreterProfile } from "@/utils/query";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { InterpreterProfile, createAppointment, createRequest } from "@/utils/query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { MD3Theme, TextInput } from "react-native-paper";
+import { useRouter } from "expo-router";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { Avatar, Button, MD3Theme, Text, TextInput } from "react-native-paper";
+import WarningDialog from "../../../components/modals/WarningDialog";
+import AppointmentDetailsSection from "../../../components/sections/AppointmentDetailsSection";
 import InterpreterNotFoundScreen from "../../../components/sections/InterpreterNotFoundScreen";
 import LoadingScreen from "../../../components/sections/LoadingScreen";
+import Gradient from "../../../components/ui/Gradient";
 import { useAppTheme } from "../../../hooks/useAppTheme";
+import { useDisclosure } from "../../../hooks/useDisclosure";
+import { BackButton, useInterpreter } from "./_layout";
+
+async function confirmBooking(
+  appointmentDetails: {
+    startTime: string;
+    endTime: string;
+    id: number | null;
+    deaf_user_id: string;
+    hospital_name: string | null;
+  },
+  profile: InterpreterProfile | null,
+  notes: string,
+  setError: Dispatch<SetStateAction<{ title: string; message: string } | null>>,
+  onCreate: () => void
+) {
+  try {
+    if (appointmentDetails) {
+      const { startTime, endTime, id: appointment_id, deaf_user_id, hospital_name } = appointmentDetails;
+      if (appointment_id) {
+        // await createRequest(appointment_id, profile!.id, notes);
+        onCreate();
+      } else {
+        // const appointment_id = await createAppointment(
+        //   deaf_user_id,
+        //   new Date(startTime),
+        //   new Date(endTime),
+        //   hospital_name
+        // );
+        // if (appointment_id >= 0) {
+        //   AsyncStorage.setItem(
+        //     "appointmentDetails",
+        //     JSON.stringify({
+        //       ...appointmentDetails,
+        //       id: appointment_id,
+        //     })
+        //   );
+        // }
+        // await createRequest(appointment_id, profile!.id, notes);
+        onCreate();
+      }
+    }
+  } catch (error) {
+    setError({ title: "Booking Error", message: `Error during booking: ${error}` });
+  }
+}
 
 export default function BookingScreen() {
+  const theme = useAppTheme();
+  const styles = createStyles(theme);
   const router = useRouter();
-
-  const { id } = useLocalSearchParams();
-  // const interpreter = interpreters.find((item) => item.id.toString() === id);
-
-  // const [bookingDate, setBookingDate] = React.useState((date as string) || "");
-  // const [bookingTime, setBookingTime] = React.useState((time as string) || "");
-  const [isLoading, setIsLoading] = useState(true);
-  const [profile, setProfile] = useState<InterpreterProfile | null>(null);
+  const { isOpen, open, close } = useDisclosure(false);
+  const [notes, setNotes] = useState("");
+  const { interpreter, isLoading } = useInterpreter();
+  const [error, setError] = useState<{ title: string; message: string } | null>(null);
   const [appointmentDetails, setAppointmentDetails] = useState<{
     startTime: string;
     endTime: string;
@@ -30,375 +73,130 @@ export default function BookingScreen() {
     hospital_name: string | null;
   } | null>(null);
 
-  useEffect(() => {
-    const fetchInterpreterProfile = async () => {
-      const interpreterProfile = await getInterpreterProfile(id.toString());
-      setProfile(interpreterProfile);
-      const storedDetails = await AsyncStorage.getItem("appointmentDetails");
-      setAppointmentDetails(storedDetails ? JSON.parse(storedDetails) : null);
-      setIsLoading(false);
-    };
-    fetchInterpreterProfile();
-  }, [id]);
-
-  const handleBooking = async () => {
-    // const confirmed = await showConfirmAlert("Create Booking", "Are you sure you want to create this booking?");
-    // if (!confirmed) return;
-
-    try {
-      if (appointmentDetails) {
-        const { startTime, endTime, id: appointment_id, deaf_user_id, hospital_name } = appointmentDetails;
-        if (appointment_id) {
-          await createRequest(appointment_id, profile!.id, notes);
-        } else {
-          const appointment_id = await createAppointment(
-            deaf_user_id,
-            new Date(startTime),
-            new Date(endTime),
-            hospital_name
-          );
-          if (appointment_id >= 0) {
-            AsyncStorage.setItem(
-              "appointmentDetails",
-              JSON.stringify({
-                ...appointmentDetails,
-                id: appointment_id,
-              })
-            );
-          }
-          await createRequest(appointment_id, profile!.id, notes);
-          router.push({ pathname: "/interpreter/[id]/booking-success", params: { id: id.toString() } });
-        }
-      }
-    } catch (error) {
-      alert(`Error during booking: ${error}`);
-    }
+  const handleBooking = () => {
+    open();
   };
 
-  const theme = useAppTheme();
-  const styles = createStyles(theme);
+  const onCreate = () => {
+    close();
+    router.push(`/interpreter/${interpreter?.id}/booking-success`);
+  };
 
-  const [notes, setNotes] = React.useState("");
+  useEffect(() => {
+    const fetchInterpreterProfile = async () => {
+        const storedDetails = await AsyncStorage.getItem("appointmentDetails").then((data) =>
+          data ? JSON.parse(data) : null
+        );
+        setAppointmentDetails(storedDetails);
+    };
+    fetchInterpreterProfile();
+  }, []);
 
-  if (isLoading) {
+  if (isLoading || !appointmentDetails) {
     return <LoadingScreen />;
-  } else if (!profile) {
+  } else if (!interpreter) {
     return <InterpreterNotFoundScreen />;
   }
 
-  const initials = profile!.name
-    .split(" ")
-    .map((word) => word[0])
-    .slice(0, 2)
-    .join("");
-  const fullStars = Math.floor(profile!.avgRating ?? 0);
-
   return (
-    <ScrollView style={styles.screen}>
-      {/* <Stack.Screen options={{ headerShown: false }} /> */}
-
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Confirm Booking</Text>
-      </View>
-
-      <View style={styles.contentContainer}>
-        <View style={styles.sessionCard}>
-          <Text style={styles.sectionTitle}>Session Details</Text>
-          <View style={styles.interpreterRow}>
-            {/* <LinearGradient colors={[theme.colors.primary, theme.colors.secondary]} style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>{initials}</Text>
-            </LinearGradient> */}
-                      <Image
-                        source={{
-                          uri: profile.photo,
-                        }}
-                        style={styles.avatarContainer}
-                      />
-            <View style={styles.interpreterInfo}>
-              <Text style={styles.interpreterName}>{profile.name}</Text>
-              {
-                <Text style={styles.interpreterSubtitle}>
-                  {profile.interpreterSpecialisations.map((spec) => SPECIALISATION[spec]).join(", ")}
+    <View style={{ flex: 1, backgroundColor: theme.colors.elevation.level1 }}>
+      <BackButton />
+      <ScrollView>
+        <Gradient style={styles.header}>
+          <View style={styles.headerContent}>
+            <Avatar.Image size={80} source={{ uri: interpreter.photo }} />
+            <View style={{ flex: 1, marginLeft: 16 }}>
+              <Text variant="headlineSmall" style={{ color: theme.colors.surface, fontWeight: "bold" }}>
+                {interpreter.name}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
+                <Text variant="bodyMedium" style={{ color: theme.colors.surface }}>
+                  {interpreter.avgRating ? `⭐ ${interpreter.avgRating.toFixed(1)}` : "No ratings yet"}
                 </Text>
-              }
-              <View style={styles.starsContainer}>
-                {[...Array(5)].map((_, i) => (
-                  <MaterialCommunityIcons
-                    key={i}
-                    name={i < fullStars ? "star" : "star-outline"}
-                    size={16}
-                    color="#FBBF24"
-                  />
-                ))}
               </View>
             </View>
           </View>
+        </Gradient>
 
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <MaterialCommunityIcons name="calendar-blank" size={20} style={styles.infoIcon} />
-            <Text style={styles.infoText}>{appointmentDetails ? getDate(appointmentDetails) : ""}</Text>
+        <View style={styles.content}>
+          <AppointmentDetailsSection appointmentDetails={appointmentDetails!} />
+          <View style={styles.section}>
+            <Text variant="titleLarge" style={styles.sectionTitle}>
+              Additional Notes (Optional)
+            </Text>
+            <TextInput
+              mode="outlined"
+              placeholder="Leave a note for the interpreter..."
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              numberOfLines={4}
+              style={styles.notesInput}
+              outlineStyle={{ borderRadius: 12 }}
+            />
           </View>
-          <View style={styles.infoRow}>
-            <MaterialCommunityIcons name="clock-outline" size={20} style={styles.infoIcon} />
-            <Text style={styles.infoText}>{appointmentDetails ? getStartTime(appointmentDetails) : ""}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <MaterialCommunityIcons name="video-outline" size={20} style={styles.infoIcon} />
-            <Text style={styles.infoText}>Video Call Session</Text>
+          <View style={styles.footer}>
+            <Button mode="contained" icon="check-circle" onPress={handleBooking} contentStyle={{ paddingVertical: 8 }}>
+              Confirm Booking
+            </Button>
           </View>
         </View>
-        {/* ) : ( */}
-        {/* <View style={styles.dateTimeRow}>
-            <View style={styles.dateTimeField}>
-              <Text style={styles.filterLabel}>Appointment Date</Text>
-              <DatePickerInput
-                label=""
-                value={bookingDate}
-                onChange={setBookingDate}
-                style={styles.dateTimeInput}
-              />
-            </View>
-            <View style={styles.dateTimeField}>
-              <Text style={styles.filterLabel}>Appointment Time</Text>
-              <TimePickerInput
-                label=""
-                value={bookingTime}
-                onChange={setBookingTime}
-                style={styles.dateTimeInput}
-              />
-            </View>
-          </View> */}
-        {/* )} */}
+      </ScrollView>
 
-        {/* --- Notes Section --- */}
-        <Text style={styles.sectionTitle}>Notes for Interpreter (Optional)</Text>
-        <TextInput
-          value={notes}
-          onChangeText={setNotes}
-          placeholder="Add any specific details about your session..."
-          multiline={true}
-          style={styles.notesInput}
-        />
+      <WarningDialog
+        visible={isOpen}
+        title="Confirm Booking"
+        message={`Are you sure you want to book an appointment with ${interpreter.name}?`}
+        onDismiss={close}
+        onConfirm={() => confirmBooking(appointmentDetails!, interpreter, notes, setError, onCreate)}
+      />
 
-        {/* --- Info Callouts --- */}
-        {/* <View
-          style={[styles.calloutCard, styles.calloutBlue, { marginTop: 24 }]}
-        >
-          <MaterialCommunityIcons
-            name="email-lock"
-            size={24}
-            style={[styles.calloutIcon, { color: "#2563EB" }]}
-          />
-          <View style={styles.calloutTextContainer}>
-            <Text style={[styles.calloutTitle, { color: "#1E40AF" }]}>
-              Secure In-App Messaging
-            </Text>
-            <Text style={{ color: "#1D4ED8" }}>
-              All communication happens safely within the app.
-            </Text>
-          </View>
-        </View> */}
-
-        <View style={[styles.calloutCard, styles.calloutGreen, { marginTop: 24 }]}>
-          <MaterialCommunityIcons name="check-circle" size={24} style={[styles.calloutIcon, { color: "#059669" }]} />
-          <View style={styles.calloutTextContainer}>
-            <Text style={[styles.calloutTitle, { color: "#065F46" }]}>Free Service</Text>
-            <Text style={{ color: "#047857" }}>This interpretation session is provided at no cost.</Text>
-          </View>
-        </View>
-
-        {/* --- Action Buttons --- */}
-        <TouchableOpacity style={[styles.button, styles.buttonPrimary, { marginTop: 24 }]} onPress={handleBooking}>
-          <Text style={[styles.buttonText, styles.buttonTextPrimary]}>Confirm & Book Session</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      <WarningDialog
+        visible={error !== null}
+        title={error?.title || "Error"}
+        message={error?.message || "An unexpected error occurred."}
+        onDismiss={() => setError(null)}
+        onConfirm={() => setError(null)}
+      />
+    </View>
   );
 }
 
 const createStyles = (theme: MD3Theme) =>
   StyleSheet.create({
-    screen: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
     header: {
-      backgroundColor: "white",
-      paddingHorizontal: 24,
-      paddingVertical: 16,
+      paddingBottom: 12,
+      paddingHorizontal: 16,
+    },
+    headerContent: {
       flexDirection: "row",
       alignItems: "center",
-      borderBottomWidth: 1,
-      borderBottomColor: "#E5E7EB",
     },
-    backButton: {
-      marginRight: 16,
+    content: {
+      padding: 16,
     },
-    headerTitle: {
-      fontSize: 18,
-      fontWeight: "600",
-      color: "#1F2937",
-    },
-    contentContainer: {
-      padding: 24,
-    },
-    sessionCard: {
-      backgroundColor: "white",
-      borderRadius: 12,
-      padding: 24,
+    section: {
       marginBottom: 24,
-      shadowColor: "#000",
-      shadowOffset: {
-        width: 0,
-        height: 1,
-      },
-      shadowOpacity: 0.2,
-      shadowRadius: 1.41,
-      elevation: 2,
     },
     sectionTitle: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: "#1F2937",
-      marginBottom: 16,
-    },
-    interpreterRow: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    avatarContainer: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      justifyContent: "center",
-      alignItems: "center",
-      marginRight: 16,
-    },
-    avatarText: {
-      color: "white",
-      fontSize: 24,
-      fontWeight: "bold",
-    },
-    interpreterInfo: {
-      flex: 1,
-    },
-    interpreterName: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: "#1F2937",
-    },
-    interpreterSubtitle: {
-      color: "#6B7280",
-      fontSize: 14,
-    },
-    starsContainer: {
-      flexDirection: "row",
-      marginTop: 4,
-    },
-    divider: {
-      height: 1,
-      backgroundColor: "#F3F4F6",
-      marginVertical: 16,
-    },
-    infoRow: {
-      flexDirection: "row",
-      alignItems: "center",
       marginBottom: 12,
+      color: theme.colors.onSurface,
     },
-    infoIcon: {
-      marginRight: 12,
-      color: "#9CA3AF",
-    },
-    infoText: {
-      color: "#374151",
-      fontSize: 16,
-    },
-    dateTimeRow: {
+    chipsContainer: {
       flexDirection: "row",
-      justifyContent: "space-between",
-      gap: 12,
-      zIndex: 10,
-      marginBottom: 10,
+      flexWrap: "wrap",
+      gap: 8,
     },
-    dateTimeField: {
-      flex: 1,
-    },
-    filterLabel: {
-      fontSize: 16,
-      fontWeight: "bold",
-    },
-    dateTimeInput: {
-      height: 50,
-      justifyContent: "center",
+    chip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
     },
     notesInput: {
-      backgroundColor: "white",
-      height: 96,
-      borderWidth: 1,
-      borderColor: "#E5E7EB",
-      borderRadius: 12,
-      padding: 16,
-      textAlignVertical: "top",
+      backgroundColor: theme.colors.surface,
     },
-    calloutCard: {
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 24,
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    calloutBlue: {
-      backgroundColor: "#EFF6FF",
-      borderColor: "#BFDBFE",
-      borderWidth: 1,
-    },
-    calloutGreen: {
-      backgroundColor: "#ECFDF5",
-      borderColor: "#A7F3D0",
-      borderWidth: 1,
-    },
-    calloutIcon: {
-      marginRight: 12,
-    },
-    calloutTextContainer: {
-      flex: 1,
-    },
-    calloutTitle: {
-      fontWeight: "600",
-    },
-    calloutBody: {
-      fontSize: 14,
-    },
-    button: {
-      width: "100%",
-      paddingVertical: 16,
-      borderRadius: 999,
-      alignItems: "center",
-      marginBottom: 12,
-    },
-    buttonPrimary: {
-      backgroundColor: theme.colors.primary,
-    },
-    buttonText: {
-      fontSize: 18,
-      fontWeight: "600",
-    },
-    buttonTextPrimary: {
-      color: theme.colors.onPrimary,
-    },
-    cancelButtonText: {
-      color: "#4B5563",
-      fontWeight: "500",
-      textAlign: "center",
+    footer: {
+      paddingTop: 8,
+      paddingBottom: 16,
     },
   });

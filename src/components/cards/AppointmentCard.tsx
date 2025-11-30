@@ -1,6 +1,6 @@
 import { ClickableProfileImage } from "@/components/images/ProfileImage";
 import { theme } from "@/theme/theme";
-import { getDate, getStartTime } from "@/utils/helper";
+import { getDate, getStartTime, getTimeRange } from "@/utils/helper";
 import { Appointment } from "@/utils/query";
 import { openURL } from "expo-linking";
 import { View } from "react-native";
@@ -73,7 +73,7 @@ export function AppointmentCardContent({
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
             <Icon size={20} source="clock" />
-            <Text style={{ marginLeft: 8 }}>{getStartTime(appointment)}</Text>
+            <Text style={{ marginLeft: 8 }}>{getTimeRange(appointment)}</Text>
           </View>
         </View>
       </Card.Content>

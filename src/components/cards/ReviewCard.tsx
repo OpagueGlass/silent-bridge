@@ -13,7 +13,7 @@ export default function ReviewCard({
   onPress?: () => void;
 }) {
   return (
-    <Card onPress={() => {}}>
+    <Card key={appointment.id}>
       <AppointmentCardContent appointment={appointment} isInterpreter={isInterpreter} />
       <Card.Actions style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <MessageButton recipientId={appointment.profile?.id || ""} />
