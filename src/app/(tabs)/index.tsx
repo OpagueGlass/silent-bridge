@@ -2,7 +2,7 @@
 
 import AppointmentCard from "@/components/cards/AppointmentCard";
 import { DateRangePickerInput, getValidRange } from "@/components/inputs/DatePickerInput";
-import { DropdownInput } from "@/components/inputs/DropdownInput";
+import { DropdownIndex } from "@/components/inputs/DropdownInput";
 import ReviewSection from "@/components/sections/ReviewSection";
 import Gradient from "@/components/ui/Gradient";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,7 +29,7 @@ function NameDropdown({
   option: number;
   setOption: (index: number) => void;
 }) {
-  return <DropdownInput container={nameOptions.map((opt) => opt.label)} option={option} setOption={setOption} />;
+  return <DropdownIndex container={nameOptions.map((opt) => opt.label)} option={option} setOption={setOption} />;
 }
 
 export default function HomeScreen() {
@@ -62,15 +62,12 @@ export default function HomeScreen() {
         : await Promise.all([getReviewUserAppointments(profile.id), getUpcomingUserAppointments(profile.id)]);
       setReviewAppointments(reviewData);
       setUpcomingAppointments(upcomingData);
-      
+
       // Get unique profiles and sort by name
       const uniqueProfiles = Array.from(
-        new Map(
-          upcomingData
-            .map((appointment) => [appointment.profile!.id, appointment.profile!])
-        ).values()
+        new Map(upcomingData.map((appointment) => [appointment.profile!.id, appointment.profile!])).values()
       ).sort((a, b) => a.name.localeCompare(b.name));
-      
+
       setNameOptions([
         { id: "0", label: "All" },
         ...uniqueProfiles.map((profile) => ({
@@ -122,6 +119,7 @@ export default function HomeScreen() {
               placeholder="Manage Availability"
               style={styles.searchbar}
               pointerEvents="none"
+              editable={false}
               icon="calendar-clock"
             />
           </TouchableOpacity>
@@ -132,7 +130,13 @@ export default function HomeScreen() {
               router.push("/search");
             }}
           >
-            <Searchbar value={""} placeholder="Start your search" style={styles.searchbar} pointerEvents="none" />
+            <Searchbar
+              value={""}
+              placeholder="Start your search"
+              style={styles.searchbar}
+              pointerEvents="none"
+              editable={false}
+            />
           </TouchableOpacity>
         )}
       </Gradient>
@@ -223,6 +227,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   searchbar: {
-    borderRadius: 12
+    borderRadius: 12,
   },
 });

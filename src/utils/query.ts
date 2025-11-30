@@ -15,6 +15,17 @@ export interface Profile {
   photo: string;
 }
 
+export interface ActiveProfile {
+  id: string;
+  name: string;
+  email: string;
+  dateOfBirth: string;
+  gender: string;
+  avgRating: number | null;
+  location: string;
+  photo: string;
+}
+
 export interface InterpreterProfile extends Profile {
   interpreterSpecialisations: number[];
   interpreterLanguages: number[];
@@ -86,6 +97,11 @@ const convertToProfile = (profile: Tables<"profile">): Profile => {
   return { ...rest, ageRange, avgRating: avg_rating };
 };
 
+const convertToActiveProfile = (profile: Tables<"profile">): ActiveProfile => {
+  const { date_of_birth, avg_rating, ...rest } = profile;
+  return { ...rest, dateOfBirth: date_of_birth, avgRating: avg_rating };
+};
+
 /**
  * Convert the interpreter profile from the database format to the application format.
  *
@@ -151,6 +167,37 @@ export const getProfile = async (id: string): Promise<Profile | null> => {
 };
 
 /**
+ * Retrieve the profile for a user.
+ *
+ * @param id ID of the user
+ * @returns Profile or null if not found
+ */
+export const getActiveProfile = async (id: string): Promise<ActiveProfile | null> => {
+  const { data: profile } = await supabase.from("profile").select("*").eq("id", id).maybeSingle();
+  if (!profile) {
+    return null;
+  }
+
+  return convertToActiveProfile(profile);
+};
+
+/**
+ * Update the profile for a user.
+ *
+ * @param id ID of the user
+ * @param updates Partial profile updates
+ * @returns The updated profile or null if the update failed
+ */
+export const updateActiveProfile = async (id: string, updates: Partial<Tables<"profile">>) => {
+  const { error } = await supabase.from("profile").update(updates).eq("id", id)
+
+  if (error) {
+    console.error("Error updating profile:", error);
+    throw error;
+  }
+};
+
+/**
  * Check if a user has an interpreter profile.
  *
  * @param id ID of the user
@@ -186,6 +233,31 @@ export const getInterpreterProfile = async (id: string): Promise<InterpreterProf
 
   if (error) return null;
   return convertToInterpreterProfile(data);
+};
+
+/**
+ * Update the interpreter profile for a user.
+ *
+ * @param id ID of the user
+ * @param updates Partial interpreter profile updates
+ * @returns The updated interpreter profile or null if the update failed
+ */
+export const updateInterpreterProfile = async (
+  id: string,
+  updates: Partial<InterpreterProfile>
+): Promise<InterpreterProfile | null> => {
+  const { data: updatedInterpreterProfile, error } = await supabase
+    .from("interpreter_profile")
+    .update(updates)
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    console.error("Error updating interpreter profile:", error);
+    return null;
+  }
+
+  return convertToInterpreterProfile(updatedInterpreterProfile);
 };
 
 /**
@@ -664,7 +736,6 @@ export const getAvailabilities = async (interpreter_id: string) => {
 
   return data;
 };
-
 
 /**
  * Gets the completed appointments for a user.

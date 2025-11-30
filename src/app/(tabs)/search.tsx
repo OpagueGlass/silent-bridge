@@ -9,7 +9,7 @@ import Gradient from "@/components/ui/Gradient";
 import { LANGUAGES, SPECIALISATION } from "@/constants/data";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useDisclosure } from "@/hooks/useDisclosure";
-import { InterpreterResults, Profile, searchInterpreters } from "@/utils/query";
+import { ActiveProfile, InterpreterResults, Profile, searchInterpreters } from "@/utils/query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, Redirect } from "expo-router";
 import { Dispatch, SetStateAction, useCallback, useState } from "react";
@@ -55,7 +55,7 @@ const defaultParams = {
 } as SearchParams;
 
 function handleSearch(
-  profile: Profile | null,
+  profile: ActiveProfile | null,
   date: Date | undefined,
   time: { hours: number | undefined; minutes: number | undefined },
   searchParams: SearchParams,
@@ -117,7 +117,7 @@ function SearchModal({
   visible,
   onDismiss,
 }: {
-  profile: Profile | null;
+  profile: ActiveProfile | null;
   setLoading: Dispatch<SetStateAction<boolean>>;
   setHasSearched: Dispatch<SetStateAction<boolean>>;
   setSearchResults: Dispatch<SetStateAction<InterpreterResults[]>>;
@@ -276,7 +276,7 @@ function SearchResults({
   if (hasSearched) {
     if (searchResults.length > 0) {
       return (
-        <View style={{ paddingTop: 16}}>
+        <View style={{ paddingTop: 16 }}>
           {searchResults.map((interpreterResult) => ResultCard({ interpreterResult }))}
         </View>
       );
@@ -322,7 +322,13 @@ export default function SearchScreen() {
       <Gradient style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={open} style={{ flex: 1 }}>
-            <Searchbar value={""} placeholder="Search interpreters" style={styles.searchbar} pointerEvents="none" />
+            <Searchbar
+              value={""}
+              placeholder="Search interpreters"
+              style={styles.searchbar}
+              pointerEvents="none"
+              editable={false}
+            />
           </TouchableOpacity>
         </View>
       </Gradient>

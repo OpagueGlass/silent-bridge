@@ -1,7 +1,7 @@
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useDisclosure } from "@/hooks/useDisclosure";
 import { getDate } from "@/utils/helper";
-import { Appointment, Profile, submitRating } from "@/utils/query";
+import { ActiveProfile, Appointment, submitRating } from "@/utils/query";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import { Button, Card, Modal, Portal, Surface, Text, TextInput } from "react-native-paper";
@@ -36,7 +36,7 @@ async function submitReview(
 
 type ReviewModalProps = {
   appointment: Appointment | null;
-  profile: Profile | null;
+  profile: ActiveProfile | null;
   isOpen: boolean;
   setReviewAppointments: Dispatch<SetStateAction<Appointment[]>>;
   onDismiss: () => void;
@@ -125,7 +125,7 @@ function ReviewModal({
 }
 
 type ReviewSectionProps = {
-  profile: Profile | null;
+  profile: ActiveProfile | null;
   isInterpreter: boolean;
   reviewAppointments: Appointment[];
   setReviewAppointments: Dispatch<SetStateAction<Appointment[]>>;

@@ -2,7 +2,7 @@
 
 import HistoryCard from "@/components/cards/HistoryCard";
 import { DateRangePickerInput, getToday } from "@/components/inputs/DatePickerInput";
-import { DropdownInput } from "@/components/inputs/DropdownInput";
+import { DropdownIndex } from "@/components/inputs/DropdownInput";
 import Gradient from "@/components/ui/Gradient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
@@ -23,7 +23,7 @@ function NameDropdown({
   colour?: string;
 }) {
   return (
-    <DropdownInput
+    <DropdownIndex
       container={nameOptions.map((opt) => opt.label)}
       option={option}
       setOption={setOption}

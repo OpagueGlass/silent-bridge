@@ -78,6 +78,7 @@ export default function DatePickerInput({
   setDate,
   validRange,
   placeholder,
+  showLabel = false,
   ...props
 }: {
   date: Date | undefined;
@@ -104,6 +105,8 @@ export default function DatePickerInput({
           value={date ? formatDate(date) : ""}
           right={<TextInput.Icon icon="calendar" onPress={open} />}
           placeholder={placeholder ?? "Select date"}
+          label ={showLabel ? placeholder ?? "Select date" : undefined}
+          editable={false}
           style={{ pointerEvents: "none" }}
         ></TextInput>
       </TouchableHighlight>
