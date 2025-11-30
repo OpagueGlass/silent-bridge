@@ -1,4 +1,4 @@
-import { getProfile, hasInterpreterProfile, Profile } from "@/utils/query";
+import { ActiveProfile, getActiveProfile, hasInterpreterProfile } from "@/utils/query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Session, User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
@@ -12,11 +12,12 @@ interface AuthState {
 interface AuthContextType {
   session: Session | null;
   authState: AuthState;
-  profile: Profile | null;
+  profile: ActiveProfile | null;
   isInterpreter: boolean;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
   loadProfile: (user: User | null) => Promise<boolean>;
+  setProfile: (profile: ActiveProfile | null) => void;
   getValidProviderToken: () => Promise<string | null>;
 }
 
@@ -32,7 +33,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [providerToken, setProviderToken] = useState<string | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<ActiveProfile | null>(null);
   const [isInterpreter, setIsInterpreter] = useState<boolean>(false);
   const [authState, setAuthState] = useState<AuthState>({
     isLoading: true,
@@ -127,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadProfile = async (user: User | null): Promise<boolean> => {
     if (user) {
       const id = user.id;
-      const profile = await getProfile(id);
+      const profile = await getActiveProfile(id);
       if (!profile) {
         setProfile(null);
         return false;
@@ -216,6 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signOut,
     loadProfile,
+    setProfile,
     getValidProviderToken,
   };
 
