@@ -22,7 +22,12 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "src/assets/images/favicon.png"
+      "favicon": "src/assets/images/favicon.png",
+      "name": "Silent Bridge",
+      "shortName": "Silent Bridge",
+      "description": "Connect deaf users with sign language interpreters",
+      "themeColor": "#6750A4",
+      "backgroundColor": "#ffffff"
     },
     "plugins": [
       "expo-router",

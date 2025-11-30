@@ -25,7 +25,7 @@ export default function TabLayout() {
         { name: "chat", title: "Chat", icon: "message" },
         { name: "availability", title: "Manage Availability", icon: "calendar-check" },
         { name: "history", title: "History", icon: "history" },
-        { name: "sign", title: "Sign", icon: "hand-back-right" },
+        { name: "sign", title: "Sign Dictionary", icon: "hand-back-right" },
         { name: "settings", title: "Settings", icon: "cog" },
       ]
     : [
@@ -33,7 +33,7 @@ export default function TabLayout() {
         { name: "search", title: "Search", icon: "magnify" },
         { name: "chat", title: "Chat", icon: "message" },
         { name: "history", title: "History", icon: "history" },
-        { name: "sign", title: "Sign", icon: "hand-back-right" },
+        { name: "sign", title: "Sign Dictionary", icon: "hand-back-right" },
         { name: "settings", title: "Settings", icon: "cog" },
       ];
 

@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from "react";
 import {
   Dimensions,
-  FlatList,
   Image,
   ScrollView,
   StyleSheet,
@@ -9,13 +8,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Card, MD3Theme, TextInput } from "react-native-paper";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Card, MD3Theme, Searchbar } from "react-native-paper";
 import { useAppTheme } from "../../hooks/useAppTheme";
 import { signCategories as allSignCategories } from "@/constants/data/signLanguageData";
+import Gradient from "@/components/ui/Gradient";
 
 const originalCategories = allSignCategories.map((cat) => cat.title);
-const categories = ["All", "Favorites", ...originalCategories];
+const categories = ["All", ...originalCategories];
 
 export default function SignLanguageScreen() {
   const theme = useAppTheme();
@@ -23,7 +22,6 @@ export default function SignLanguageScreen() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [favorites, setFavorites] = useState<string[]>(["1.2", "2.1"]);
 
   const filteredData = useMemo(() => {
     let data = [];
@@ -31,12 +29,6 @@ export default function SignLanguageScreen() {
       data = allSignCategories.flatMap((cat) =>
         cat.data.map((item) => ({ ...item, category: cat.title }))
       );
-    } else if (selectedCategory === "Favorites") {
-      data = allSignCategories
-        .flatMap((cat) =>
-          cat.data.map((item) => ({ ...item, category: cat.title }))
-        )
-        .filter((item) => favorites.includes(item.id));
     } else {
       const category = allSignCategories.find(
         (cat) => cat.title === selectedCategory
@@ -52,30 +44,17 @@ export default function SignLanguageScreen() {
       );
     }
     return data;
-  }, [searchQuery, selectedCategory, favorites]);
-
-  const handleToggleFavorite = (id: string) => {
-    if (favorites.includes(id)) {
-      setFavorites((prev) => prev.filter((favId) => favId !== id));
-    } else {
-      setFavorites((prev) => [...prev, id]);
-    }
-  };
+  }, [searchQuery, selectedCategory]);
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Sign Dictionary</Text>
-        <View style={styles.searchBarContainer}>
-          <TextInput
-            label="Search signs..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            mode="outlined"
-            left={<TextInput.Icon icon="magnify" />}
-            style={{ backgroundColor: theme.colors.surface }}
-          />
-        </View>
+      <Gradient style={styles.header}>
+        <Searchbar
+          placeholder="Search signs..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          style={styles.searchbar}
+        />
         <View style={styles.categoryBarContainer}>
           <ScrollView
             horizontal
@@ -106,12 +85,11 @@ export default function SignLanguageScreen() {
             })}
           </ScrollView>
         </View>
-      </View>
+      </Gradient>
 
       <View style={styles.listContentContainer}>
         {filteredData.length > 0 ? (
           filteredData.map((item) => {
-            const isFavorited = favorites.includes(item.id);
             return (
               <Card key={item.id} style={styles.itemCard}>
                 <View style={styles.gifContainer}>
@@ -128,20 +106,6 @@ export default function SignLanguageScreen() {
                       {item.category}
                     </Text>
                   </View>
-                  <TouchableOpacity
-                    style={styles.favoriteButton}
-                    onPress={() => handleToggleFavorite(item.id)}
-                  >
-                    <MaterialCommunityIcons
-                      name={isFavorited ? "heart" : "heart-outline"}
-                      size={28}
-                      color={
-                        isFavorited
-                          ? theme.colors.error
-                          : theme.colors.onSurfaceVariant
-                      }
-                    />
-                  </TouchableOpacity>
                 </View>
               </Card>
             );
@@ -157,7 +121,7 @@ export default function SignLanguageScreen() {
 }
 
 const { width } = Dimensions.get("window");
-const contentWidth = width - 32;
+const contentWidth = Math.min(width - 32, 500);
 const createStyles = (theme: MD3Theme) =>
   StyleSheet.create({
     container: {
@@ -165,19 +129,11 @@ const createStyles = (theme: MD3Theme) =>
       backgroundColor: theme.colors.background,
     },
     header: {
-      backgroundColor: theme.colors.primary,
-      paddingHorizontal: 24,
-      paddingTop: 80,       
-      paddingBottom: 20,
+      paddingVertical: 12,
+      paddingHorizontal: 20,
     },
-    title: {
-      fontSize: 24,
-      fontWeight: 'bold',
-      color: theme.colors.surface,
-      marginBottom: 16,
-    },
-    searchBarContainer: {
-      backgroundColor: "transparent",
+    searchbar: {
+      borderRadius: 12,
     },
     categoryBarContainer: {
       backgroundColor: "transparent",
@@ -203,6 +159,7 @@ const createStyles = (theme: MD3Theme) =>
     },
     listContentContainer: {
       padding: 16,
+      alignItems: "center",
     },
     itemCard: {
       marginBottom: 16,
@@ -222,6 +179,7 @@ const createStyles = (theme: MD3Theme) =>
       borderTopLeftRadius: 16,
       borderTopRightRadius: 16,
       overflow: "hidden",
+      backgroundColor: theme.colors.surfaceVariant,
     },
     gif: {
       width: "100%",
@@ -235,7 +193,6 @@ const createStyles = (theme: MD3Theme) =>
     },
     textContainer: {
       flex: 1,
-      marginRight: 12,
     },
     word: {
       fontSize: 18,
@@ -246,9 +203,6 @@ const createStyles = (theme: MD3Theme) =>
       fontSize: 14,
       color: theme.colors.onSurfaceVariant,
       marginTop: 4,
-    },
-    favoriteButton: {
-      padding: 8,
     },
     listEmptyComponent: {
       flex: 1,

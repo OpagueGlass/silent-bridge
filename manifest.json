@@ -1,0 +1,23 @@
+{
+  "name": "Silent Bridge",
+  "short_name": "Silent Bridge",
+  "description": "Connect deaf users with sign language interpreters",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6750A4",
+  "icons": [
+    {
+      "src": "src/assets/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "src/assets/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
