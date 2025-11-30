@@ -1,3 +1,5 @@
+import Gradient from "@/components/ui/Gradient";
+import { signCategories as allSignCategories } from "@/constants/data/signLanguageData";
 import React, { useMemo, useState } from "react";
 import {
   Dimensions,
@@ -10,8 +12,6 @@ import {
 } from "react-native";
 import { Card, MD3Theme, Searchbar } from "react-native-paper";
 import { useAppTheme } from "../../hooks/useAppTheme";
-import { signCategories as allSignCategories } from "@/constants/data/signLanguageData";
-import Gradient from "@/components/ui/Gradient";
 
 const originalCategories = allSignCategories.map((cat) => cat.title);
 const categories = ["All", ...originalCategories];
