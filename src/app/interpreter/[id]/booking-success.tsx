@@ -1,8 +1,6 @@
-import { getDate, getTimeRange } from "@/utils/helper";
-import { getInterpreterProfile, InterpreterProfile } from "@/utils/query";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { Avatar, Button, MD3Theme, Text } from "react-native-paper";
@@ -12,7 +10,6 @@ import LoadingScreen from "../../../components/sections/LoadingScreen";
 import Gradient from "../../../components/ui/Gradient";
 import { useAppTheme } from "../../../hooks/useAppTheme";
 import { useInterpreter } from "./_layout";
-import { launchChat } from "@/components/cards/MessageButton";
 
 export default function BookingSuccessScreen() {
   const router = useRouter();
@@ -152,7 +149,10 @@ export default function BookingSuccessScreen() {
             <Button
               mode="outlined"
               icon="account-search"
-              onPress={() => router.push("/search")}
+              onPress={() => {
+                router.back();
+                router.back();
+              }}
               contentStyle={{ paddingVertical: 8 }}
             >
               Find Other Interpreters

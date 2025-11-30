@@ -12,7 +12,7 @@ import { toTimeRange } from "@/utils/helper";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
-import { Avatar, Button, DataTable, IconButton, Text } from "react-native-paper";
+import { Avatar, Button, DataTable, Text } from "react-native-paper";
 import { TabScreen, Tabs, TabsProvider } from "react-native-paper-tabs";
 import { BackButton, useInterpreter } from "./_layout";
 

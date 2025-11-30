@@ -5,7 +5,7 @@ import { useAppTheme } from "@/hooks/useAppTheme";
 import { InterpreterProfile, Rating, getAvailabilities, getInterpreterProfile, getRatings } from "@/utils/query";
 import { Redirect, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import { IconButton } from "react-native-paper";
 
 interface InterpreterContextType {
@@ -94,11 +94,7 @@ export default function InterpreterLayout() {
 
   return (
     <InterpreterContext.Provider value={contextValue}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
+      <Stack screenOptions={{headerShown: false}}>
         <Stack.Screen name="index" options={{ title: "Interpreter Profile" }} />
         <Stack.Screen name="book" options={{ title: "Book Appointment" }} />
         <Stack.Screen name="booking-success" options={{ title: "Booking Confirmed" }} />

@@ -18,6 +18,7 @@ export default function ResultCard({ interpreterResult }: { interpreterResult: I
 
   return (
     <Card
+      key={interpreterResult.id}
       onPress={() => router.push(`/interpreter/${interpreterResult.id}`)}
       style={{ marginHorizontal: 16, marginVertical: 8 }}
     >
