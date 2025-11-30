@@ -26,8 +26,9 @@
       "name": "Silent Bridge",
       "shortName": "Silent Bridge",
       "description": "Connect deaf users with sign language interpreters",
-      "themeColor": "#6750A4",
-      "backgroundColor": "#ffffff"
+      "themeColor": "#2559bd",
+      "backgroundColor": "#ffffff",
+      "publicPath": "public"
     },
     "plugins": [
       "expo-router",
