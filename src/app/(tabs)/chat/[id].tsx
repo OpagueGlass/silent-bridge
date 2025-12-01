@@ -23,6 +23,7 @@ import { supabase } from '@/utils/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getOtherParticipant } from '@/utils/query';
 import { getAgeRangeFromDOB } from '@/utils/helper';
+import LoadingScreen from '@/components/sections/LoadingScreen';
 
 type MsgKind = 'text' | 'image' | 'file';
 
@@ -359,7 +360,7 @@ export default function ChatRoomScreen() {
   );
 
   if (loading) {
-    return <ActivityIndicator style={{ flex: 1, justifyContent: 'center' }} animating={true} color={theme.colors.primary} />;
+    return <LoadingScreen />;
   }
 
   return (
