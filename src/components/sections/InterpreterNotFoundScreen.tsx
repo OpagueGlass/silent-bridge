@@ -1,7 +1,7 @@
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { View, TouchableOpacity } from "react-native";
 import { Text } from "react-native-paper";
-import { Stack, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function InterpreterNotFoundScreen() {
@@ -17,7 +17,6 @@ export default function InterpreterNotFoundScreen() {
         padding: 24,
       }}
     >
-      <Stack.Screen options={{ headerShown: false }} />
       <MaterialCommunityIcons
         name="account-question"
         size={72}
@@ -36,7 +35,7 @@ export default function InterpreterNotFoundScreen() {
         Interpreter Not Found
       </Text>
       <Text style={{ fontSize: 16, color: theme.colors.onSurfaceVariant, marginBottom: 24, textAlign: "center" }}>
-        The interpreter you're looking for may have been removed or doesn't exist.
+        The interpreter you&apos;re looking for may have been removed or doesn&apos;t exist.
       </Text>
       <TouchableOpacity
         style={{
@@ -47,7 +46,7 @@ export default function InterpreterNotFoundScreen() {
           flexDirection: "row",
           alignItems: "center",
         }}
-        onPress={() => router.navigate("/search")}
+        onPress={() => router.replace("/search")}
       >
         <MaterialCommunityIcons name="arrow-left" size={20} color={theme.colors.onPrimary} style={{ marginRight: 8 }} />
         <Text style={{ color: theme.colors.onPrimary, fontWeight: "600", fontSize: 16 }}>Go Back</Text>

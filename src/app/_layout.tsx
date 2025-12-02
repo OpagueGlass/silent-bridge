@@ -1,12 +1,9 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
-import { Stack, router } from "expo-router";
+import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
 import { PaperProvider } from "react-native-paper";
-import "react-native-reanimated";
-
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { theme } from "@/theme/theme";
 
@@ -24,12 +21,11 @@ export default function RootLayout() {
   return (
     <PaperProvider theme={theme}>
       <AuthProvider>
-        {/* <NavigationHandler /> */}
         <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="interpreter/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="auth" options={{ headerShown: false }} />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)"/>
+            <Stack.Screen name="interpreter/[id]" />
+            <Stack.Screen name="auth" />
             <Stack.Screen name="+not-found" />
           </Stack>
           <StatusBar style="auto" />

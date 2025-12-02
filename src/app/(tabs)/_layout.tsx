@@ -3,8 +3,8 @@ import AppHeader from "@/components/navigation/Header";
 import LoadingScreen from "@/components/sections/LoadingScreen";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDisclosure } from "@/hooks/useDisclosure";
-import { Redirect, Tabs } from "expo-router";
-import { useSegments } from "expo-router";
+import { Redirect, Tabs , useSegments } from "expo-router";
+
 import { View } from "react-native";
 
 export default function TabLayout() {

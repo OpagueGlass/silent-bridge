@@ -3,7 +3,7 @@ import { Redirect, Stack, usePathname } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 
 export default function AuthLayout() {
-  const { authState, session, profile } = useAuth();
+  const { authState, session } = useAuth();
   const pathname = usePathname();
 
   if (authState.isLoading) {

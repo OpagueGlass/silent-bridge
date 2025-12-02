@@ -32,12 +32,7 @@ export function BackButton() {
 
   return (
     <Gradient style={styles.backButtonContainer}>
-      <IconButton
-        icon="arrow-left"
-        iconColor={theme.colors.onPrimary}
-        size={24}
-        onPress={() => router.back()}
-      />
+      <IconButton icon="arrow-left" iconColor={theme.colors.onPrimary} size={24} onPress={() => router.back()} />
     </Gradient>
   );
 }
@@ -94,7 +89,7 @@ export default function InterpreterLayout() {
 
   return (
     <InterpreterContext.Provider value={contextValue}>
-      <Stack screenOptions={{headerShown: false}}>
+      <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" options={{ title: "Interpreter Profile" }} />
         <Stack.Screen name="book" options={{ title: "Book Appointment" }} />
         <Stack.Screen name="booking-success" options={{ title: "Booking Confirmed" }} />

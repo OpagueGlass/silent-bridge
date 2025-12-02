@@ -1,4 +1,3 @@
-import { useAppTheme } from "@/hooks/useAppTheme";
 import { useRouter } from "expo-router";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import { Appbar, Icon, Text } from "react-native-paper";
@@ -9,7 +8,6 @@ interface AppHeaderProps {
 }
 
 export default function AppHeader({ onMenuPress }: AppHeaderProps) {
-  const theme = useAppTheme();
   const router = useRouter();
 
   return (

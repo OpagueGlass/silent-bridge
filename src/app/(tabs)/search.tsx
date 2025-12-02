@@ -2,16 +2,19 @@
 
 import ResultCard from "@/components/cards/ResultCard";
 import DatePickerInput, { getValidRange } from "@/components/inputs/DatePickerInput";
+import LabelledDropdownInput from "@/components/inputs/DropdownInput";
 import LabelledInput from "@/components/inputs/LabelledInput";
 import RatingInput from "@/components/inputs/RatingInput";
 import TimePickerInput from "@/components/inputs/TimePickerInput";
+import WarningDialog from "@/components/modals/WarningDialog";
 import Gradient from "@/components/ui/Gradient";
 import { LANGUAGES, SPECIALISATION } from "@/constants/data";
+import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useDisclosure } from "@/hooks/useDisclosure";
-import { ActiveProfile, InterpreterResults, Profile, searchInterpreters } from "@/utils/query";
+import { ActiveProfile, InterpreterResults, searchInterpreters } from "@/utils/query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect, Redirect } from "expo-router";
+import { Redirect, useFocusEffect } from "expo-router";
 import { Dispatch, SetStateAction, useCallback, useState } from "react";
 import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import {
@@ -24,9 +27,6 @@ import {
   SegmentedButtons,
   Text,
 } from "react-native-paper";
-import LabelledDropdownInput from "@/components/inputs/DropdownInput";
-import WarningDialog from "@/components/modals/WarningDialog";
-import { useAuth } from "@/contexts/AuthContext";
 
 const durationOptions = ["00:15", "00:30", "00:45", "01:00", "01:15", "01:30", "01:45", "02:00"];
 const ageRangeOptions = [
@@ -294,11 +294,6 @@ function SearchResults({
 export default function SearchScreen() {
   const theme = useAppTheme();
   const { profile, isInterpreter } = useAuth();
-
-  if (isInterpreter) {
-    return <Redirect href="/" />;
-  }
-
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchResults, setSearchResults] = useState<InterpreterResults[]>([]);
@@ -316,6 +311,10 @@ export default function SearchScreen() {
       checkAndRefresh();
     }, [open])
   );
+
+  if (isInterpreter) {
+    return <Redirect href="/" />;
+  }
 
   return (
     <ScrollView style={{ backgroundColor: theme.colors.elevation.level1 }}>

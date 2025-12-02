@@ -1,17 +1,18 @@
 "use client";
 
+import WarningDialog from "@/components/modals/WarningDialog";
 import { STATES } from "@/constants/data";
 import { supabase } from "@/utils/supabase";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Button, Menu, Text, TextInput } from "react-native-paper";
-import DatePickerInput, { getToday } from "../../components/inputs/DatePickerInput";
-import { useAuth } from "../../contexts/AuthContext";
-import { useAppTheme } from "../../hooks/useAppTheme";
-import WarningDialog from "@/components/modals/WarningDialog";
+import DatePickerInput, { getToday } from "@/components/inputs/DatePickerInput";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function DeafUserFormScreen() {
+  const router = useRouter();
+  const { session } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -24,10 +25,6 @@ export default function DeafUserFormScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<{ title: string; message: string } | null>(null);
   const [success, showSuccess] = useState(false);
-
-  const router = useRouter();
-  const theme = useAppTheme();
-  const { session } = useAuth();
 
   const handleSignUp = async () => {
     const validateForm = () => {
