@@ -39,11 +39,12 @@ function getOverlappingDetails(request: Request) {
 
 export default function RequestScreen() {
   const theme = useAppTheme();
-  const { profile, isInterpreter, getValidProviderToken: getToken } = useAuth();
+  const { profile, isInterpreter, getValidProviderToken: getToken, signIn } = useAuth();
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState<Request[]>([]);
   const { isOpen: acceptDialog, open: openAcceptDialog, close: closeAcceptDialog } = useDisclosure();
   const { isOpen: rejectDialog, open: openRejectDialog, close: closeRejectDialog } = useDisclosure();
+  const { isOpen: errorDialog, open: openErrorDialog, close: closeErrorDialog } = useDisclosure();
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
 
   const openAccept = (request: Request) => {
@@ -88,12 +89,11 @@ export default function RequestScreen() {
     fetchRequests();
   }, [fetchRequests]);
 
-  const { acceptRequest, rejectRequest } = handleRequest(profile, getToken, setLoading, setRequests);
+  const { acceptRequest, rejectRequest } = handleRequest(profile, getToken, setLoading, setRequests, openErrorDialog);
 
   if (!isInterpreter) {
     return <Redirect href="/" />;
   }
-
 
   return (
     <ScrollView
@@ -139,6 +139,16 @@ export default function RequestScreen() {
         message="Are you sure you want to reject this request?"
         onConfirm={() => rejectRequest(selectedRequest!)}
         onDismiss={closeRejectDialog}
+      />
+      <WarningDialog
+        visible={errorDialog}
+        title="Error Accepting Request"
+        message="Please sign in again and grant access to Google Calendar to accept this request."
+        onConfirm={() => {
+          signIn()
+          closeErrorDialog();
+        }}
+        onDismiss={closeErrorDialog}
       />
     </ScrollView>
   );

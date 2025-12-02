@@ -116,7 +116,8 @@ const handleAcceptRequest =
     profile: ActiveProfile | null,
     getToken: () => Promise<string | null>,
     setLoading: Dispatch<SetStateAction<boolean>>,
-    setRequests: Dispatch<SetStateAction<Request[]>>
+    setRequests: Dispatch<SetStateAction<Request[]>>,
+    showError: () => void
   ) =>
   async (request: Request) => {
     try {
@@ -141,6 +142,8 @@ const handleAcceptRequest =
       setLoading(false);
     } catch (error) {
       console.error("Error updating request:", error);
+      showError();
+      setLoading(false);
     }
   };
 
@@ -166,9 +169,10 @@ export const handleRequest = (
   profile: ActiveProfile | null,
   getToken: () => Promise<string | null>,
   setLoading: Dispatch<SetStateAction<boolean>>,
-  setRequests: Dispatch<SetStateAction<Request[]>>
+  setRequests: Dispatch<SetStateAction<Request[]>>,
+  showError: () => void
 ) => ({
-  acceptRequest: handleAcceptRequest(profile, getToken, setLoading, setRequests),
+  acceptRequest: handleAcceptRequest(profile, getToken, setLoading, setRequests, showError),
   rejectRequest: handleRejectRequest(profile, setLoading, setRequests),
 });
 
