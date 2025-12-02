@@ -1,5 +1,4 @@
-import { AgeRange, AGE_RANGE } from "@/constants/data";
-import { Appointment, Profile } from "./query";
+import { AGE_RANGE, AgeRange } from "@/constants/data";
 
 export const getAgeRangeFromDOB = (dateOfBirth: string): AgeRange => {
   const age = Math.floor((Date.now() - new Date(dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365));
@@ -64,33 +63,4 @@ export const toTimeRange = (startTz: string, endTz: string): string => {
   const startTime = toTimeString(startTz);
   const endTime = toTimeString(endTz);
   return `${startTime} - ${endTime}`;
-};
-
-export const getMeetLink = async (providerToken: string, startTime: string, endTime: string, profile: Profile) => {
-  // Use providerToken to create a Google Meet link via Google Calendar API
-  const event = {
-    summary: `Appointment with ${profile.name}`,
-    start: { dateTime: startTime },
-    end: { dateTime: endTime },
-    conferenceData: {
-      createRequest: { requestId: "unique-request-id" },
-    },
-    attendees: [{ email: profile.email }],
-  };
-
-  const response = await fetch(
-    "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${providerToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(event),
-    }
-  );
-
-  const result = await response.json();
-  const meetLink = result.conferenceData?.entryPoints?.find((ep: any) => ep.entryPointType === "video")?.uri;
-  return meetLink;
 };

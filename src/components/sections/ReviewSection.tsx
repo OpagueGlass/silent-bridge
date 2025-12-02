@@ -1,7 +1,7 @@
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useDisclosure } from "@/hooks/useDisclosure";
-import { getDate } from "@/utils/helper";
 import { ActiveProfile, Appointment, submitRating } from "@/utils/query";
+import { getDate } from "@/utils/time";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import { Button, Card, Modal, Portal, Surface, Text, TextInput } from "react-native-paper";
