@@ -1,7 +1,6 @@
 import { ClickableProfileImage } from "@/components/images/ProfileImage";
-import { theme } from "@/theme/theme";
-import { getDate, getStartTime, getTimeRange } from "@/utils/helper";
 import { Appointment } from "@/utils/query";
+import { getDate, getTimeRange } from "@/utils/time";
 import { openURL } from "expo-linking";
 import { View } from "react-native";
 import { Button, Card, Chip, Icon, Text } from "react-native-paper";
@@ -12,7 +11,7 @@ const joinAppointment = (appointment: Appointment) => {
     const meetingLink = `https://meet.google.com/${appointment.meetingUrl}`;
     openURL(meetingLink);
   } else {
-    // showAlert("No Meeting Link", "The meeting link for this appointment has not been set yet.");
+    console.error("No meeting link available for this appointment.");
   }
 };
 
@@ -89,7 +88,7 @@ export default function AppointmentCard({
   isInterpreter?: boolean;
 }) {
   return (
-    <Card onPress={() => {}} style={{ marginBottom: 8 }}>
+    <Card style={{ marginBottom: 8 }}>
       <AppointmentCardContent appointment={appointment} isInterpreter={isInterpreter} />
       <Card.Actions style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <MessageButton recipientId={appointment.profile?.id || ""} />
@@ -99,7 +98,7 @@ export default function AppointmentCard({
           contentStyle={{ justifyContent: "center" }}
           mode="contained"
           onPress={() => joinAppointment(appointment)}
-          disabled={new Date(appointment.startTime).getTime() - 60 * 60 * 1000 > Date.now()}
+          disabled={new Date(appointment.startTime).setDate(new Date(appointment.startTime).getDate() - 1) > Date.now()}
         >
           Join Meet
         </Button>

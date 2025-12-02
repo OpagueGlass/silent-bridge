@@ -1,7 +1,7 @@
 import { AgeRange } from "@/constants/data";
 import { Tables } from "./database-types";
-import { getAgeRangeFromDOB, getMinMaxDOB } from "./helper";
 import { supabase } from "./supabase";
+import { getAgeRangeFromDOB, getMinMaxDOB } from "./time";
 
 // Profile and InterpreterProfile interfaces
 export interface Profile {
