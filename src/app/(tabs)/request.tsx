@@ -40,11 +40,6 @@ function getOverlappingDetails(request: Request) {
 export default function RequestScreen() {
   const theme = useAppTheme();
   const { profile, isInterpreter, getValidProviderToken: getToken } = useAuth();
-
-  if (!isInterpreter) {
-    return <Redirect href="/" />;
-  }
-
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState<Request[]>([]);
   const { isOpen: acceptDialog, open: openAcceptDialog, close: closeAcceptDialog } = useDisclosure();
@@ -94,6 +89,11 @@ export default function RequestScreen() {
   }, [fetchRequests]);
 
   const { acceptRequest, rejectRequest } = handleRequest(profile, getToken, setLoading, setRequests);
+
+  if (!isInterpreter) {
+    return <Redirect href="/" />;
+  }
+
 
   return (
     <ScrollView

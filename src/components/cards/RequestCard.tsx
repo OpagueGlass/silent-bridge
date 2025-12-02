@@ -1,6 +1,5 @@
 import { AppointmentCardContent } from "@/components/cards/AppointmentCard";
-import { useAppTheme } from "@/hooks/useAppTheme";
-import { addAppointmentMeetingURL, getRequests, Profile, Request, updateRequest } from "@/utils/query";
+import { ActiveProfile, addAppointmentMeetingURL, getRequests, Profile, Request, updateRequest } from "@/utils/query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Dispatch, SetStateAction } from "react";
 import { Button, Card } from "react-native-paper";
@@ -114,7 +113,7 @@ export const getMeetLink = async (providerToken: string, startTime: string, endT
 
 const handleAcceptRequest =
   (
-    profile: Profile | null,
+    profile: ActiveProfile | null,
     getToken: () => Promise<string | null>,
     setLoading: Dispatch<SetStateAction<boolean>>,
     setRequests: Dispatch<SetStateAction<Request[]>>
@@ -147,7 +146,7 @@ const handleAcceptRequest =
 
 const handleRejectRequest =
   (
-    profile: Profile | null,
+    profile: ActiveProfile | null,
     setLoading: Dispatch<SetStateAction<boolean>>,
     setRequests: Dispatch<SetStateAction<Request[]>>
   ) =>
@@ -164,7 +163,7 @@ const handleRejectRequest =
   };
 
 export const handleRequest = (
-  profile: Profile | null,
+  profile: ActiveProfile | null,
   getToken: () => Promise<string | null>,
   setLoading: Dispatch<SetStateAction<boolean>>,
   setRequests: Dispatch<SetStateAction<Request[]>>
@@ -182,7 +181,6 @@ export default function RequestCard({
   acceptRequest: (request: Request) => void;
   rejectRequest: (request: Request) => void;
 }) {
-  const theme = useAppTheme();
 
   return (
     <Card key={request.id} style={{ marginBottom: 16}}>

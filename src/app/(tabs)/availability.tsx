@@ -66,8 +66,8 @@ function updateEvent(
   selectedDate: Date | null,
   startTime: { hours: number | undefined; minutes: number | undefined },
   endTime: { hours: number | undefined; minutes: number | undefined },
-  events: Array<{ title: string; start: Date; end: Date }>,
-  setEvents: Dispatch<SetStateAction<Array<{ title: string; start: Date; end: Date }>>>,
+  events: { title: string; start: Date; end: Date }[],
+  setEvents: Dispatch<SetStateAction<{ title: string; start: Date; end: Date }[]>>,
   availabilities: { [key: number]: { start: Date; end: Date } },
   setAvailabilities: Dispatch<SetStateAction<{ [key: number]: { start: Date; end: Date } }>>,
   setValidationError: Dispatch<SetStateAction<{ title: string; message: string } | null>>,
@@ -125,8 +125,8 @@ function updateEvent(
 
 function deleteEvent(
   selectedDate: Date | null,
-  events: Array<{ title: string; start: Date; end: Date }>,
-  setEvents: Dispatch<SetStateAction<Array<{ title: string; start: Date; end: Date }>>>,
+  events: { title: string; start: Date; end: Date }[],
+  setEvents: Dispatch<SetStateAction<{ title: string; start: Date; end: Date }[]>>,
   availabilities: { [key: number]: { start: Date; end: Date } },
   setAvailabilities: Dispatch<SetStateAction<{ [key: number]: { start: Date; end: Date } }>>,
   close: () => void
@@ -145,14 +145,8 @@ export default function AvailabilityScreen() {
   const theme = useAppTheme();
   const router = useRouter();
   const { profile, isInterpreter } = useAuth();
-
-  // Redirect if not an interpreter
-  if (!isInterpreter) {
-    return <Redirect href="/" />;
-  }
-
   const [availabilities, setAvailabilities] = useState<{ [key: number]: { start: Date; end: Date } }>({});
-  const [events, setEvents] = useState<Array<{ title: string; start: Date; end: Date }>>([]);
+  const [events, setEvents] = useState<{ title: string; start: Date; end: Date }[]>([]);
   const { isOpen: modal, open: openModal, close: closeModal } = useDisclosure();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [startTime, setStartTime] = useState<{ hours: number | undefined; minutes: number | undefined }>({
@@ -185,10 +179,13 @@ export default function AvailabilityScreen() {
       });
       setEvents(events);
       setAvailabilities(
-        formattedData.reduce((acc, curr) => {
-          acc[curr.day_id] = { start: curr.start_time, end: curr.end_time };
-          return acc;
-        }, {} as { [key: number]: { start: Date; end: Date } })
+        formattedData.reduce(
+          (acc, curr) => {
+            acc[curr.day_id] = { start: curr.start_time, end: curr.end_time };
+            return acc;
+          },
+          {} as { [key: number]: { start: Date; end: Date } }
+        )
       );
     }
   }, [profile]);
@@ -196,6 +193,11 @@ export default function AvailabilityScreen() {
   useEffect(() => {
     fetchAvailabilities();
   }, [fetchAvailabilities]);
+
+  // Redirect if not an interpreter
+  if (!isInterpreter) {
+    return <Redirect href="/" />;
+  }
 
   return (
     <View style={{ backgroundColor: theme.colors.background, flex: 1 }}>

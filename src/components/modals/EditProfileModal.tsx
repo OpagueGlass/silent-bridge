@@ -4,11 +4,11 @@ import { useAppTheme } from "@/hooks/useAppTheme";
 import { useDisclosure } from "@/hooks/useDisclosure";
 import { ActiveProfile, updateActiveProfile } from "@/utils/query";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { Button, IconButton, MD3Theme, Menu, Modal, Portal, Text, TextInput } from "react-native-paper";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { Button, IconButton, MD3Theme, Modal, Portal, Text, TextInput } from "react-native-paper";
 import DatePickerInput, { getToday } from "../inputs/DatePickerInput";
-import WarningDialog from "./WarningDialog";
 import { DropdownInput } from "../inputs/DropdownInput";
+import WarningDialog from "./WarningDialog";
 
 const genders = ["Male", "Female"];
 

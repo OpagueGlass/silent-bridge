@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { Button, RadioButton } from "react-native-paper";
 import { useRouter } from "expo-router";
-import { useAuth } from "@/contexts/AuthContext";
+import { useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import { Button, RadioButton } from "react-native-paper";
 
 export default function AccountTypeScreen() {
   const [accountType, setAccountType] = useState("");

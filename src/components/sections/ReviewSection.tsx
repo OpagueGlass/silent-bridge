@@ -53,10 +53,6 @@ function ReviewModal({
   setError,
   onSuccess,
 }: ReviewModalProps) {
-  if (!appointment || !profile) {
-    return null;
-  }
-
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
 
@@ -67,6 +63,10 @@ function ReviewModal({
     }
   }, [isOpen]);
 
+  if (!appointment || !profile) {
+    return null;
+  }
+  
   return (
     <Portal>
       <Modal visible={isOpen} onDismiss={onDismiss} contentContainerStyle={styles.modalContainer}>

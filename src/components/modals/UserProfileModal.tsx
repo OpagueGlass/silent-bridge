@@ -1,7 +1,6 @@
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { Profile, initiateChat } from '@/utils/query';
+import { Profile } from '@/utils/query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Card, MD3Theme } from 'react-native-paper';
@@ -14,28 +13,11 @@ interface UserProfileModalProps {
 
 export default function UserProfileModal({ visible, profile, onClose }: UserProfileModalProps) {
   const theme = useAppTheme();
-  const router = useRouter();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   if (!profile) {
     return null; // Do not render if user not found
   }
-
-  
-  /**
-   * Handles the action of sending a message. It initiates a chat and navigates
-   * to the chat room, then closes the modal.
-   */
-  const handleSendMessage = async () => {
-    if (!profile) return;
-    const roomId = await initiateChat(profile.id);
-    if (roomId) {
-      onClose(); // Close the modal first
-      router.push({ pathname: '/chat/[id]', params: { id: roomId } }); // Then navigate
-    } else {
-      console.error("Could not initiate chat from profile.");
-    }
-  };
 
   return (
     <Modal
