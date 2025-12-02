@@ -1,28 +1,28 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  View,
-  StyleSheet,
-  FlatList,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
-  Linking,
-} from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
-import { supabase } from '@/utils/supabase';
+import LoadingScreen from '@/components/sections/LoadingScreen';
 import { useAuth } from '@/contexts/AuthContext';
 import { getOtherParticipant } from '@/utils/query';
-import { getAgeRangeFromDOB } from '@/utils/helper';
+import { supabase } from '@/utils/supabase';
+import { getAgeRangeFromDOB } from '@/utils/time';
+import { MaterialIcons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { Text, useTheme } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type MsgKind = 'text' | 'image' | 'file';
 
@@ -359,7 +359,7 @@ export default function ChatRoomScreen() {
   );
 
   if (loading) {
-    return <ActivityIndicator style={{ flex: 1, justifyContent: 'center' }} animating={true} color={theme.colors.primary} />;
+    return <LoadingScreen />;
   }
 
   return (

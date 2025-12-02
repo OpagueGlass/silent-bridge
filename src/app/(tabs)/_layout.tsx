@@ -3,12 +3,15 @@ import AppHeader from "@/components/navigation/Header";
 import LoadingScreen from "@/components/sections/LoadingScreen";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDisclosure } from "@/hooks/useDisclosure";
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, Tabs , useSegments } from "expo-router";
+
 import { View } from "react-native";
 
 export default function TabLayout() {
   const { authState, isInterpreter, profile } = useAuth();
-  const {isOpen, open, close} = useDisclosure();
+  const { isOpen, open, close } = useDisclosure();
+  const segments = useSegments();
+  const isChatRoom = segments[1] === "chat" && segments[2] !== undefined;
 
   if (authState.isLoading) {
     return <LoadingScreen />;
@@ -39,14 +42,15 @@ export default function TabLayout() {
 
   return (
     <View style={{ flex: 1 }}>
-      <AppHeader onMenuPress={open} />
-
-      <AppDrawer
-        visible={isOpen}
-        onClose={close}
-        profile={profile}
-        menuItems={menuItems}
-      />
+      {!isChatRoom && <AppHeader onMenuPress={open} />}
+      {!isChatRoom && (
+        <AppDrawer
+          visible={isOpen}
+          onClose={close}
+          profile={profile}
+          menuItems={menuItems}
+        />
+      )}
 
       <Tabs screenOptions={{ headerShown: false }} tabBar={() => null}>
         {menuItems.map((item) => (

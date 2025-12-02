@@ -1,24 +1,21 @@
 "use client";
 
-import { useRouter } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import { Button, Text } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
-// import { showError } from "../../utils/alert";
 
 export default function LoginScreen() {
-  const router = useRouter();
   const { signIn, authState } = useAuth();
   const theme = useAppTheme();
   const handleSignIn = async () => {
     try {
       await signIn();
       if (authState.error) {
-        // showError(authState.error);
+        console.error("Authentication Error:", authState.error);
       }
     } catch (error) {
-      // showError("Failed to sign in with Google");
+      console.error("Sign-In Error:", error);
     }
   };
 

@@ -51,7 +51,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       if (session?.user) {
         await loadProfile(session.user);
-        await refreshProviderToken();
       }
       updateAuthState({ isLoading: false });
     });
@@ -61,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
-      
+
       // Store the refresh token whenever we get a new session
       if (session?.provider_refresh_token) {
         await AsyncStorage.setItem("providerRefreshToken", session.provider_refresh_token);
@@ -72,14 +71,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const getURL = () => {
-    let url =
-      process?.env?.NEXT_PUBLIC_SITE_URL ??
-      process?.env?.NEXT_PUBLIC_VERCEL_URL ??
-      `${window.location.origin}`;
-    url = url.startsWith('http') ? url : `https://${url}`
-    url = url.endsWith('/') ? url : `${url}/`
+    let url = process?.env?.NEXT_PUBLIC_SITE_URL ?? process?.env?.NEXT_PUBLIC_VERCEL_URL ?? `${window.location.origin}`;
+    url = url.startsWith("http") ? url : `https://${url}`;
+    url = url.endsWith("/") ? url : `${url}/`;
     return `${url}auth/callback`;
-  }
+  };
 
   /**
    * Signs in the user with Google OAuth and requests calendar access on first sign-in.
@@ -88,7 +84,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        scopes: "https://www.googleapis.com/auth/calendar.events",
+        scopes:
+          "https://www.googleapis.com/auth/calendar.app.created https://www.googleapis.com/auth/calendar.calendarlist.readonly",
         queryParams: {
           access_type: "offline",
           prompt: "consent",
@@ -202,6 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return providerToken;
         }
       } catch (error) {
+        console.error("Error validating provider token:", error);
         return await refreshProviderToken();
       }
     }

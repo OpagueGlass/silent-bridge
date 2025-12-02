@@ -1,7 +1,7 @@
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useDisclosure } from "@/hooks/useDisclosure";
-import { getDate } from "@/utils/helper";
 import { ActiveProfile, Appointment, submitRating } from "@/utils/query";
+import { getDate } from "@/utils/time";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import { Button, Card, Modal, Portal, Surface, Text, TextInput } from "react-native-paper";
@@ -53,10 +53,6 @@ function ReviewModal({
   setError,
   onSuccess,
 }: ReviewModalProps) {
-  if (!appointment || !profile) {
-    return null;
-  }
-
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
 
@@ -67,6 +63,10 @@ function ReviewModal({
     }
   }, [isOpen]);
 
+  if (!appointment || !profile) {
+    return null;
+  }
+  
   return (
     <Portal>
       <Modal visible={isOpen} onDismiss={onDismiss} contentContainerStyle={styles.modalContainer}>

@@ -1,11 +1,10 @@
 import { ClickableProfileImage } from "@/components/images/ProfileImage";
-import { toTimeRange } from "@/utils/helper";
+import { toTimeRange } from "@/utils/time";
 
 import { View } from "react-native";
-import { Button, Card, Chip, Icon, Text } from "react-native-paper";
+import { Button, Card, Icon, Text } from "react-native-paper";
 import MessageButton from "./MessageButton";
 
-import { SPECIALISATION } from "@/constants/data";
 import { InterpreterResults } from "@/utils/query";
 import { router } from "expo-router";
 import { InfoChip } from "../ui/InfoChips";

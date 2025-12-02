@@ -1,6 +1,8 @@
 "use client";
 
+import WarningDialog from "@/components/modals/WarningDialog";
 import { LANGUAGES, SPEC, SPECIALISATION, STATES } from "@/constants/data";
+import { theme } from "@/theme/theme";
 import { supabase } from "@/utils/supabase";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -8,9 +10,6 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button, Card, Checkbox, Menu, TextInput } from "react-native-paper";
 import DatePickerInput, { getToday } from "../../components/inputs/DatePickerInput";
 import { useAuth } from "../../contexts/AuthContext";
-import { useAppTheme } from "../../hooks/useAppTheme";
-import WarningDialog from "@/components/modals/WarningDialog";
-import { theme } from "@/theme/theme";
 
 export default function InterpreterFormScreen() {
   const { session } = useAuth();
@@ -27,7 +26,6 @@ export default function InterpreterFormScreen() {
   const [stateMenuVisible, setStateMenuVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-  const theme = useAppTheme();
   const [error, setError] = useState<{ title: string; message: string } | null>(null);
   const [success, showSuccess] = useState(false);
 

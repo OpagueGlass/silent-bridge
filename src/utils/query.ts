@@ -1,7 +1,7 @@
 import { AgeRange } from "@/constants/data";
 import { Tables } from "./database-types";
-import { getAgeRangeFromDOB, getMinMaxDOB } from "./helper";
 import { supabase } from "./supabase";
+import { getAgeRangeFromDOB, getMinMaxDOB } from "./time";
 
 // Profile and InterpreterProfile interfaces
 export interface Profile {
@@ -189,7 +189,7 @@ export const getActiveProfile = async (id: string): Promise<ActiveProfile | null
  * @returns The updated profile or null if the update failed
  */
 export const updateActiveProfile = async (id: string, updates: Partial<Tables<"profile">>) => {
-  const { error } = await supabase.from("profile").update(updates).eq("id", id)
+  const { error } = await supabase.from("profile").update(updates).eq("id", id);
 
   if (error) {
     console.error("Error updating profile:", error);
@@ -774,6 +774,20 @@ export const getPastAppointments = async (user_id: string, is_interpreter: boole
       return convertToAppointment(row, profile);
     })
     .map((appointment) => ({ ...appointment, status: "Completed" } as Appointment));
+};
+
+export const getUserChats = async (user_id: string) => {
+  const { data, error } = await supabase.rpc("get_user_chats", { p_user_id: user_id });
+
+  if (error) {
+    console.error("Error fetching user chats:", error);
+    return [];
+  }
+
+  return data.map((row) => ({
+    room_id: row.room_id,
+    profile: convertToProfile(row.profile_data as Tables<"profile">),
+  }));
 };
 
 export const getOtherParticipant = async (roomId: string): Promise<string | null> => {

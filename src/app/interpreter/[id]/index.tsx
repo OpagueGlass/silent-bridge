@@ -8,7 +8,7 @@ import Gradient from "@/components/ui/Gradient";
 import InfoChips from "@/components/ui/InfoChips";
 import { LANGUAGES, SPECIALISATION } from "@/constants/data";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { toTimeRange } from "@/utils/helper";
+import { toTimeRange } from "@/utils/time";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";

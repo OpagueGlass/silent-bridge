@@ -112,7 +112,7 @@ export default function BookingSuccessScreen() {
                     Confirmation
                   </Text>
                   <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    You'll receive a notification once the interpreter confirms your booking.
+                    You&apos;ll receive a notification once the interpreter confirms your booking.
                   </Text>
                 </View>
               </View>
@@ -129,7 +129,7 @@ export default function BookingSuccessScreen() {
                     Appointment Day
                   </Text>
                   <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    You'll connect with your interpreter once the appointment starts.
+                    You&apos;ll connect with your interpreter once the appointment starts.
                   </Text>
                 </View>
               </View>
