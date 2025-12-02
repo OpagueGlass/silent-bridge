@@ -57,7 +57,7 @@ export default function AppDrawer({ visible, onClose, profile, menuItems }: AppD
         }),
       ]).start();
     }
-  });
+  }, [visible]);
 
   const handleNavigate = (name: string) => {
     onClose();
