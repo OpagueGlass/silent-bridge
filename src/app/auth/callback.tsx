@@ -21,7 +21,7 @@ export default function AuthCallback() {
       }
     };
     handleCallback();
-  });
+  }, []);
 
   return <LoadingScreen />;
 }
