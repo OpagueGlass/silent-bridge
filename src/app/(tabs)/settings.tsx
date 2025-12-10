@@ -108,14 +108,16 @@ export default function SettingsScreen() {
                 title="Push Notifications"
                 description="Appointment and message alerts"
                 left={(props) => <List.Icon {...props} icon="bell" />}
-                right={() => <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} />}
+                right={() => <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} disabled />}
+                style={{ opacity: 0.5 }}
               />
               <Divider />
               <List.Item
                 title="Email Notifications"
                 description="Receive updates via email"
                 left={(props) => <List.Icon {...props} icon="email" />}
-                right={() => <Switch value={emailNotifications} onValueChange={setEmailNotifications} />}
+                right={() => <Switch value={emailNotifications} onValueChange={setEmailNotifications} disabled />}
+                style={{ opacity: 0.5 }}
               />
             </View>
           </View>
@@ -130,7 +132,9 @@ export default function SettingsScreen() {
                 title="Dark Mode"
                 description="Switch to dark theme"
                 left={(props) => <List.Icon {...props} icon="theme-light-dark" />}
-                right={() => <Switch value={darkMode} onValueChange={setDarkMode} />}
+                right={() => <Switch value={darkMode} onValueChange={setDarkMode} disabled />}
+                underlayColor={theme.colors.background}
+                style={{ opacity: 0.5 }}
               />
               <Divider />
               <List.Item
@@ -138,7 +142,8 @@ export default function SettingsScreen() {
                 description="English (US)"
                 left={(props) => <List.Icon {...props} icon="translate" />}
                 right={(props) => <List.Icon {...props} icon="chevron-right" />}
-                onPress={() => {}}
+                style={{ opacity: 0.5 }}
+                // onPress={() => {}}
               />
             </View>
           </View>
@@ -150,11 +155,15 @@ export default function SettingsScreen() {
             </Text>
             <View style={styles.card}>
               <List.Item
-                title="Help Center"
-                description="Get help and support"
+                title="User Manual"
+                description="Read our user guide"
                 left={(props) => <List.Icon {...props} icon="help-circle" />}
                 right={(props) => <List.Icon {...props} icon="chevron-right" />}
-                onPress={() => {}}
+                onPress={() =>
+                  router.push(
+                    "https://docs.google.com/document/d/1nUkH1MbbomLkLQMoTIxEx0TWhtFuRpFjqbDn0ONWhvA/edit?usp=sharing"
+                  )
+                }
               />
               <Divider />
               <List.Item
@@ -162,7 +171,8 @@ export default function SettingsScreen() {
                 description="Read our privacy policy"
                 left={(props) => <List.Icon {...props} icon="shield-account" />}
                 right={(props) => <List.Icon {...props} icon="chevron-right" />}
-                onPress={() => {}}
+                style={{ opacity: 0.5 }}
+                // onPress={() => {}}
               />
               <Divider />
               <List.Item
@@ -170,7 +180,8 @@ export default function SettingsScreen() {
                 description="Read our terms"
                 left={(props) => <List.Icon {...props} icon="file-document" />}
                 right={(props) => <List.Icon {...props} icon="chevron-right" />}
-                onPress={() => {}}
+                style={{ opacity: 0.5 }}
+                // onPress={() => {}}
               />
             </View>
           </View>
