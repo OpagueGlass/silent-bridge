@@ -26,12 +26,14 @@ export interface ActiveProfile {
   photo: string;
 }
 
+export interface InterpreterResults extends Profile {}
+
 export interface InterpreterProfile extends Profile {
   interpreterSpecialisations: number[];
   interpreterLanguages: number[];
 }
 
-export interface InterpreterResults extends InterpreterProfile {
+export interface OldInterpreterResults extends InterpreterProfile {
   interpreterAvailability: {
     day_id: number;
     start_time: string;
@@ -273,7 +275,7 @@ export const updateInterpreterProfile = async (
  * @param gender Optional gender of the interpreter ("Male", "Female")
  * @returns The top 5 interpreters matching the criteria, sorted by average rating and gender if specified
  */
-export const searchInterpreters = async (
+export const oldSearchInterpreters = async (
   spec: number,
   language: number,
   state: string,
@@ -325,6 +327,50 @@ export const searchInterpreters = async (
       ...convertedProfiles,
       interpreterAvailability: { day_id, start_time, end_time },
     };
+  });
+  return interpreterProfiles;
+};
+
+export const searchInterpreters = async (
+  spec: number,
+  language: number,
+  state: string,
+  ageStart: number,
+  ageEnd: number,
+  startTime: Date,
+  endTime: Date,
+  minRating: number = 0,
+  gender: string | null = null
+): Promise<InterpreterResults[]> => {
+  const { minDOB, maxDOB } = getMinMaxDOB(ageStart, ageEnd);
+  const day = startTime.getDay() === 0 ? 7 : startTime.getDay();
+  const start_time = toTimetz(startTime);
+  endTime.setSeconds(endTime.getSeconds() - 1);
+  const end_time = toTimetz(endTime);
+
+  const { data, error } = await supabase.rpc("search_interpreters", {
+    p_spec: spec,
+    p_language: language,
+    p_state: state,
+    p_min_dob: minDOB.toISOString(),
+    p_max_dob: maxDOB.toISOString(),
+    p_min_rating: minRating,
+    p_day: day,
+    p_start_time: start_time,
+    p_end_time: end_time,
+    p_appointment_start: startTime.toISOString(),
+    p_appointment_end: endTime.toISOString(),
+    p_gender: gender,
+  });
+
+  if (error) {
+    console.error("Error fetching interpreters:", error);
+    return [];
+  }
+
+  // Convert the returned data to InterpreterProfile format
+  const interpreterProfiles = data.map((row) => {
+    return convertToProfile(row.profile_data as Tables<"profile">);
   });
   return interpreterProfiles;
 };

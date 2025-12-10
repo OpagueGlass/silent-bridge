@@ -10,10 +10,10 @@ import { router } from "expo-router";
 import { InfoChip } from "../ui/InfoChips";
 
 export default function ResultCard({ interpreterResult }: { interpreterResult: InterpreterResults }) {
-  const { start_time, end_time } = interpreterResult.interpreterAvailability;
-  const timeRange = toTimeRange(start_time, end_time);
-  // const specialisationID = interpreterResult.interpreterSpecialisations[0];
-  // const specialisation = SPECIALISATION[specialisationID];
+  
+  // const { start_time, end_time } = interpreterResult?.interpreterAvailability;
+  
+  // const timeRange = start_time && end_time ? toTimeRange(start_time, end_time) : null;
 
   return (
     <Card
@@ -38,7 +38,7 @@ export default function ResultCard({ interpreterResult }: { interpreterResult: I
 
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
             <Icon size={20} source="clock" />
-            <Text style={{ marginLeft: 8 }}>{timeRange}</Text>
+            <Text style={{ marginLeft: 8 }}>Available</Text>
           </View>
           <View style={{ flexDirection: "row", marginBottom: 4 }}>
             <InfoChip>{interpreterResult.gender}</InfoChip>
