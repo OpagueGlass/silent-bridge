@@ -1,12 +1,14 @@
 "use client";
 
-import AppointmentCard from "@/components/cards/AppointmentCard";
+import AppointmentCard, {cancelAppointment} from "@/components/cards/AppointmentCard";
 import { DateRangePickerInput, getValidRange } from "@/components/inputs/DatePickerInput";
 import { DropdownIndex } from "@/components/inputs/DropdownInput";
 import ReviewSection from "@/components/sections/ReviewSection";
+import UpcomingSection from "@/components/sections/UpcomingSection";
 import Gradient from "@/components/ui/Gradient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import { useDisclosure } from "@/hooks/useDisclosure";
 import {
   Appointment,
   getReviewInterpreterAppointments,
@@ -20,30 +22,14 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { Searchbar, Surface, Text } from "react-native-paper";
 
-function NameDropdown({
-  nameOptions,
-  option,
-  setOption,
-}: {
-  nameOptions: { id: string; label: string }[];
-  option: number;
-  setOption: (index: number) => void;
-}) {
-  return <DropdownIndex container={nameOptions.map((opt) => opt.label)} option={option} setOption={setOption} />;
-}
 
 export default function HomeScreen() {
-  const { profile, isInterpreter } = useAuth();
+  const { profile, isInterpreter, getValidProviderToken } = useAuth();
   const theme = useAppTheme();
   const router = useRouter();
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
   const [reviewAppointments, setReviewAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [option, setOption] = useState(0);
-  const [dateRange, setDateRange] = useState<{ startDate: Date | undefined; endDate: Date | undefined }>({
-    startDate: undefined,
-    endDate: undefined,
-  });
   const [nameOptions, setNameOptions] = useState<{ id: string; label: string }[]>([{ id: "0", label: "All" }]);
 
   const fetchAppointments = useCallback(async () => {
@@ -157,56 +143,13 @@ export default function HomeScreen() {
             />
           </View>
 
-          {/* --- APPROVED APPOINTMENTS --- */}
-          <View>
-            <Text variant="titleLarge">Upcoming Appointments</Text>
-            <View
-              style={{ flexDirection: "row", gap: 12, marginTop: theme.spacing.sm, marginBottom: theme.spacing.md }}
-            >
-              <View style={{ flex: 1 }}>
-                <NameDropdown nameOptions={nameOptions} option={option} setOption={setOption} />
-              </View>
-              <DateRangePickerInput dateRange={dateRange} setDateRange={setDateRange} validRange={getValidRange()} />
-            </View>
-
-            {upcomingAppointments.length > 0 ? (
-              <Surface
-                mode="flat"
-                style={{
-                  paddingTop: theme.spacing.sm,
-                  paddingHorizontal: theme.spacing.sm,
-                  borderRadius: theme.roundness,
-                }}
-              >
-                {upcomingAppointments
-                  .filter((appointment) => {
-                    const matchesName = option === 0 || appointment.profile?.id === nameOptions[option].id;
-                    const { startTime } = appointment;
-                    const matchesDateRange =
-                      dateRange.startDate && dateRange.endDate
-                        ? new Date(startTime) >= dateRange.startDate && new Date(startTime) <= dateRange.endDate
-                        : true;
-                    return matchesName && matchesDateRange;
-                  })
-                  .map((appointment) => (
-                    <AppointmentCard key={appointment.id} appointment={appointment} isInterpreter={isInterpreter} />
-                  ))}
-              </Surface>
-            ) : (
-              <Surface
-                mode="flat"
-                style={{
-                  height: 160,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  paddingHorizontal: theme.spacing.xs,
-                  borderRadius: theme.roundness,
-                }}
-              >
-                <Text style={{ color: theme.colors.onSurfaceVariant }}>No upcoming appointments found</Text>
-              </Surface>
-            )}
-          </View>
+          <UpcomingSection
+            upcomingAppointments={upcomingAppointments}
+            setUpcomingAppointments={setUpcomingAppointments}
+            nameOptions={nameOptions}
+            isInterpreter={isInterpreter}
+            getProviderToken={getValidProviderToken}
+          />
         </View>
       )}
     </ScrollView>

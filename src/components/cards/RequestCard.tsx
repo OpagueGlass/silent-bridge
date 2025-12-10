@@ -3,66 +3,16 @@ import { ActiveProfile, addAppointmentMeetingURL, getRequests, Profile, Request,
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Dispatch, SetStateAction } from "react";
 import { Button, Card } from "react-native-paper";
+import { getCalendarId } from "@/utils/calendar";
 
-const createCalendarId = async (providerToken: string): Promise<string> => {
-  // Get the user's list of calendars
-  const calendarListResponse = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", {
-    headers: {
-      Authorization: `Bearer ${providerToken}`,
-    },
-  });
+export const getMeetLink = async (providerToken: string, request: Request) => {
+  const { startTime, endTime, id } = request.appointment;
+  const profile = request.appointment.profile!;
 
-  if (!calendarListResponse.ok) {
-    const errorText = await calendarListResponse.text();
-    console.error("Calendar List API Error:", errorText);
-    throw new Error(`Failed to fetch calendar list: ${errorText}`);
-  }
-
-  const calendarList = await calendarListResponse.json();
-
-  // Look for existing calendar
-  const appCalendar = calendarList.items?.find((cal: any) => cal.summary === "Silent Bridge Appointments");
-  if (appCalendar) {
-    await AsyncStorage.setItem("calendarId", appCalendar.id);
-    return appCalendar.id;
-  } else {
-    // Create new calendar
-    const createCalendarResponse = await fetch("https://www.googleapis.com/calendar/v3/calendars", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${providerToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        summary: "Silent Bridge Appointments",
-      }),
-    });
-
-    if (!createCalendarResponse.ok) {
-      const errorText = await createCalendarResponse.text();
-      console.error("Create Calendar API Error:", errorText);
-      throw new Error(`Failed to create calendar: ${errorText}`);
-    }
-
-    const appCalendar = await createCalendarResponse.json();
-    await AsyncStorage.setItem("calendarId", appCalendar.id);
-    return appCalendar.id;
-  }
-}
-
-export const getCalendarId = async (providerToken: string): Promise<string> => {
-  const storedCalendarId = await AsyncStorage.getItem("calendarId");
-  if (storedCalendarId) {
-    return storedCalendarId;
-  } else {
-    return await createCalendarId(providerToken);
-  }
-};
-
-export const getMeetLink = async (providerToken: string, startTime: string, endTime: string, profile: Profile) => {
   // Create event in the app's calendar
   const calendarId = await getCalendarId(providerToken);
   const event = {
+    id: `appt${id}`,
     summary: `Appointment with ${profile.name}`,
     start: {
       dateTime: startTime,
@@ -80,11 +30,11 @@ export const getMeetLink = async (providerToken: string, startTime: string, endT
     },
     attendees: [{ email: profile.email, organizer: true }],
     reminders: {
-        useDefault: false,
-        overrides: [
-            {method: 'email', minutes: 24 * 60},
-            {method: 'popup', minutes: 10},
-        ],
+      useDefault: false,
+      overrides: [
+        { method: "email", minutes: 24 * 60 },
+        { method: "popup", minutes: 10 },
+      ],
     },
   };
 
@@ -123,12 +73,7 @@ const handleAcceptRequest =
     try {
       setLoading(true);
       const providerToken = await getToken();
-      const meetingLink = await getMeetLink(
-        providerToken!,
-        request.appointment.startTime,
-        request.appointment.endTime,
-        request.appointment.profile!
-      );
+      const meetingLink = await getMeetLink(providerToken!, request);
       const meetingURL = meetingLink.split("/")[3];
       await addAppointmentMeetingURL(request.appointment.id, meetingURL);
       await updateRequest(request.id, true);
@@ -185,9 +130,8 @@ export default function RequestCard({
   acceptRequest: (request: Request) => void;
   rejectRequest: (request: Request) => void;
 }) {
-
   return (
-    <Card key={request.id} style={{ marginBottom: 16}}>
+    <Card key={request.id} style={{ marginBottom: 16 }}>
       <AppointmentCardContent appointment={request.appointment} isInterpreter={true} />
       <Card.Actions style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <Button

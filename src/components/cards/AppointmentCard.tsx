@@ -1,10 +1,11 @@
 import { ClickableProfileImage } from "@/components/images/ProfileImage";
-import { Appointment } from "@/utils/query";
+import { Appointment, updateAppointmentStatus } from "@/utils/query";
 import { getDate, getTimeRange } from "@/utils/time";
 import { openURL } from "expo-linking";
 import { View } from "react-native";
 import { Button, Card, Chip, Icon, Text } from "react-native-paper";
 import MessageButton from "./MessageButton";
+import { getCalendarId } from "@/utils/calendar";
 
 const joinAppointment = (appointment: Appointment) => {
   if (appointment.meetingUrl) {
@@ -15,6 +16,32 @@ const joinAppointment = (appointment: Appointment) => {
   }
 };
 
+export const cancelAppointment = async (appointment: Appointment, providerToken: string) => {
+  try {
+    await updateAppointmentStatus(appointment.id, "Cancelled");
+    const calendarId = await getCalendarId(providerToken);
+    const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/appt${appointment.id}?sendUpdates=all`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${providerToken}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Calendar API Error:", errorText);
+    throw new Error(`Failed to delete calendar event: ${errorText}`);
+  }
+
+  } catch (error) {
+    console.error("Error cancelling appointment:", error);
+  } 
+};
+
 export const statusColors: Record<
   Appointment["status"],
   { color: string; backgroundColor: string; borderColor: string }
@@ -22,8 +49,8 @@ export const statusColors: Record<
   Approved: { color: "#005B26", backgroundColor: "#2ECC7114", borderColor: "#208e4f33" },
   Pending: { color: "#793200", backgroundColor: "#F39C1214", borderColor: "#aa6d0c33" },
   Completed: { color: "#024675", backgroundColor: "#3498db14", borderColor: "#246a9933" },
-  Rejected: { color: "#970751", backgroundColor: "#f7279214", borderColor: "#ac1b6633" },
-  Cancelled: { color: "#7A7A7A", backgroundColor: "#B3B3B314", borderColor: "#8c8c8c33" },
+  Cancelled: { color: "#970751", backgroundColor: "#f7279214", borderColor: "#ac1b6633" },
+  // Cancelled: { color: "#7A7A7A", backgroundColor: "#B3B3B314", borderColor: "#8c8c8c33" },
 };
 
 export function AppointmentCardContent({
@@ -83,12 +110,14 @@ export function AppointmentCardContent({
 export default function AppointmentCard({
   appointment,
   isInterpreter = false,
+  onPress: onPress,
 }: {
   appointment: Appointment;
+  onPress?: () => void;
   isInterpreter?: boolean;
 }) {
   return (
-    <Card style={{ marginBottom: 8 }}>
+    <Card style={{ marginBottom: 8 }} onPress={onPress}>
       <AppointmentCardContent appointment={appointment} isInterpreter={isInterpreter} />
       <Card.Actions style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <MessageButton recipientId={appointment.profile?.id || ""} />

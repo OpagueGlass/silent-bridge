@@ -43,7 +43,7 @@ export interface OldInterpreterResults extends InterpreterProfile {
 
 export interface Appointment {
   id: number;
-  status: "Approved" | "Pending" | "Completed" | "Rejected" | "Cancelled";
+  status: "Approved" | "Pending" | "Completed" | "Cancelled";
   startTime: string;
   endTime: string;
   hospitalName: string | null;
@@ -415,6 +415,14 @@ export const createAppointment = async (
   return data.id;
 };
 
+export const updateAppointmentStatus = async (appointment_id: number, status: Appointment["status"]) => {
+  const { error } = await supabase.from("appointment").update({ status }).eq("id", appointment_id);
+
+  if (error) {
+    console.error("Error updating appointment status:", error);
+  }
+};
+
 export const addAppointmentMeetingURL = async (appointment_id: number, meeting_url: string) => {
   const { error } = await supabase.from("appointment").update({ meeting_url }).eq("id", appointment_id);
 
@@ -462,7 +470,7 @@ export const createRequest = async (appointment_id: number, interpreter_id: stri
 export const updateRequest = async (request_id: number, is_accepted: boolean) => {
   const { data, error } = await supabase
     .from("request")
-    .update({ is_accepted })
+    .update({ is_accepted, is_expired: true })
     .eq("id", request_id)
     .select("appointment_id")
     .single();
@@ -580,6 +588,7 @@ export const getReviewUserAppointments = async (user_id: string) => {
     .is("rating", null)
     .lt("end_time", new Date().toISOString())
     .gte("end_time", reviewPeriod.toISOString())
+    .eq("status", "Approved")
     .order("start_time", { ascending: true });
 
   if (error) {
@@ -589,7 +598,7 @@ export const getReviewUserAppointments = async (user_id: string) => {
 
   return data
     .map(({ interpreter_profile, ...rest }) => convertToAppointment(rest, interpreter_profile?.profile || null))
-    .map((appointment) => ({ ...appointment, status: "Completed" } as Appointment));
+    .map((appointment) => ({ ...appointment, status: "Completed" }) as Appointment);
 };
 
 /**
@@ -623,6 +632,7 @@ export const getReviewInterpreterAppointments = async (interpreter_id: string) =
     .is("rating", null)
     .lt("end_time", new Date().toISOString())
     .gte("end_time", reviewPeriod.toISOString())
+    .eq("status", "Approved")
     .order("start_time", { ascending: true });
 
   if (error) {
@@ -632,7 +642,7 @@ export const getReviewInterpreterAppointments = async (interpreter_id: string) =
 
   return data
     .map(({ profile, ...rest }) => convertToAppointment(rest, profile))
-    .map((appointment) => ({ ...appointment, status: "Completed" } as Appointment));
+    .map((appointment) => ({ ...appointment, status: "Completed" }) as Appointment);
 };
 
 /**
@@ -819,7 +829,7 @@ export const getPastAppointments = async (user_id: string, is_interpreter: boole
       const profile = row.interpreter_profile?.profile || row.profile || null;
       return convertToAppointment(row, profile);
     })
-    .map((appointment) => ({ ...appointment, status: "Completed" } as Appointment));
+    .map((appointment) => ({ ...appointment, status: "Completed" }) as Appointment);
 };
 
 export const getUserChats = async (user_id: string) => {

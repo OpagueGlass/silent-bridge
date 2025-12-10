@@ -1,3 +1,4 @@
+import { theme } from "@/theme/theme";
 import { StyleSheet } from "react-native";
 import { Button, Dialog, Portal, Text } from "react-native-paper";
 
@@ -10,6 +11,7 @@ interface WarningModalProps {
   cancelText?: string;
   onConfirm: () => void;
   onCancel?: () => void;
+  isDanger?: boolean;
 }
 
 export default function WarningDialog({
@@ -21,6 +23,7 @@ export default function WarningDialog({
   cancelText = "Cancel",
   onConfirm,
   onCancel,
+  isDanger = false,
 }: WarningModalProps) {
   const handleConfirm = () => {
     onConfirm();
@@ -43,7 +46,7 @@ export default function WarningDialog({
         </Dialog.Content>
         <Dialog.Actions>
           <Button onPress={handleCancel}>{cancelText}</Button>
-          <Button onPress={handleConfirm} mode="contained">
+          <Button onPress={handleConfirm} mode="contained" buttonColor={isDanger ? theme.colors.error : undefined}>
             {confirmText}
           </Button>
         </Dialog.Actions>
