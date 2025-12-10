@@ -12,6 +12,13 @@ import { theme } from "@/theme/theme";
 import { useAuth } from "@/contexts/AuthContext";
 import WarningDialog from "@/components/modals/WarningDialog";
 
+function getNote(request: Request, message: string) {
+  if (request.note) {
+    return message + `\n\nNote from user: "${request.note}"`;
+  }
+  return message;
+}
+
 function getOverlappingDetails(request: Request) {
   let confirmMessage = `Are you sure you want to accept this request?`;
 
@@ -32,9 +39,10 @@ function getOverlappingDetails(request: Request) {
       })
       .join("");
 
-    confirmMessage = `Are you sure you want to accept this request?\n\nThis will automatically reject ${request.overlappingAppointments.length} overlapping request(s):${overlapDetails}`;
+    confirmMessage += `\n\nThis will automatically reject ${request.overlappingAppointments.length} overlapping request(s):${overlapDetails}`;
   }
-  return confirmMessage;
+
+  return getNote(request, confirmMessage);
 }
 
 export default function RequestScreen() {
@@ -136,7 +144,11 @@ export default function RequestScreen() {
       <WarningDialog
         visible={rejectDialog}
         title="Reject Request"
-        message="Are you sure you want to reject this request?"
+        message={
+          selectedRequest
+            ? getNote(selectedRequest, "Are you sure you want to reject this request?")
+            : "Are you sure you want to reject this request?"
+        }
         onConfirm={() => rejectRequest(selectedRequest!)}
         onDismiss={closeRejectDialog}
       />
@@ -145,7 +157,7 @@ export default function RequestScreen() {
         title="Error Accepting Request"
         message="Please sign in again and grant access to Google Calendar to accept this request."
         onConfirm={() => {
-          signIn()
+          signIn();
           closeErrorDialog();
         }}
         onDismiss={closeErrorDialog}
