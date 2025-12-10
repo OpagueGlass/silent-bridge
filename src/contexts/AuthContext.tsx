@@ -144,7 +144,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = await AsyncStorage.getItem("providerRefreshToken");
     if (!token) {
       console.error("No refresh token available");
-      await signIn();
       return null;
     }
 
@@ -164,10 +163,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!response.ok) {
         console.error(`Token refresh failed: ${response.status}`);
-        if (response.status === 400 || response.status === 401) {
-          // If token is invalid or expired, try to sign in again
-          await signIn();
-        }
         throw new Error(`Token refresh failed: ${response.status}`);
       }
 
@@ -182,7 +177,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null;
     } catch (error) {
       console.error("Failed to refresh provider token:", error);
-      await signIn();
       return null;
     }
   };
