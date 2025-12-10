@@ -21,25 +21,24 @@ export const cancelAppointment = async (appointment: Appointment, providerToken:
     await updateAppointmentStatus(appointment.id, "Cancelled");
     const calendarId = await getCalendarId(providerToken);
     const response = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/appt${appointment.id}?sendUpdates=all`,
-    {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${providerToken}`,
-        "Content-Type": "application/json",
-      },
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/appt${appointment.id}?sendUpdates=all`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${providerToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Calendar API Error:", errorText);
+      throw new Error(`Failed to delete calendar event: ${errorText}`);
     }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Calendar API Error:", errorText);
-    throw new Error(`Failed to delete calendar event: ${errorText}`);
-  }
-
   } catch (error) {
     console.error("Error cancelling appointment:", error);
-  } 
+  }
 };
 
 export const statusColors: Record<
@@ -127,7 +126,10 @@ export default function AppointmentCard({
           contentStyle={{ justifyContent: "center" }}
           mode="contained"
           onPress={() => joinAppointment(appointment)}
-          disabled={new Date(appointment.startTime).setDate(new Date(appointment.startTime).getDate() - 1) > Date.now()}
+          disabled={
+            new Date(appointment.startTime).setDate(new Date(appointment.startTime).getDate() - 1) > Date.now() ||
+            appointment.status !== "Approved"
+          }
         >
           Join Meet
         </Button>
