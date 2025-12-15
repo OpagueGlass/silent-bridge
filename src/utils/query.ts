@@ -24,6 +24,7 @@ export interface ActiveProfile {
   avgRating: number | null;
   location: string;
   photo: string;
+  fcmToken: string | null;
 }
 
 export interface InterpreterResults extends Profile {}
@@ -100,8 +101,8 @@ const convertToProfile = (profile: Tables<"profile">): Profile => {
 };
 
 const convertToActiveProfile = (profile: Tables<"profile">): ActiveProfile => {
-  const { date_of_birth, avg_rating, ...rest } = profile;
-  return { ...rest, dateOfBirth: date_of_birth, avgRating: avg_rating };
+  const { date_of_birth, avg_rating, fcm_token, ...rest } = profile;
+  return { ...rest, dateOfBirth: date_of_birth, avgRating: avg_rating, fcmToken: fcm_token };
 };
 
 /**
@@ -292,7 +293,7 @@ export const oldSearchInterpreters = async (
   endTime.setSeconds(endTime.getSeconds() - 1);
   const end_time = toTimetz(endTime);
 
-  const { data, error } = await supabase.rpc("search_interpreters", {
+  const { data, error } = await supabase.rpc("old_search_interpreters", {
     p_spec: spec,
     p_language: language,
     p_state: state,

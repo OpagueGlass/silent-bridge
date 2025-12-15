@@ -14,7 +14,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase services
+// Initialize Firebase Cloud Messaging
 export const messaging = getMessaging(app);
 
-export { getToken, onMessage };
+export const fetchToken = async () => {
+  return await getToken(messaging, { vapidKey: process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY });
+}

@@ -7,6 +7,7 @@ import { Redirect, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { StyleSheet } from "react-native";
 import { IconButton } from "react-native-paper";
+import NotificationPopup from "@/components/modals/NotificationPopup";
 
 interface InterpreterContextType {
   interpreter: InterpreterProfile | null;
@@ -89,6 +90,7 @@ export default function InterpreterLayout() {
 
   return (
     <InterpreterContext.Provider value={contextValue}>
+      <NotificationPopup profile={profile} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" options={{ title: "Interpreter Profile" }} />
         <Stack.Screen name="book" options={{ title: "Book Appointment" }} />

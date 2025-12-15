@@ -3,9 +3,10 @@ import AppHeader from "@/components/navigation/Header";
 import LoadingScreen from "@/components/sections/LoadingScreen";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDisclosure } from "@/hooks/useDisclosure";
-import { Redirect, Tabs , useSegments } from "expo-router";
+import { Redirect, Tabs, useSegments } from "expo-router";
 
 import { View } from "react-native";
+import NotificationPopup from "@/components/modals/NotificationPopup";
 
 export default function TabLayout() {
   const { authState, isInterpreter, profile } = useAuth();
@@ -42,23 +43,13 @@ export default function TabLayout() {
 
   return (
     <View style={{ flex: 1 }}>
+      <NotificationPopup profile={profile} />
       {!isChatRoom && <AppHeader onMenuPress={open} />}
-      {!isChatRoom && (
-        <AppDrawer
-          visible={isOpen}
-          onClose={close}
-          profile={profile}
-          menuItems={menuItems}
-        />
-      )}
+      {!isChatRoom && <AppDrawer visible={isOpen} onClose={close} profile={profile} menuItems={menuItems} />}
 
       <Tabs screenOptions={{ headerShown: false }} tabBar={() => null}>
         {menuItems.map((item) => (
-          <Tabs.Screen
-            key={item.name}
-            name={item.name}
-            options={{ title: item.title }}
-          />
+          <Tabs.Screen key={item.name} name={item.name} options={{ title: item.title }} />
         ))}
       </Tabs>
     </View>

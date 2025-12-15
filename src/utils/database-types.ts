@@ -317,6 +317,35 @@ export type Database = {
         }
         Relationships: []
       }
+      notification: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       participants: {
         Row: {
           id: string
@@ -355,31 +384,37 @@ export type Database = {
           avg_rating: number | null
           date_of_birth: string
           email: string
+          fcm_token: string | null
           gender: string
           id: string
           location: string
           name: string
           photo: string
+          receive_notification: boolean | null
         }
         Insert: {
           avg_rating?: number | null
           date_of_birth: string
           email: string
+          fcm_token?: string | null
           gender: string
           id: string
           location: string
           name: string
           photo: string
+          receive_notification?: boolean | null
         }
         Update: {
           avg_rating?: number | null
           date_of_birth?: string
           email?: string
+          fcm_token?: string | null
           gender?: string
           id?: string
           location?: string
           name?: string
           photo?: string
+          receive_notification?: boolean | null
         }
         Relationships: []
       }
@@ -459,17 +494,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "rating_interpreter_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: false
-            referencedRelation: "interpreter_profile"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "request_appointment_id_fkey"
             columns: ["appointment_id"]
             isOneToOne: false
             referencedRelation: "appointment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreter_profile"
             referencedColumns: ["id"]
           },
         ]
@@ -522,7 +557,7 @@ export type Database = {
         Returns: boolean
       }
       is_room_member: { Args: { p_room_id: string }; Returns: boolean }
-      search_interpreters: {
+      old_search_interpreters: {
         Args: {
           p_appointment_end: string
           p_appointment_start: string
@@ -542,6 +577,25 @@ export type Database = {
           languages: Json
           profile_data: Json
           specialisations: Json
+        }[]
+      }
+      search_interpreters: {
+        Args: {
+          p_appointment_end: string
+          p_appointment_start: string
+          p_day: number
+          p_end_time: string
+          p_gender: string | null
+          p_language: number
+          p_max_dob: string
+          p_min_dob: string
+          p_min_rating: number
+          p_spec: number
+          p_start_time: string
+          p_state: string
+        }
+        Returns: {
+          profile_data: Json
         }[]
       }
     }

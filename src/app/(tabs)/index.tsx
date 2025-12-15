@@ -1,14 +1,10 @@
 "use client";
 
-import AppointmentCard, {cancelAppointment} from "@/components/cards/AppointmentCard";
-import { DateRangePickerInput, getValidRange } from "@/components/inputs/DatePickerInput";
-import { DropdownIndex } from "@/components/inputs/DropdownInput";
 import ReviewSection from "@/components/sections/ReviewSection";
 import UpcomingSection from "@/components/sections/UpcomingSection";
 import Gradient from "@/components/ui/Gradient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { useDisclosure } from "@/hooks/useDisclosure";
 import {
   Appointment,
   getReviewInterpreterAppointments,
@@ -19,9 +15,15 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
-import { Searchbar, Surface, Text } from "react-native-paper";
-
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View
+} from "react-native";
+import { Searchbar, Text } from "react-native-paper";
 
 export default function HomeScreen() {
   const { profile, isInterpreter, getValidProviderToken } = useAuth();
@@ -73,6 +75,19 @@ export default function HomeScreen() {
     fetchAppointments();
   }, [fetchAppointments]);
 
+  // // Request notification permission on mount
+  // useEffect(() => {
+  //   const requestNotificationPermission = async () => {
+  //     if (typeof window !== "undefined" && "Notification" in window) {
+  //       if (Notification.permission === "default") {
+  //         const permission = await Notification.requestPermission();
+  //         console.log("Notification permission:", permission);
+  //       }
+  //     }
+  //     requestNotificationPermission();
+  //   };
+  // }, []);
+
   // Fetch appointments when the tab comes into focus only if a request was accepted
   useFocusEffect(
     useCallback(() => {
@@ -87,72 +102,78 @@ export default function HomeScreen() {
     }, [fetchAppointments])
   );
 
-  return (
-    <ScrollView
-      style={{ backgroundColor: theme.colors.background }}
-      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchAppointments} />}
-    >
-      {/* --- HEADER WITH CURVED BACKGROUND --- */}
-      <Gradient style={styles.curvedHeader}>
-        {isInterpreter ? (
-          <TouchableOpacity
-            onPress={() => {
-              router.push("/availability");
-            }}
-          >
-            <Searchbar
-              value={""}
-              placeholder="Manage Availability"
-              style={styles.searchbar}
-              pointerEvents="none"
-              editable={false}
-              icon="calendar-clock"
-            />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            onPress={() => {
-              AsyncStorage.setItem("quickSearch", "true");
-              router.push("/search");
-            }}
-          >
-            <Searchbar
-              value={""}
-              placeholder="Start your search"
-              style={styles.searchbar}
-              pointerEvents="none"
-              editable={false}
-            />
-          </TouchableOpacity>
-        )}
-      </Gradient>
+  
 
-      {isLoading ? (
-        <ActivityIndicator animating={true} style={{ marginTop: theme.spacing.md }} />
-      ) : (
-        <View style={{ padding: theme.spacing.md }}>
-          <View style={{ marginBottom: theme.spacing.md }}>
-            <Text variant="titleLarge" style={{ marginBottom: theme.spacing.sm }}>
-              Review Sessions
-            </Text>
-            <ReviewSection
-              profile={profile}
-              reviewAppointments={reviewAppointments}
+  
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+
+      <ScrollView
+        style={{ backgroundColor: theme.colors.background }}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchAppointments} />}
+      >
+        {/* --- HEADER WITH CURVED BACKGROUND --- */}
+        <Gradient style={styles.curvedHeader}>
+          {isInterpreter ? (
+            <TouchableOpacity
+              onPress={() => {
+                router.push("/availability");
+              }}
+            >
+              <Searchbar
+                value={""}
+                placeholder="Manage Availability"
+                style={styles.searchbar}
+                pointerEvents="none"
+                editable={false}
+                icon="calendar-clock"
+              />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={() => {
+                AsyncStorage.setItem("quickSearch", "true");
+                router.push("/search");
+              }}
+            >
+              <Searchbar
+                value={""}
+                placeholder="Start your search"
+                style={styles.searchbar}
+                pointerEvents="none"
+                editable={false}
+              />
+            </TouchableOpacity>
+          )}
+        </Gradient>
+
+        {isLoading ? (
+          <ActivityIndicator animating={true} style={{ marginTop: theme.spacing.md }} />
+        ) : (
+          <View style={{ padding: theme.spacing.md }}>
+            <View style={{ marginBottom: theme.spacing.md }}>
+              <Text variant="titleLarge" style={{ marginBottom: theme.spacing.sm }}>
+                Review Sessions
+              </Text>
+              <ReviewSection
+                profile={profile}
+                reviewAppointments={reviewAppointments}
+                isInterpreter={isInterpreter}
+                setReviewAppointments={setReviewAppointments}
+              />
+            </View>
+
+            <UpcomingSection
+              upcomingAppointments={upcomingAppointments}
+              setUpcomingAppointments={setUpcomingAppointments}
+              nameOptions={nameOptions}
               isInterpreter={isInterpreter}
-              setReviewAppointments={setReviewAppointments}
+              getProviderToken={getValidProviderToken}
             />
           </View>
-
-          <UpcomingSection
-            upcomingAppointments={upcomingAppointments}
-            setUpcomingAppointments={setUpcomingAppointments}
-            nameOptions={nameOptions}
-            isInterpreter={isInterpreter}
-            getProviderToken={getValidProviderToken}
-          />
-        </View>
-      )}
-    </ScrollView>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
