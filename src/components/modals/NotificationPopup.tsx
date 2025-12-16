@@ -48,14 +48,12 @@ export default function NotificationPopup({ profile }: { profile: ActiveProfile 
         <TouchableOpacity
           style={styles.notificationContent}
           onPress={() => {
-            if (notification.action) {
-              notification.action();
-              setNotification({ ...notification, visible: false });
-            }
+            notification.action();
+            setNotification({ ...notification, visible: false });
           }}
           activeOpacity={0.9}
         >
-          <Image source={require("@/assets/images/icon.png")} style={styles.notificationIcon} />
+          <Image source={{ uri: notification.image }} style={styles.notificationIcon} />
           <View style={styles.notificationText}>
             <Text variant="titleSmall" style={{ fontWeight: "600" }}>
               {notification.title ? notification.title : "Notification"}
@@ -64,7 +62,10 @@ export default function NotificationPopup({ profile }: { profile: ActiveProfile 
               {notification.body}
             </Text>
           </View>
-          <TouchableOpacity onPress={() => setNotification({ ...notification, visible: false })} style={styles.closeButton}>
+          <TouchableOpacity
+            onPress={() => setNotification({ ...notification, visible: false })}
+            style={styles.closeButton}
+          >
             <Text style={{ fontSize: 20, color: theme.colors.onSurface }}>×</Text>
           </TouchableOpacity>
         </TouchableOpacity>

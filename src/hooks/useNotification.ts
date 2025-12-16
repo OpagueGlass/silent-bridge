@@ -36,9 +36,10 @@ const useNotification = (profile: ActiveProfile) => {
   const [notification, setNotification] = useState<{
     visible: boolean;
     body: string;
-    title?: string;
-    action?: () => void;
-  }>({ visible: false, body: "", action: () => {} });
+    title: string;
+    image: string;
+    action: () => void;
+  }>({ visible: false, body: "", title: "", image: "", action: () => {} });
 
   const loadToken = async () => {
     // Prevent multiple fetches if already fetched or in progress.
@@ -87,27 +88,19 @@ const useNotification = (profile: ActiveProfile) => {
         if (Notification.permission !== "granted") return;
 
         console.log("Foreground push notification received:", payload);
-        const link = payload.fcmOptions?.link || payload.data?.link;
-
-        if (link) {
-          setNotification({
-            visible: true,
-            body: payload.notification?.body || "",
-            title: payload.notification?.title,
-            action: () => {
-              const link = payload.fcmOptions?.link || payload.data?.link;
-              if (link) {
-                router.push(link);
-              }
-            },
-          });
-        } else {
-          setNotification({
-            visible: true,
-            body: payload.notification?.body || "",
-            title: payload.notification?.title,
-          });
-        }
+        const { body, title, image } = payload.notification! as {
+          body: string;
+          title: string;
+          image: string;
+        };
+        const link = payload.data!.link as "/" | "/request" | `/chat/${string}`;
+        setNotification({
+          visible: true,
+          body,
+          title,
+          image,
+          action: () => router.push(link),
+        });
       });
 
       return unsubscribe;
