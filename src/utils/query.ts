@@ -55,6 +55,7 @@ export interface Appointment {
 export interface OverlappingAppointment {
   requestId: number;
   userName: string;
+  userId: string;
   startTime: string;
   endTime: string;
 }
@@ -72,6 +73,15 @@ export interface Rating {
   photo: string;
   score: number;
   message: string | null;
+}
+
+enum NotificationType {
+  NEW_REQUEST = 1,
+  REQUEST_ACCEPTED,
+  REQUEST_DECLINED,
+  APPOINTMENT_CANCELLED,
+  NEW_MESSAGE,
+  USER_JOINED,
 }
 
 // Convert Date to "HH:MM:SS+TZ" format for timetz
@@ -263,6 +273,22 @@ export const updateInterpreterProfile = async (
   return convertToInterpreterProfile(updatedInterpreterProfile);
 };
 
+const sendNotification = (type: NotificationType) => async (senderId: string, recipientId: string) => {
+  const { error } = await supabase.from("notification").insert([
+    {
+      sender_id: senderId,
+      recipient_id: recipientId,
+      type,
+    },
+  ]);
+
+  if (error) {
+    console.error("Error sending notification:", error);
+  }
+};
+
+export const sendNewMessageNotification = sendNotification(NotificationType.NEW_MESSAGE);
+
 /**
  * Retrieve the top 5 interpreters based on the given criteria.
  *
@@ -416,13 +442,20 @@ export const createAppointment = async (
   return data.id;
 };
 
-export const updateAppointmentStatus = async (appointment_id: number, status: Appointment["status"]) => {
+const updateAppointmentStatus = async (appointment_id: number, status: Appointment["status"]) => {
   const { error } = await supabase.from("appointment").update({ status }).eq("id", appointment_id);
 
   if (error) {
     console.error("Error updating appointment status:", error);
   }
 };
+
+export const cancelAppointment = async (appointment: Appointment, profile: ActiveProfile) => {
+  await updateAppointmentStatus(appointment.id, "Cancelled");
+  await sendNotification(NotificationType.APPOINTMENT_CANCELLED)(profile.id, appointment.profile!.id);
+};
+
+export const sendJoinNotification = sendNotification(NotificationType.USER_JOINED);
 
 export const addAppointmentMeetingURL = async (appointment_id: number, meeting_url: string) => {
   const { error } = await supabase.from("appointment").update({ meeting_url }).eq("id", appointment_id);
@@ -440,7 +473,12 @@ export const addAppointmentMeetingURL = async (appointment_id: number, meeting_u
  * @param note Optional note for the request
  * @returns The ID of the created request or -1 if there was an error
  */
-export const createRequest = async (appointment_id: number, interpreter_id: string, note: string | null = null) => {
+export const createRequest = async (
+  appointment_id: number,
+  deaf_user_id: string,
+  interpreter_id: string,
+  note: string | null = null
+) => {
   const { data, error } = await supabase
     .from("request")
     .insert([
@@ -458,6 +496,8 @@ export const createRequest = async (appointment_id: number, interpreter_id: stri
     return -1;
   }
 
+  await sendNotification(NotificationType.NEW_REQUEST)(deaf_user_id, interpreter_id);
+
   return data.id;
 };
 
@@ -468,7 +508,12 @@ export const createRequest = async (appointment_id: number, interpreter_id: stri
  * @param is_accepted Whether the request is accepted or not
  * @returns The appointment ID associated with the request or undefined if there was an error
  */
-export const updateRequest = async (request_id: number, is_accepted: boolean) => {
+export const updateRequest = async (
+  request_id: number,
+  is_accepted: boolean,
+  interpreter_id: string,
+  deaf_user_id: string
+) => {
   const { data, error } = await supabase
     .from("request")
     .update({ is_accepted, is_expired: true })
@@ -480,6 +525,11 @@ export const updateRequest = async (request_id: number, is_accepted: boolean) =>
     console.error("Error updating request:", error);
     return -1;
   }
+
+  await sendNotification(is_accepted ? NotificationType.REQUEST_ACCEPTED : NotificationType.REQUEST_DECLINED)(
+    interpreter_id,
+    deaf_user_id
+  );
 
   return data.appointment_id;
 };
@@ -599,7 +649,7 @@ export const getReviewUserAppointments = async (user_id: string) => {
 
   return data
     .map(({ interpreter_profile, ...rest }) => convertToAppointment(rest, interpreter_profile?.profile || null))
-    .map((appointment) => ({ ...appointment, status: "Completed" }) as Appointment);
+    .map((appointment) => ({ ...appointment, status: "Completed" } as Appointment));
 };
 
 /**
@@ -643,7 +693,7 @@ export const getReviewInterpreterAppointments = async (interpreter_id: string) =
 
   return data
     .map(({ profile, ...rest }) => convertToAppointment(rest, profile))
-    .map((appointment) => ({ ...appointment, status: "Completed" }) as Appointment);
+    .map((appointment) => ({ ...appointment, status: "Completed" } as Appointment));
 };
 
 /**
@@ -673,11 +723,12 @@ export const getRequests = async (interpreter_id: string) => {
     overlappingAppointments:
       (
         row.overlapping_appointments as
-          | { request_id: number; user_name: string; start_time: string; end_time: string }[]
+          | { request_id: number; user_name: string; user_id: string; start_time: string; end_time: string }[]
           | null
       )?.map((overlap) => ({
         requestId: overlap.request_id,
         userName: overlap.user_name,
+        userId: overlap.user_id,
         startTime: overlap.start_time,
         endTime: overlap.end_time,
       })) || [],
@@ -830,7 +881,7 @@ export const getPastAppointments = async (user_id: string, is_interpreter: boole
       const profile = row.interpreter_profile?.profile || row.profile || null;
       return convertToAppointment(row, profile);
     })
-    .map((appointment) => ({ ...appointment, status: "Completed" }) as Appointment);
+    .map((appointment) => ({ ...appointment, status: "Completed" } as Appointment));
 };
 
 export const getUserChats = async (user_id: string) => {

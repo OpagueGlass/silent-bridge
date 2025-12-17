@@ -1,14 +1,15 @@
 import { ClickableProfileImage } from "@/components/images/ProfileImage";
-import { Appointment, updateAppointmentStatus } from "@/utils/query";
+import { getCalendarId } from "@/utils/calendar";
+import { ActiveProfile, Appointment, cancelAppointment, sendJoinNotification } from "@/utils/query";
 import { getDate, getTimeRange } from "@/utils/time";
 import { openURL } from "expo-linking";
 import { View } from "react-native";
 import { Button, Card, Chip, Icon, Text } from "react-native-paper";
 import MessageButton from "./MessageButton";
-import { getCalendarId } from "@/utils/calendar";
 
-const joinAppointment = (appointment: Appointment) => {
+export const handleJoinAppointment = async (profile: ActiveProfile, appointment: Appointment) => {
   if (appointment.meetingUrl) {
+    await sendJoinNotification(profile.id, appointment.profile!.id);
     const meetingLink = `https://meet.google.com/${appointment.meetingUrl}`;
     openURL(meetingLink);
   } else {
@@ -16,9 +17,9 @@ const joinAppointment = (appointment: Appointment) => {
   }
 };
 
-export const cancelAppointment = async (appointment: Appointment, providerToken: string) => {
+export const handleCancelAppointment = async (profile: ActiveProfile, appointment: Appointment, providerToken: string) => {
   try {
-    await updateAppointmentStatus(appointment.id, "Cancelled");
+    await cancelAppointment(appointment, profile);
     const calendarId = await getCalendarId(providerToken);
     const response = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/appt${appointment.id}?sendUpdates=all`,
@@ -109,14 +110,16 @@ export function AppointmentCardContent({
 export default function AppointmentCard({
   appointment,
   isInterpreter = false,
-  onPress: onPress,
+  onCardPress,
+  onJoinPress,
 }: {
   appointment: Appointment;
-  onPress?: () => void;
+  onCardPress?: () => void;
+  onJoinPress: () => void;
   isInterpreter?: boolean;
 }) {
   return (
-    <Card style={{ marginBottom: 8 }} onPress={onPress}>
+    <Card style={{ marginBottom: 8 }} onPress={onCardPress}>
       <AppointmentCardContent appointment={appointment} isInterpreter={isInterpreter} />
       <Card.Actions style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <MessageButton recipientId={appointment.profile?.id || ""} />
@@ -125,7 +128,7 @@ export default function AppointmentCard({
           style={{ flex: 1 }}
           contentStyle={{ justifyContent: "center" }}
           mode="contained"
-          onPress={() => joinAppointment(appointment)}
+          onPress={onJoinPress}
           disabled={
             new Date(appointment.startTime).setDate(new Date(appointment.startTime).getDate() - 1) > Date.now() ||
             appointment.status !== "Approved"

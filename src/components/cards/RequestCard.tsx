@@ -1,9 +1,9 @@
 import { AppointmentCardContent } from "@/components/cards/AppointmentCard";
-import { ActiveProfile, addAppointmentMeetingURL, getRequests, Profile, Request, updateRequest } from "@/utils/query";
+import { getCalendarId } from "@/utils/calendar";
+import { ActiveProfile, addAppointmentMeetingURL, getRequests, Request, updateRequest } from "@/utils/query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Dispatch, SetStateAction } from "react";
 import { Button, Card } from "react-native-paper";
-import { getCalendarId } from "@/utils/calendar";
 
 export const getMeetLink = async (providerToken: string, request: Request) => {
   const { startTime, endTime, id } = request.appointment;
@@ -76,8 +76,8 @@ const handleAcceptRequest =
       const meetingLink = await getMeetLink(providerToken!, request);
       const meetingURL = meetingLink.split("/")[3];
       await addAppointmentMeetingURL(request.appointment.id, meetingURL);
-      await updateRequest(request.id, true);
-      await Promise.all(request.overlappingAppointments?.map((overlap) => updateRequest(overlap.requestId, false)));
+      await updateRequest(request.id, true, profile!.id, request.appointment.profile!.id);
+      await Promise.all(request.overlappingAppointments?.map((overlap) => updateRequest(overlap.requestId, false, profile!.id, overlap.userId)));
 
       // Signal home screen to refresh
       await AsyncStorage.setItem("requestAccepted", "true");
@@ -101,7 +101,7 @@ const handleRejectRequest =
   async (request: Request) => {
     try {
       setLoading(true);
-      await updateRequest(request.id, false);
+      await updateRequest(request.id, false, profile!.id, request.appointment.profile!.id);
       const updatedRequests = await getRequests(profile!.id);
       setRequests(updatedRequests);
       setLoading(false);

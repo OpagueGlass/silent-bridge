@@ -75,19 +75,6 @@ export default function HomeScreen() {
     fetchAppointments();
   }, [fetchAppointments]);
 
-  // // Request notification permission on mount
-  // useEffect(() => {
-  //   const requestNotificationPermission = async () => {
-  //     if (typeof window !== "undefined" && "Notification" in window) {
-  //       if (Notification.permission === "default") {
-  //         const permission = await Notification.requestPermission();
-  //         console.log("Notification permission:", permission);
-  //       }
-  //     }
-  //     requestNotificationPermission();
-  //   };
-  // }, []);
-
   // Fetch appointments when the tab comes into focus only if a request was accepted
   useFocusEffect(
     useCallback(() => {
@@ -164,6 +151,7 @@ export default function HomeScreen() {
             </View>
 
             <UpcomingSection
+              profile={profile}
               upcomingAppointments={upcomingAppointments}
               setUpcomingAppointments={setUpcomingAppointments}
               nameOptions={nameOptions}

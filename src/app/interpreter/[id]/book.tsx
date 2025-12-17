@@ -30,7 +30,7 @@ async function confirmBooking(
     if (appointmentDetails) {
       const { startTime, endTime, id: appointment_id, deaf_user_id, hospital_name } = appointmentDetails;
       if (appointment_id) {
-        await createRequest(appointment_id, profile!.id, notes);
+        await createRequest(appointment_id, deaf_user_id, profile!.id, notes);
         onCreate();
       } else {
         const appointment_id = await createAppointment(
@@ -48,7 +48,7 @@ async function confirmBooking(
             })
           );
         }
-        await createRequest(appointment_id, profile!.id, notes);
+        await createRequest(appointment_id, deaf_user_id,profile!.id, notes);
         onCreate();
       }
     }

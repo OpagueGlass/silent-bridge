@@ -319,32 +319,64 @@ export type Database = {
       }
       notification: {
         Row: {
-          body: string
           created_at: string
           id: string
-          user_id: string
+          recipient_id: string
+          sender_id: string
+          type: number
         }
         Insert: {
-          body: string
           created_at?: string
           id?: string
-          user_id: string
+          recipient_id: string
+          sender_id: string
+          type: number
         }
         Update: {
-          body?: string
           created_at?: string
           id?: string
-          user_id?: string
+          recipient_id?: string
+          sender_id?: string
+          type?: number
         }
         Relationships: [
           {
-            foreignKeyName: "notification_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "notification_recipient_id_fkey"
+            columns: ["recipient_id"]
             isOneToOne: false
             referencedRelation: "profile"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notification_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profile"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_type_fkey"
+            columns: ["type"]
+            isOneToOne: false
+            referencedRelation: "notification_type"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      notification_type: {
+        Row: {
+          id: number
+          name: string
+        }
+        Insert: {
+          id?: number
+          name: string
+        }
+        Update: {
+          id?: number
+          name?: string
+        }
+        Relationships: []
       }
       participants: {
         Row: {
@@ -533,7 +565,22 @@ export type Database = {
         Args: { other_user_id: string }
         Returns: string
       }
+      get_chat_room: {
+        Args: { other_user_id: string; p_user_id: string }
+        Returns: string
+      }
       get_other_participant: { Args: { p_room: string }; Returns: string }
+      get_pending_requests_with_overlap: {
+        Args: { p_interpreter_id: string }
+        Returns: {
+          appointment_data: Json
+          has_overlap: boolean
+          note: string
+          overlapping_appointments: Json[]
+          profile_data: Json
+          request_id: number
+        }[]
+      }
       get_requests_with_overlaps: {
         Args: { p_interpreter_id: string }
         Returns: {

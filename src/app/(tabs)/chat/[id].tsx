@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { sendNewMessageNotification } from '@/utils/query';
 
 type MsgKind = 'text' | 'image' | 'file';
 
@@ -187,6 +188,7 @@ export default function ChatRoomScreen() {
       setMessages((curr) => curr.filter((m) => m.id !== optimistic.id));
       setNewMessage(messageContent);
     }
+    await sendNewMessageNotification(user.id, otherUser?.id!);
   };
 
   // 选择图片并发送
@@ -272,6 +274,7 @@ export default function ChatRoomScreen() {
 
       if (inserted) {
         setMessages((curr) => [...curr, inserted as Message]);
+        await sendNewMessageNotification(user.id, otherUser?.id!);
       }
     } catch (e) {
       console.error('Upload/send failed:', e);

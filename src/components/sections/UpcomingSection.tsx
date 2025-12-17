@@ -4,11 +4,11 @@ import { ActiveProfile, Appointment } from "@/utils/query";
 import { useState } from "react";
 import { View } from "react-native";
 import { Surface, Text } from "react-native-paper";
-import { getValidRange } from "../inputs/DatePickerInput";
-import AppointmentCard, { cancelAppointment } from "../cards/AppointmentCard";
+import AppointmentCard, { handleCancelAppointment } from "../cards/AppointmentCard";
+import { DateRangePickerInput, getValidRange } from "../inputs/DatePickerInput";
 import { DropdownIndex } from "../inputs/DropdownInput";
-import { DateRangePickerInput } from "../inputs/DatePickerInput";
 import WarningDialog from "../modals/WarningDialog";
+import { handleJoinAppointment } from "../cards/AppointmentCard";
 
 function NameDropdown({
   nameOptions,
@@ -23,12 +23,14 @@ function NameDropdown({
 }
 
 export default function UpcomingSection({
+  profile,
   upcomingAppointments,
   setUpcomingAppointments,
   nameOptions,
   isInterpreter,
   getProviderToken,
 }: {
+  profile: ActiveProfile | null;
   upcomingAppointments: Appointment[];
     setUpcomingAppointments: (appointments: Appointment[]) => void;
   nameOptions: { id: string; label: string }[];
@@ -77,7 +79,7 @@ export default function UpcomingSection({
                 key={appointment.id}
                 appointment={appointment}
                 isInterpreter={isInterpreter}
-                onPress={
+                onCardPress={
                   isInterpreter && appointment.status !== "Cancelled"
                     ? () => {
                           setAppointment(appointment);
@@ -85,6 +87,7 @@ export default function UpcomingSection({
                         }
                     : undefined
                 }
+                onJoinPress={() => handleJoinAppointment(profile!, appointment)}
               />
             ))}
           {isInterpreter ? (
@@ -102,7 +105,7 @@ export default function UpcomingSection({
                     )
                   );
                   const providerToken = await getProviderToken();
-                  await cancelAppointment(appointment, providerToken!);
+                  await handleCancelAppointment(profile!, appointment, providerToken!);
                 }
                 close();
               }}
