@@ -53,7 +53,7 @@ export default function NotificationPopup({ profile }: { profile: ActiveProfile 
           }}
           activeOpacity={0.9}
         >
-          <Image source={{ uri: notification.image }} style={styles.notificationIcon} />
+          <Image source={{ uri: notification.photo }} style={styles.notificationIcon} />
           <View style={styles.notificationText}>
             <Text variant="titleSmall" style={{ fontWeight: "600" }}>
               {notification.title ? notification.title : "Notification"}

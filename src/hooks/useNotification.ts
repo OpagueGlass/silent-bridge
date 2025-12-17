@@ -40,9 +40,9 @@ const useNotification = (profile: ActiveProfile) => {
     visible: boolean;
     body: string;
     title: string;
-    image: string;
+    photo: string;
     action: () => void;
-  }>({ visible: false, body: "", title: "", image: "", action: () => {} });
+  }>({ visible: false, body: "", title: "", photo: "", action: () => {} });
 
   const loadToken = async () => {
     // Prevent multiple fetches if already fetched or in progress.
@@ -92,18 +92,18 @@ const useNotification = (profile: ActiveProfile) => {
         const {
           body,
           title,
-          image: photo,
+          photo,
         } = payload.data! as {
           body: string;
           title: string;
-          image: string;
+          photo: string;
         };
         const link = payload.data!.link as "/" | "/request" | `/chat/${string}`;
         setNotification({
           visible: true,
           body,
           title,
-          image: photo,
+          photo,
           action: () => router.push(link),
         });
       });
