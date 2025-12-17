@@ -75,7 +75,7 @@ export interface Rating {
   message: string | null;
 }
 
-enum NotificationType {
+export enum NotificationType {
   NEW_REQUEST = 1,
   REQUEST_ACCEPTED,
   REQUEST_DECLINED,

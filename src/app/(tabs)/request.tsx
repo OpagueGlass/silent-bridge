@@ -94,7 +94,13 @@ export default function RequestScreen() {
   }, [profile]);
 
   useEffect(() => {
+    const refreshRequests = async () => {
+      await fetchRequests();
+    };
+
     fetchRequests();
+    window.addEventListener("refreshRequests", refreshRequests);
+    return () => window.removeEventListener("refreshRequests", refreshRequests);
   }, [fetchRequests]);
 
   const { acceptRequest, rejectRequest } = handleRequest(profile, getToken, setLoading, setRequests, openErrorDialog);

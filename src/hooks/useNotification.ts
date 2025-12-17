@@ -5,6 +5,7 @@ import { ActiveProfile, updateActiveProfile } from "@/utils/query";
 import { useRouter } from "expo-router";
 import { onMessage, Unsubscribe } from "firebase/messaging";
 import { useEffect, useRef, useState } from "react";
+import { NotificationType } from "@/utils/query";
 
 export async function getNotificationToken(profile: ActiveProfile) {
   if (!("Notification" in window)) {
@@ -13,7 +14,7 @@ export async function getNotificationToken(profile: ActiveProfile) {
   }
 
   let permission = Notification.permission;
-  
+
   if (permission !== "denied") {
     permission = await Notification.requestPermission();
   }
@@ -89,22 +90,32 @@ const useNotification = (profile: ActiveProfile) => {
       // Register a listener for incoming FCM messages.
       const unsubscribe = onMessage(messaging, (payload) => {
         if (Notification.permission !== "granted") return;
-        const {
-          body,
-          title,
-          photo,
-        } = payload.data! as {
+        const { body, title, photo, notification_type } = payload.data! as {
           body: string;
           title: string;
           photo: string;
+          notification_type: `${NotificationType}`;
         };
         const link = payload.data!.link as "/" | "/request" | `/chat/${string}`;
+
+        const notificationType = Number(notification_type) as NotificationType;
+        if (notificationType === NotificationType.NEW_REQUEST) {
+          window.dispatchEvent(new Event("refreshRequests"));
+        } else if (
+          notificationType === NotificationType.REQUEST_ACCEPTED ||
+          notificationType === NotificationType.APPOINTMENT_CANCELLED
+        ) {
+          window.dispatchEvent(new Event("refreshAppointments"));
+        }
+
         setNotification({
           visible: true,
           body,
           title,
           photo,
-          action: () => router.push(link),
+          action: () => {
+            router.push(link);
+          },
         });
       });
 

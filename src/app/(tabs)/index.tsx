@@ -15,14 +15,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View
-} from "react-native";
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { Searchbar, Text } from "react-native-paper";
 
 export default function HomeScreen() {
@@ -34,6 +27,26 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [nameOptions, setNameOptions] = useState<{ id: string; label: string }[]>([{ id: "0", label: "All" }]);
 
+  const fetchUpcomingAppointments = useCallback(async () => {
+    const upcomingData = isInterpreter
+      ? await getUpcomingInterpreterAppointments(profile!.id)
+      : await getUpcomingUserAppointments(profile!.id);
+    setUpcomingAppointments(upcomingData);
+
+    // Get unique profiles and sort by name
+    const uniqueProfiles = Array.from(
+      new Map(upcomingData.map((appointment) => [appointment.profile!.id, appointment.profile!])).values()
+    ).sort((a, b) => a.name.localeCompare(b.name));
+
+    setNameOptions([
+      { id: "0", label: "All" },
+      ...uniqueProfiles.map((profile) => ({
+        id: profile.id,
+        label: profile.name,
+      })),
+    ]);
+  }, [profile?.id, isInterpreter]);
+
   const fetchAppointments = useCallback(async () => {
     if (!profile?.id) {
       setIsLoading(false);
@@ -42,27 +55,11 @@ export default function HomeScreen() {
 
     setIsLoading(true);
     try {
-      const [reviewData, upcomingData] = isInterpreter
-        ? await Promise.all([
-            getReviewInterpreterAppointments(profile.id),
-            getUpcomingInterpreterAppointments(profile.id),
-          ])
-        : await Promise.all([getReviewUserAppointments(profile.id), getUpcomingUserAppointments(profile.id)]);
+      const reviewData = isInterpreter
+        ? await getReviewInterpreterAppointments(profile.id)
+        : await getReviewUserAppointments(profile.id);
       setReviewAppointments(reviewData);
-      setUpcomingAppointments(upcomingData);
-
-      // Get unique profiles and sort by name
-      const uniqueProfiles = Array.from(
-        new Map(upcomingData.map((appointment) => [appointment.profile!.id, appointment.profile!])).values()
-      ).sort((a, b) => a.name.localeCompare(b.name));
-
-      setNameOptions([
-        { id: "0", label: "All" },
-        ...uniqueProfiles.map((profile) => ({
-          id: profile.id,
-          label: profile.name,
-        })),
-      ]);
+      await fetchUpcomingAppointments();
     } catch (error) {
       console.error("Failed to fetch appointments:", error);
     } finally {
@@ -72,8 +69,13 @@ export default function HomeScreen() {
 
   // Initial fetch on mount
   useEffect(() => {
+    const refreshUpcomingAppointments = async () => {
+      await fetchUpcomingAppointments();
+    };
+    window.addEventListener("refreshAppointments", refreshUpcomingAppointments);
     fetchAppointments();
-  }, [fetchAppointments]);
+    return () => window.removeEventListener("refreshAppointments", refreshUpcomingAppointments);
+  }, [fetchAppointments, fetchUpcomingAppointments]);
 
   // Fetch appointments when the tab comes into focus only if a request was accepted
   useFocusEffect(
@@ -89,12 +91,8 @@ export default function HomeScreen() {
     }, [fetchAppointments])
   );
 
-  
-
-  
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-
       <ScrollView
         style={{ backgroundColor: theme.colors.background }}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchAppointments} />}
