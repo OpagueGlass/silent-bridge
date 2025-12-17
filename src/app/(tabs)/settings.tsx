@@ -11,6 +11,7 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { Avatar, Button, Divider, List, MD3Theme, Switch, Text } from "react-native-paper";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAppTheme } from "../../hooks/useAppTheme";
+import { getNotificationToken } from "@/hooks/useNotification";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -25,8 +26,8 @@ export default function SettingsScreen() {
     open: openEditInterpreter,
     close: closeEditInterpreter,
   } = useDisclosure(false);
+  const {isOpen: isNotificationOpen, open: openNotification, close: closeNotification } = useDisclosure(false);
 
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
 
@@ -108,8 +109,8 @@ export default function SettingsScreen() {
                 title="Push Notifications"
                 description="Appointment and message alerts"
                 left={(props) => <List.Icon {...props} icon="bell" />}
-                right={() => <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} disabled />}
-                style={{ opacity: 0.5 }}
+                right={() => <Switch value={Notification.permission === "granted"} disabled />}
+                onPress={openNotification}
               />
               <Divider />
               <List.Item
@@ -222,6 +223,14 @@ export default function SettingsScreen() {
         message="Are you sure you want to sign out?"
         onDismiss={closeSignOut}
         onConfirm={handleSignOut}
+      />
+
+      <WarningDialog
+        visible={isNotificationOpen}
+        title="Push Notifications"
+        message="Please manage notification settings in the application settings of your device."
+        onDismiss={closeNotification}
+        onConfirm={closeNotification}
       />
     </View>
   );

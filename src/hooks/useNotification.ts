@@ -6,22 +6,25 @@ import { useRouter } from "expo-router";
 import { onMessage, Unsubscribe } from "firebase/messaging";
 import { useEffect, useRef, useState } from "react";
 
-async function getNotificationToken(profile: ActiveProfile) {
+export async function getNotificationToken(profile: ActiveProfile) {
   if (!("Notification" in window)) {
     console.info("This browser does not support notifications");
     return null;
   }
 
-  if (Notification.permission !== "denied") {
-    const permission = await Notification.requestPermission();
-    if (permission === "granted") {
-      const token = await fetchToken();
-      if (!token || token !== profile.fcmToken) {
-        await updateActiveProfile(profile.id, { fcm_token: token });
-        console.log("FCM Token saved to profile:", token);
-      }
-      return token;
+  let permission = Notification.permission;
+  
+  if (permission !== "denied") {
+    permission = await Notification.requestPermission();
+  }
+
+  if (permission === "granted") {
+    const token = await fetchToken();
+    if (!token || token !== profile.fcmToken) {
+      await updateActiveProfile(profile.id, { fcm_token: token });
+      console.log("FCM Token saved to profile:", token);
     }
+    return token;
   }
 
   console.warn("Notification permission not granted.");
@@ -48,7 +51,7 @@ const useNotification = (profile: ActiveProfile) => {
     isLoading.current = true;
     const token = await getNotificationToken(profile);
 
-    if (Notification.permission === "denied") {
+    if (Notification.permission !== "granted") {
       console.warn("Notification permission not granted.");
       isLoading.current = false;
       return;
@@ -86,9 +89,11 @@ const useNotification = (profile: ActiveProfile) => {
       // Register a listener for incoming FCM messages.
       const unsubscribe = onMessage(messaging, (payload) => {
         if (Notification.permission !== "granted") return;
-
-        console.log("Foreground push notification received:", payload);
-        const { body, title, image } = payload.notification! as {
+        const {
+          body,
+          title,
+          image: photo,
+        } = payload.data! as {
           body: string;
           title: string;
           image: string;
@@ -98,7 +103,7 @@ const useNotification = (profile: ActiveProfile) => {
           visible: true,
           body,
           title,
-          image,
+          image: photo,
           action: () => router.push(link),
         });
       });
