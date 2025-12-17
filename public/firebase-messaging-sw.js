@@ -17,37 +17,13 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   console.log("Received background message ", payload);
-
-  const notificationTitle = payload.notification?.title || "Notification";
+  const {link, title, body, photo } = payload.data;
   const notificationOptions = {
-    body: payload.notification?.body || "You have a new message. Please check it out",
-    icon: "icon-192.png",
-    data: { url: payload.fcmOptions?.link || "/" },
+    body,
+    icon: photo,
+    data: { url: link },
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  self.registration.showNotification(title, notificationOptions);
 });
 
-// Handle notification click events
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-  const targetUrl = event.notification.data?.url || "/";
-
-  event.waitUntil(
-    clients
-      .matchAll({
-        type: "window",
-        includeUncontrolled: true,
-      }) /* Get all open browser tabs controlled by this service worker */
-      .then((clientList) => {
-        // Loop through each open tab/window
-        for (const client of clientList) {
-          if (client.url.includes(targetUrl) && "focus" in client) {
-            return client.focus(); // If a matching tab exists, bring it to the front
-          }
-        }
-        // If no matching tab is found, open a new one
-        return clients.openWindow(targetUrl);
-      })
-  );
-});
