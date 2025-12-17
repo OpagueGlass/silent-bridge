@@ -703,7 +703,7 @@ export const getReviewInterpreterAppointments = async (interpreter_id: string) =
  * @returns A list of pending requests for the interpreter
  */
 export const getRequests = async (interpreter_id: string) => {
-  const { data, error } = await supabase.rpc("get_requests_with_overlaps", {
+  const { data, error } = await supabase.rpc("get_pending_requests_with_overlap", {
     p_interpreter_id: interpreter_id,
   });
 

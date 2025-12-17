@@ -39,7 +39,9 @@ export const getMeetLink = async (providerToken: string, request: Request) => {
   };
 
   const response = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?conferenceDataVersion=1&sendUpdates=all`,
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+      calendarId
+    )}/events?conferenceDataVersion=1&sendUpdates=all`,
     {
       method: "POST",
       headers: {
@@ -76,8 +78,12 @@ const handleAcceptRequest =
       const meetingLink = await getMeetLink(providerToken!, request);
       const meetingURL = meetingLink.split("/")[3];
       await addAppointmentMeetingURL(request.appointment.id, meetingURL);
+      await Promise.all(
+        request.overlappingAppointments?.map((overlap) =>
+          updateRequest(overlap.requestId, false, profile!.id, overlap.userId)
+        )
+      );
       await updateRequest(request.id, true, profile!.id, request.appointment.profile!.id);
-      await Promise.all(request.overlappingAppointments?.map((overlap) => updateRequest(overlap.requestId, false, profile!.id, overlap.userId)));
 
       // Signal home screen to refresh
       await AsyncStorage.setItem("requestAccepted", "true");
